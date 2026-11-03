@@ -357,23 +357,35 @@ impl<'a> Cfb<'a> {
         }
         let root = self.root();
         let root_len = usize::try_from(root.size).map_err(|_| Error("mini stream too large"))?;
-        let container = self.read_regular(root.start, root_len)?;
-        if length > container.len() {
+        if root_len > MAX_STREAM {
+            return Err(Error("mini stream too large"));
+        }
+        if length > root_len {
             return Err(Error("mini stream exceeds root stream"));
         }
-        let mut output = Vec::new();
+        let mut sectors = Vec::new();
         let mut seen = HashSet::new();
         let mut id = entry.start;
-        while output.len() < length {
+        let mut remaining = length;
+        let mut needed_end = 0;
+        while remaining > 0 {
             if id >= MAX_SECTOR || !seen.insert(id) || seen.len() > self.mini_fat.len() {
                 return Err(Error("mini FAT cycle or marker"));
             }
             let offset =
                 usize::try_from(id).map_err(|_| Error("mini sector index overflow"))?.checked_mul(64).ok_or(Error("mini sector offset overflow"))?;
-            let sector =
-                container.get(offset..offset.checked_add(64).ok_or(Error("mini sector offset overflow"))?).ok_or(Error("mini stream overflow"))?;
-            output.extend_from_slice(&sector[..(length - output.len()).min(64)]);
+            let count = remaining.min(64);
+            let end = offset.checked_add(count).ok_or(Error("mini sector offset overflow"))?;
+            needed_end = needed_end.max(end);
+            sectors.push((offset, count));
             id = *self.mini_fat.get(id as usize).ok_or(Error("mini sector missing from mini FAT"))?;
+            remaining -= count;
+        }
+        let container = self.read_regular(root.start, root_len.min(needed_end))?;
+        let mut output = Vec::new();
+        for (offset, count) in sectors {
+            let sector = container.get(offset..offset + count).ok_or(Error("mini stream overflow"))?;
+            output.extend_from_slice(sector);
         }
         Ok(output)
     }
