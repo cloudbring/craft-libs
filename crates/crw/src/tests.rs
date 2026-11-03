@@ -184,7 +184,93 @@ fn roundtrip_file(w: u16, h: u16, model: &str, low: Option<&[u8]>, hi: &[u16], o
 }
 
 fn full(bytes: &[u8]) -> Result<Image> {
-    decode(bytes, &Limits::default())
+    let first = decode(bytes, &Limits::default());
+    assert_eq!(first, decode(bytes, &Limits::default()));
+    first
+}
+
+#[test]
+fn cached_tables_match_every_frozen_prefix() {
+    for selector in 0..3 {
+        let tables = tables::tables(selector).expect("selector");
+        let cached = cached_luts(selector).expect("cached selector");
+        for (codes, lut) in [tables.first, tables.main].into_iter().zip(cached) {
+            assert_eq!(*lut, build_lut(codes));
+            for prefix in 0..=u16::MAX {
+                let expected = codes.iter().find(|&&(code, len, ..)| prefix >> (16 - len) == code);
+                let expected = expected.map_or(0, |&(_, len, run, size)| u32::from(len) << 16 | u32::from(run) << 8 | u32::from(size));
+                assert_eq!(lut[usize::from(prefix)], expected, "selector {selector}, prefix {prefix}");
+            }
+        }
+    }
+    assert!(cached_luts(3).is_err());
+    assert!(cached_luts(u32::MAX).is_err());
+}
+
+#[test]
+fn cached_tables_initialize_once_across_threads() {
+    let barrier = std::sync::Barrier::new(12);
+    std::thread::scope(|scope| {
+        let barrier = &barrier;
+        let handles: Vec<_> = (0..12)
+            .map(|worker| {
+                scope.spawn(move || {
+                    barrier.wait();
+                    let selector = worker % 3;
+                    let tables = tables::tables(selector).expect("selector");
+                    let expected = test_hi(128);
+                    let entropy = encode_hi(&expected, 16, &tables);
+                    let cached = cached_luts(selector).expect("cached selector");
+                    for _ in 0..4 {
+                        assert!(std::ptr::eq(cached, cached_luts(selector).expect("cached selector")));
+                        assert_eq!(decode_entropy(&entropy, 16, 8, cached).expect("decode"), (expected.clone(), 0));
+                    }
+                })
+            })
+            .collect();
+        for handle in handles {
+            handle.join().expect("worker");
+        }
+    });
+    for builds in &HUFFMAN_BUILDS {
+        assert_eq!(builds.load(std::sync::atomic::Ordering::Relaxed), 1);
+    }
+}
+
+#[test]
+fn cached_tables_preserve_stuffing_and_truncated_streams() {
+    for selector in 0..3 {
+        let tables = tables::tables(selector).expect("selector");
+        let uncached = [build_lut(tables.first), build_lut(tables.main)];
+        let cached = cached_luts(selector).expect("cached selector");
+        let entropy = encode_hi(&test_hi(128), 16, &tables);
+        for stream in [&entropy[..], &[0xff, 0, 0xff, 0, 0], &[0xff, 0xff, 0xd9, 0]] {
+            for end in 0..=stream.len() {
+                let expected = decode_entropy(&stream[..end], 16, 8, &uncached);
+                for _ in 0..2 {
+                    assert_eq!(decode_entropy(&stream[..end], 16, 8, cached), expected);
+                }
+            }
+        }
+    }
+}
+
+#[test]
+#[ignore = "manual release-mode table setup timing"]
+fn huffman_cache_timing() {
+    let tables = tables::tables(0).expect("selector");
+    cached_luts(0).expect("warm cache");
+    let iterations = 1000;
+    let start = std::time::Instant::now();
+    for _ in 0..iterations {
+        std::hint::black_box([build_lut(tables.first), build_lut(tables.main)]);
+    }
+    let rebuilt = start.elapsed();
+    let start = std::time::Instant::now();
+    for _ in 0..iterations {
+        std::hint::black_box(cached_luts(std::hint::black_box(0)).expect("cached selector"));
+    }
+    eprintln!("{iterations} table pairs: rebuild {rebuilt:?}, cached {:?}", start.elapsed());
 }
 
 #[test]

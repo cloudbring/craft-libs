@@ -99,6 +99,7 @@ fn sample_files_decode_to_the_verified_samples() {
         let started = std::time::Instant::now();
         let result = decode(&bytes, &Limits::default());
         let took = started.elapsed();
+        assert_eq!(result, decode(&bytes, &Limits::default()), "{}: repeated decode", s.name);
         match (&s.expect, result) {
             (Expect::Unsupported(kind), Err(Error::Unsupported(why))) => {
                 assert_eq!(kind, "unsupported", "{}", s.name);

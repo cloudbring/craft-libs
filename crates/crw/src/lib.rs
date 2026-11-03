@@ -35,6 +35,7 @@ mod tables;
 mod tests;
 
 use std::collections::BTreeMap;
+use std::sync::OnceLock;
 
 /// Why a file could not be decoded.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -325,7 +326,9 @@ fn parse(bytes: &[u8], limits: &Limits, full: bool) -> Result<Image> {
     }
     let selector = u32_at(bytes, dto, o).ok_or_else(|| corrupt("truncated DecoderTable"))?;
     let ent_off = u32_at(bytes, dto + 8, o).ok_or_else(|| corrupt("truncated DecoderTable"))? as usize;
-    let tables = tables::tables(selector).ok_or_else(|| Error::Unsupported(format!("decoder table {selector}")))?;
+    if tables::tables(selector).is_none() {
+        return Err(Error::Unsupported(format!("decoder table {selector}")));
+    }
     if ent_off > bytes.len() {
         return Err(corrupt("entropy offset beyond the file"));
     }
@@ -382,7 +385,7 @@ fn parse(bytes: &[u8], limits: &Limits, full: bool) -> Result<Image> {
         if has_low && low.is_none() {
             return Err(corrupt("payload shorter than its low-bits plane"));
         }
-        let (hi, tail) = decode_entropy(entropy, w, h, &tables)?;
+        let (hi, tail) = decode_entropy(entropy, w, h, cached_luts(selector)?)?;
         if tail > limits.max_stream_end_fill {
             return Err(Error::Corrupt(format!("entropy stream ends {tail} samples before the frame does")));
         }
@@ -653,13 +656,31 @@ fn build_lut(codes: &[(u16, u8, u8, u8)]) -> Vec<u32> {
     lut
 }
 
+type HuffmanLuts = [Vec<u32>; 2];
+
+static HUFFMAN_LUTS: [OnceLock<HuffmanLuts>; 3] = [const { OnceLock::new() }; 3];
+
+#[cfg(test)]
+static HUFFMAN_BUILDS: [std::sync::atomic::AtomicUsize; 3] = [const { std::sync::atomic::AtomicUsize::new(0) }; 3];
+
+fn cached_luts(selector: u32) -> Result<&'static HuffmanLuts> {
+    let slot = usize::try_from(selector).ok().and_then(|index| HUFFMAN_LUTS.get(index));
+    let slot = slot.ok_or_else(|| Error::Unsupported(format!("decoder table {selector}")))?;
+    let tables = tables::tables(selector).ok_or_else(|| Error::Unsupported(format!("decoder table {selector}")))?;
+    Ok(slot.get_or_init(|| {
+        #[cfg(test)]
+        HUFFMAN_BUILDS[selector as usize].fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        [build_lut(tables.first), build_lut(tables.main)]
+    }))
+}
+
 /// Decode the ff00-stuffed entropy stream into the `w × h` high-plane samples, per the frozen
 /// model (`clean-room/02-crw-format.md` §2): 64-sample blocks, first/main code tables,
 /// (run, size) leaves with JPEG-rule magnitudes, EOB, block-DC carry, and two parity DPCM chains
 /// initialised to 512 and reset at every row start. A stream that ends early leaves the remaining
 /// samples at their chain values (the frozen stream-end rule); the second value returned is how
 /// many, so [`decode`] can refuse a stream cut short ([`Limits::max_stream_end_fill`]).
-fn decode_entropy(entropy: &[u8], w: usize, h: usize, tables: &tables::SelTables) -> Result<(Vec<u16>, usize)> {
+fn decode_entropy(entropy: &[u8], w: usize, h: usize, luts: &HuffmanLuts) -> Result<(Vec<u16>, usize)> {
     let d = unstuff(entropy);
     let nbits = d.len().saturating_mul(8);
     let peek16 = |pos: usize| -> u16 {
@@ -669,7 +690,6 @@ fn decode_entropy(entropy: &[u8], w: usize, h: usize, tables: &tables::SelTables
         ((w24 >> (8 - sh)) & 0xffff) as u16
     };
 
-    let luts = [build_lut(tables.first), build_lut(tables.main)];
     let n = w.checked_mul(h).ok_or(Error::LimitExceeded("image too large"))?;
     let mut out = Chains { dec: vec![0u16; n], w, qi: 0, ce: 512, co: 512 };
     let mut carry: i32 = 0;
