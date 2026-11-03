@@ -8,6 +8,8 @@ The independent `filters` feature provides bounded Flate, LZW, ASCIIHex, ASCII85
 and RunLength decoding, and optional TIFF/PNG predictor reversal. Limits also apply
 to the encoded predictor rows before their row tags are removed; stage accounting
 reports the final bytes.
+`Dct` passes the JPEG bytes through unchanged for the caller to decode;
+`Ccitt` returns `Error::Unsupported("CCITTFaxDecode")` and does not decode fax data.
 
 | Feature | Provides |
 | --- | --- |

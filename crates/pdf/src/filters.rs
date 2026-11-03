@@ -29,12 +29,39 @@ pub enum Mode {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Filter {
     Flate,
-    Lzw { early_change: bool },
+    Lzw {
+        early_change: bool,
+    },
     FlatePredictor(Predictor),
-    LzwPredictor { early_change: bool, predictor: Predictor },
+    LzwPredictor {
+        early_change: bool,
+        predictor: Predictor,
+    },
     AsciiHex,
     Ascii85,
     RunLength,
+    /// Preserve encoded JPEG bytes for the application's image decoder.
+    Dct,
+    /// CCITT fax data is not decoded by this feature yet.
+    Ccitt(CcittParams),
+}
+
+/// PDF CCITT fax decoding parameters, retained for future decoder support.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CcittParams {
+    pub k: i32,
+    pub columns: u32,
+    pub rows: u32,
+    pub end_of_line: bool,
+    pub encoded_byte_align: bool,
+    pub end_of_block: bool,
+    pub black_is_one: bool,
+}
+
+impl Default for CcittParams {
+    fn default() -> Self {
+        Self { k: 0, columns: 1728, rows: 0, end_of_line: false, encoded_byte_align: false, end_of_block: true, black_is_one: false }
+    }
 }
 
 /// Bytes consumed and emitted by a stage.
@@ -56,6 +83,8 @@ pub enum Error {
     Corrupt,
     Allocation,
     Inflate(InflateError),
+    /// The requested codec is deliberately not implemented.
+    Unsupported(&'static str),
 }
 
 /// Result of decoding all stages in the supplied order.
@@ -113,6 +142,20 @@ impl FilterChain {
                     let (output, accounting) = simple::decode(*filter, &current, remaining, self.limits.max_ratio, self.mode)?;
                     (output, accounting, None)
                 }
+                Filter::Dct => {
+                    let size = current.len() as u64;
+                    if size > remaining {
+                        return Err(Error::OutputLimit);
+                    }
+                    if size > size.saturating_mul(self.limits.max_ratio) {
+                        return Err(Error::RatioLimit);
+                    }
+                    let mut copy = Vec::new();
+                    copy.try_reserve_exact(current.len()).map_err(|_| Error::Allocation)?;
+                    copy.extend_from_slice(&current);
+                    (copy, Accounting { bytes_in: size, bytes_out: size, incomplete: false }, None)
+                }
+                Filter::Ccitt(_) => return Err(Error::Unsupported("CCITTFaxDecode")),
             };
             if let Some(predictor) = predictor {
                 let (decoded, incomplete) = predictor::decode(predictor, output, self.mode)?;
@@ -341,6 +384,17 @@ mod tests {
         test.filters.push(Filter::Flate);
         test.limits.max_depth = 2;
         assert!(matches!(test.decode(&outer), Err(Error::RatioLimit)));
+        Ok(())
+    }
+
+    #[test]
+    fn image_filters_have_explicit_behavior() -> Result<(), Box<dyn std::error::Error>> {
+        let jpeg = [0xff, 0xd8, 0xff, 0xd9];
+        let result = chain(Filter::Dct, 4).decode(&jpeg).map_err(|error| format!("{error:?}"))?;
+        assert_eq!(result.data, jpeg);
+        assert_eq!(result.stages[0].bytes_out, 4);
+        assert!(matches!(chain(Filter::Dct, 3).decode(&jpeg), Err(Error::OutputLimit)));
+        assert!(matches!(chain(Filter::Ccitt(CcittParams::default()), 4).decode(&jpeg), Err(Error::Unsupported("CCITTFaxDecode"))));
         Ok(())
     }
 }
