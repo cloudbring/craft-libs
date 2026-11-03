@@ -1,0 +1,14 @@
+[package]
+name = "craft-bvh"
+description = "Binned surface-area-heuristic bounding volume hierarchy over triangles."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+proptest = { workspace = true }
