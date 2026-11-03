@@ -1,5 +1,48 @@
 # 24 MP Gaussian timings
 
+## Wrap and sparse regions
+
+November 3, 2026, same rustup release toolchain and host as below. The opt-in
+`wrap_region::bench_wrap_padding_and_sparse_region` retains the original four
+benchmarks and separately compares the new APIs. Input/filter construction and
+input copies are outside the timers. Wrap/padding uses one warmup and four
+measured renders with reused scratch; the reported value is the upper median.
+The padding baseline uses `ceil(24 * sigma) + 32` pixels on every side, excludes
+padding construction/cropping, and checks every retained output bit each run.
+
+| Plane / request | Baseline | New API | Observation |
+| --- | ---: | ---: | --- |
+| 2048², Recursive sigma 64, periodic | Padded Clamp 86.52 ms | Wrap 32.38 ms | 2.67× faster; 0 differing bits over 4,194,304 samples per run |
+| 4096², Recursive sigma 16, interior 64² tile | Full-plane Clamp 58.75 ms | Region 0.524 ms | 112.1× faster; maximum absolute error 2.3841858e-7 |
+
+The region evaluates a 320² working window (64² output plus a 128-pixel halo on
+each side), not the 4096² atlas. That timing is a single observation, not a speed
+threshold. All measurements are serial; callers can retain their own worker
+scheduling. Wrap's sigma <= 128 warmup lives only in per-worker line scratch,
+not a padded plane. The larger-sigma steady-state path has no sigma-sized pad.
+
+Numerical regressions additionally exercise 1–4 channels, all edges, tiny periods,
+wide sampled/box kernels, border/seam/interior rectangles, and adversarial steps,
+impulses and checkerboards just beyond the recursive halo. The 8-sigma truncation
+is **not** bit-exact: the observed adversarial maximum absolute region/full-plane
+error is 4.696846e-5 on unit-range planes; all cases satisfy the documented
+pole-envelope bound plus the explicit 2e-6 roundoff allowance. Normal signed/HDR
+fixtures have maximum error 6.0386956e-6. See README for the analytic bound and
+the finite-padding bit-compatibility domain.
+
+All checks use the rustup compiler, explicitly pinned because this host also has
+a Homebrew compiler on PATH:
+
+```sh
+export PATH="$(dirname "$(rustup which cargo)"):$PATH"
+export RUSTC="$(rustup which rustc)"
+export RUSTDOC="$(rustup which rustdoc)"
+export CARGO_TARGET_DIR="$PWD/target-2"
+rustup run stable cargo test -p craft-blur --release --test wrap_region -- --ignored --nocapture --test-threads=1
+```
+
+## Original whole-plane measurements
+
 Measured November 3, 2026 on Apple M6, macOS 27.0.1, aarch64, Rust 1.99.0,
 Cargo release defaults and the rustup compiler. One serial 6000x4000 interleaved f32 plane, one channel,
 Clamp edges, one timed render per cell; no rayon or other runtime dependency.

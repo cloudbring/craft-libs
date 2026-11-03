@@ -10,6 +10,8 @@ pub struct Recursive {
     pub feedback: [f64; 3],
     pub gain: f64,
     pub boundary: [[f64; 3]; 3],
+    decay: [f64; 2],
+    amplitude: [f64; 2],
 }
 
 impl Recursive {
@@ -45,6 +47,24 @@ impl Recursive {
             ],
         ]
         .map(|row| row.map(|value| value * scale * gain));
-        Ok(Self { sigma, feedback, gain, boundary })
+        let real_pole = q / (q + real);
+        let pair_denominator = (q + pair).powi(2) + imaginary * imaginary;
+        let pair_real = q * (q + pair) / pair_denominator;
+        let pair_imaginary = q * imaginary / pair_denominator;
+        let pair_radius = pair_real.hypot(pair_imaginary);
+        let distance = (real_pole - pair_real).hypot(pair_imaginary);
+        let decay = [real_pole, pair_radius];
+        let amplitude = [gain * real_pole.powi(2) / distance.powi(2), gain * pair_radius.powi(2) / (distance * pair_imaginary)];
+        Ok(Self { sigma, feedback, gain, boundary, decay, amplitude })
+    }
+
+    pub(crate) fn region_bound(&self, halo: usize) -> f64 {
+        let causal_mass: f64 = self.amplitude.iter().zip(self.decay).map(|(amplitude, decay)| amplitude / (1.0 - decay)).sum();
+        let mut tail = 0.0;
+        for (amplitude, decay) in self.amplitude.iter().zip(self.decay) {
+            let overlap: f64 = self.amplitude.iter().zip(self.decay).map(|(other, radius)| other / (1.0 - decay * radius)).sum();
+            tail += 2.0 * amplitude * decay.powf((halo + 1) as f64) / (1.0 - decay) * overlap;
+        }
+        4.0 * causal_mass.powi(2) * tail
     }
 }

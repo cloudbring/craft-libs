@@ -95,6 +95,23 @@ defined as zero and the result is the identity.
   extension is exact. Recursive filtering uses 32 sigma of periodic reflected
   extension on each side before Triggs–Sdika initialization; the residual agrees
   with brute-force impulse convolution within 2e-6 on the small-image fixtures.
+- `Wrap`: periodic/seamless extension along each original axis. Sampled kernels
+  index modulo the line length, including kernels wider than the line; boxes
+  use periodic prefix sums, so their cost remains independent of radius.
+  Recursive sigma <= 128 advances the forward/backward states over a virtual
+  wrapped signal with `ceil(24 * sigma) + 32` warmup samples at each end. This
+  preserves the existing recurrence's accumulation order, **bit-for-bit equal
+  to cropping a Clamp run with that periodic padding**, without allocating or
+  filtering a padded two-dimensional image. The warmup exceeds the effective
+  support; it is not a two-pass restart at the original seam. For sigma > 128,
+  where the legacy recurrence's nearly cancelling coefficients lose precision,
+  each pass solves the periodic steady state `(I - A^length) state = forcing`.
+  That solve uses sigma-scaled first/second differences rather than three almost
+  equal sample states, preserving DC and avoiding an ill-conditioned solve on
+  short periods at sigma 65,536. This path is periodic rather than bit-compatible
+  with the numerically less stable, finitely padded Clamp path. As with Mirror,
+  periodicity/equality statements are subject to floating-point roundoff; using
+  a different finite padding can change last bits on rounding ties.
 - `Zero`: zero extension without border renormalization; constants fade at edges.
 - `Transparent`: zero extension of **already-premultiplied** gray-alpha/RGBA
   (2/4 channels). Output remains premultiplied. No unpremultiplication, RGB gamma
@@ -115,12 +132,13 @@ Clamp recurrence passes read/write the image directly, interleaving eight rows
 or eight adjacent columns with `[[f64; 8]; CHANNELS]` forward scratch. One-channel
 planes do not pay for unused RGBA lanes or the generic edge engine's gathered
 input/output buffers. The column pass traverses row-major eight-pixel blocks.
-`Exact` and the `Recursive` sampled fallback use a padded horizontal window
+`Exact` and the `Recursive` sampled fallback with Clamp edges use a padded horizontal window
 (unrolled for the seven-tap sigma-1 kernel), then a 64-row vertical working tile
 plus its kernel halos. Both halos are retained from the horizontal result before
 in-place vertical writes; only an eight-row output batch is advanced between
 cancellation checks. The split line APIs produce identical results, but only
-`apply` uses the cache-local sampled vertical tiles. Other edges and boxes retain
+`apply` uses the cache-local sampled vertical tiles. Wrap shares the direct
+channel-sized row/column engine. Other edges and boxes retain
 the general edge-policy engine; all accumulation orders are unchanged.
 
 Apps may use their own rayon `par_chunks_mut(row_samples * LINE_BATCH)` with
@@ -129,7 +147,7 @@ Apps may use their own rayon `par_chunks_mut(row_samples * LINE_BATCH)` with
 each stripe's mutable row slices, and distribute stripes to `filter_columns`.
 Each stripe owns all rows for its columns; this is safe, transpose-free and
 produces the same bits as the serial call. Never split a recursive line into
-independently initialized tiles. Sampled/box output tiles require the full
+independently initialized tiles without a halo. Sampled/box output tiles require the full
 `reach()` halo and the **original** extent's edge policy, not the tile's edges.
 
 Box initialization uses a bounded prefix scan and closed-form edge sums, then
@@ -137,6 +155,52 @@ running additions/subtractions. Thus even boxes much wider than the image cost
 O(image samples), not O(radius). Recursive work is independent of radius for
 Clamp/Zero/Transparent; reflected padding increases Mirror's work with sigma.
 Exact work is O(image samples * sampled support).
+
+## Sparse regions and dirty tiles
+
+`Gaussian::blur_region(&source, shape, Rect { x, y, width, height }, edge,
+&mut scratch, cancel)` returns only the requested packed interleaved rectangle;
+it never changes the source. Coordinates are in the original plane. Checked
+rectangle arithmetic rejects out-of-bounds/overflowing requests; valid empty
+rectangles return an empty vector. Cancellation and channel rules match `apply`.
+
+Work and temporary storage cover only the rectangle plus `region_halo()` on
+each axis, clipped to the original extent. A wrapped halo crosses the original
+seam modulo that extent; when it covers an entire axis, the original periodic
+pass is retained instead. Thus a tiny plane or a very large sigma can legitimately
+require the full axis, but a sparse tile does not otherwise evaluate the atlas.
+An edge coinciding with a real plane edge retains its original extension policy,
+including repeated boxes' intermediate-pass Clamp/Zero/Transparent semantics.
+
+- Sampled kernels and boxes use their **entire finite support** (`reach()`), so
+  region evaluation is mathematically exact. Sampled results retain identical
+  accumulation order; boxes can differ by floating-point running-sum roundoff.
+- Recursive kernels use **`ceil(8 * sigma)` pixels per axis**. Infinite support
+  cannot be exactly reproduced by a finite halo; `region_error_bound()` gives
+  a conservative two-axis absolute truncation bound **multiplied by the maximum
+  absolute input sample**, excluding floating-point roundoff and the existing
+  Mirror/Wrap warmup residual. Full-plane `apply` is still available for
+  bit-exact comparison or full infinite-support evaluation.
+
+The bound is derived from the causal pole expansion
+`h[n] = sum_i A_i * r_i^n` of the three-pole YvV filter, not a Gaussian-tail
+assumption (the recursive tail is exponential, not Gaussian). Let
+`rho_i = abs(r_i)`, `a_i = abs(A_i)`, and `L = sum_i a_i/(1-rho_i)`.
+For halo `H`, the symmetric two-pass impulse tail is bounded by
+`T(H) = 2 * sum_i a_i * rho_i^(H+1)/(1-rho_i)
+             * sum_j a_j/(1-rho_i*rho_j)`.
+The returned normalized two-axis bound is `4 * L^2 * T(H)`: each artificial
+boundary can differ by at most twice the source infinity norm, and the other
+axis has operator norm at most `L^2`. Complex conjugate poles share a radius
+and are grouped by the sum of their absolute residues. Use the returned bound,
+not a universal bit-equality or Gaussian 8-sigma claim, for HDR/negative planes.
+
+Regression tests compare interior, border, seam-crossing, whole-row and full-plane
+requests over 1–4 channels and all five edges; adversarial fixtures place steps,
+impulses and checkerboards immediately outside the halo. They assert the analytic
+bound plus `2e-6` absolute roundoff allowance for unit-range inputs. Wrap tests
+also check short periods, wide kernels/boxes, constants and cyclic shifts through
+sigma 65,536, and compare every bit against periodic padding through sigma 128.
 
 ## Verification and provenance
 

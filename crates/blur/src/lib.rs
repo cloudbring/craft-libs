@@ -9,10 +9,13 @@
 mod kernel;
 mod lines;
 mod native;
+mod periodic;
 mod recursive;
+mod region;
 
 pub use kernel::{box_widths, gaussian_kernel};
 pub use recursive::Recursive;
+pub use region::Rect;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 /// Independent lines advanced together, and the maximum cancellation latency in lines.
@@ -43,6 +46,8 @@ pub enum Edge {
     Clamp,
     /// Half-sample reflection: `... b a | a b c | c b ...`.
     Mirror,
+    /// Periodic extension: `... a b c | a b c | a b c ...`.
+    Wrap,
     /// Every channel is zero outside the plane; border DC is intentionally not preserved.
     Zero,
     /// Zero extension of premultiplied gray-alpha or RGBA (two or four channels).
@@ -249,8 +254,8 @@ impl Gaussian {
         if !pixels.len().is_multiple_of(row_samples) {
             return Err(Error::InvalidDimensions);
         }
-        if edge == Edge::Clamp && !matches!(self.passes, Separable::Boxes(_)) {
-            return native::rows(&self.passes, pixels, shape, scratch, cancel);
+        if (edge == Edge::Clamp || edge == Edge::Wrap) && !matches!(self.passes, Separable::Boxes(_)) {
+            return native::rows(&self.passes, pixels, shape, edge, scratch, cancel);
         }
         let batch_samples = row_samples.checked_mul(LINE_BATCH).ok_or(Error::SizeOverflow)?;
         for batch in pixels.chunks_mut(batch_samples) {
@@ -281,10 +286,10 @@ impl Gaussian {
         cancel.check()?;
         if !rows.is_empty()
             && width != 0
-            && edge == Edge::Clamp
+            && (edge == Edge::Clamp || edge == Edge::Wrap)
             && let Separable::Recursive(coefficients) = &self.passes
         {
-            return native::columns(coefficients, rows, channels, scratch, cancel);
+            return native::columns(coefficients, rows, channels, edge, scratch, cancel);
         }
         for start in (0..width / channels).step_by(LINE_BATCH) {
             cancel.check()?;
