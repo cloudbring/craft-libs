@@ -793,6 +793,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "craft-blur"
+version = "0.1.0"
+dependencies = [
+ "proptest",
+]
+
+[[package]]
 name = "craft-bvh"
 version = "0.1.0"
 dependencies = [
