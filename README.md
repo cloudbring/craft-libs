@@ -25,21 +25,16 @@ craft-<name> = { git = "https://github.com/storytold/craft-libs", rev = "<commit
 
 ## Libraries
 
-- [`craft-cache`](crates/cache/README.md): cost-bounded LRU, frame-sweep caching, shared budgets and stable fingerprints.
-- [`craft-audio-rt`](crates/audio-rt/README.md): allocation-free SPSC queues, owned snapshot handoff, atomic parameter ramps, panic silencing and UI-side stall detection; device glue stays in apps.
-
-- [`craft-platform`](crates/platform/README.md): optional native dialog lifecycle, Linux/BSD desktop appearance observation and browser download ownership; application policy stays in the apps.
-
 - [`craft-ai-core`](crates/ai-core/README.md): the data model and contract for AI in the Craft Apps (connections, models, tools, requests, jobs, consent, history, route spec). Pure, no I/O, wasm-safe. Contract in [docs/ai-shared-layer.md](docs/ai-shared-layer.md).
 - [`craft-archive`](crates/archive/README.md): bounded raw/zlib/gzip DEFLATE decoding with byte accounting, validated ZIP entries and CRC-checked PNG chunks.
-- [`craft-pdf`](crates/pdf/README.md): independently optional PDF parsing, interpretation, rasterization and guarded authoring. Apps retain layout, fonts, editing and export policy; writer-only consumers do not enable the shared reader.
-
 - [`craft-atomic`](crates/atomic/README.md): Crash-safe atomic file writing and replacement with same-directory staging, directory fsync, Apple `F_FULLFSYNC` fallback, transient lock backoff, and fault injection for the Craft suite.
-- [`craft-bvh`](crates/bvh/README.md): binned surface-area-heuristic mesh BVH (12 bins, leaf size 4) over `[f32; 3]` triangles: closest-hit and any-hit rays, nearest point and box queries. No dependencies. Each split is scored from a prefix/suffix sweep of the bin bounds.
-- [`craft-blur`](crates/blur/README.md): separable floating-point Gaussian and running-sum box filters with explicit exact, recursive and box approximation contracts, edge policies, cancellation and reusable worker scratch.
+- [`craft-audio-rt`](crates/audio-rt/README.md): allocation-free SPSC queues, owned snapshot handoff, atomic parameter ramps, panic silencing and UI-side stall detection; device glue stays in apps.
 - [`craft-av1`](crates/av1/README.md): clean-room pure-Rust AV1 decoder from FilmCraft,
   including film grain and optional threading; ffmpeg/libsvtav1/libaom/libdav1d are test oracles only.
 - [`craft-bitstream`](crates/bitstream/README.md): shared bit-level reader/writer from `craft-media` and the allocation-free VP8/VP9 boolean decoder from FilmCraft.
+- [`craft-blur`](crates/blur/README.md): separable floating-point Gaussian and running-sum box filters with explicit exact, recursive and box approximation contracts, edge policies, cancellation and reusable worker scratch.
+- [`craft-bvh`](crates/bvh/README.md): binned surface-area-heuristic mesh BVH (12 bins, leaf size 4) over `[f32; 3]` triangles: closest-hit and any-hit rays, nearest point and box queries. No dependencies. Each split is scored from a prefix/suffix sweep of the bin bounds.
+- [`craft-cache`](crates/cache/README.md): cost-bounded LRU, frame-sweep caching, shared budgets and stable fingerprints.
 - [`craft-cms`](crates/cms/README.md): pure-Rust ICC v2/v4 colour management: profile parsing
   and writing, transforms, rendering intents, black point compensation, soft proofing, gamut
   checks, 3D LUTs and built-in profiles (sRGB, Display P3, synthetic coated CMYK and others).
@@ -77,12 +72,12 @@ craft-<name> = { git = "https://github.com/storytold/craft-libs", rev = "<commit
 - [`craft-fonts-build`](crates/fonts-build/README.md): embeds the optional craft-fonts faces
   from an app's `build.rs` (`CRAFT_FONTS_DIR`, `CRAFT_FONTS_REQUIRED`, script filters) as a table
   of `EmbeddedFace`s. No dependencies; the app picks the faces.
-- [`craft-hash`](crates/hash/README.md): CRC-32 (ISO-HDLC and MPEG-2), Adler-32, FNV-1a 32/64, a
-  stable 128-bit content hash (FNV-1a 128) and lowercase SHA-256. Streaming and one-shot, for
-  checksums and cache keys. SHA-256 is the only cryptographic hash.
 - [`craft-fuzzy`](crates/fuzzy/README.md): cached Unicode-aware command-palette matching and highlighting.
 - [`craft-h264`](crates/h264/README.md): clean-room pure-Rust H.264/AVC decoder from FilmCraft,
   with CAVLC/CABAC and optional frame threading; ffmpeg is a test oracle, not a dependency.
+- [`craft-hash`](crates/hash/README.md): CRC-32 (ISO-HDLC and MPEG-2), Adler-32, FNV-1a 32/64, a
+  stable 128-bit content hash (FNV-1a 128) and lowercase SHA-256. Streaming and one-shot, for
+  checksums and cache keys. SHA-256 is the only cryptographic hash.
 - [`craft-hevc`](crates/hevc/README.md): clean-room pure-Rust H.265/HEVC Main / Main 10 decoder
   from FilmCraft, with optional frame threading; ffmpeg/libx265 are external test oracles only.
 - [`craft-i18n`](crates/i18n/README.md): translations over the embedded craft-i18n catalogs:
@@ -109,6 +104,8 @@ craft-<name> = { git = "https://github.com/storytold/craft-libs", rev = "<commit
 - [`craft-pcraft-format`](crates/pcraft-format/README.md): the envelope of PhotoCraft's `.pcraft`
   bundle: `Manifest<D>` with the document as a type parameter, `TileRef`, the entry paths, the
   manifest decode limits and the migration runner. The document model stays in PhotoCraft.
+- [`craft-pdf`](crates/pdf/README.md): independently optional PDF parsing, interpretation, rasterization and guarded authoring. Apps retain layout, fonts, editing and export policy; writer-only consumers do not enable the shared reader.
+- [`craft-platform`](crates/platform/README.md): optional native dialog lifecycle, Linux/BSD desktop appearance observation and browser download ownership; application policy stays in the apps.
 - [`craft-print`](crates/print/README.md): PDF submission to CUPS and Windows, printer discovery,
   duplex/copies/colour and driver preferences. PDF generation stays in each app.
 - [`craft-proof`](crates/proof/README.md): proofing per language (spelling, suggestions, grammar,
@@ -116,10 +113,8 @@ craft-<name> = { git = "https://github.com/storytold/craft-libs", rev = "<commit
   craft-i18n's `language-data/`, embedded at build time from `CRAFT_I18N_DIR`: English and the
   carry-over locales by default, the set `CRAFT_PROOF_EMBED` names otherwise (`en` for English
   only); other languages come from installed Language packs.
-
 - [`craft-quit`](crates/quit/src/lib.rs): native macOS quit, egui close handling and an optional
   app menu. Unsaved-document decisions and save prompts stay in each app.
-
 - [`craft-scopes`](crates/scopes/README.md): reusable CPU waveform, parade, histogram and vectorscope count buffers, false-colour exposure bands, and caller-driven line parallelism; no dependencies or rendering.
 - [`craft-settings`](crates/settings/README.md): `config.toml` settings storage for every app: platform folders, portable mode and overrides, atomic saves while running, backup, damaged-file recovery and schema migrations. Policy in [docs/settings-storage.md](docs/settings-storage.md).
 - [`craft-text`](crates/text/README.md): text processing below the composer. Its `hyphen` module finds
