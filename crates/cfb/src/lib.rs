@@ -212,7 +212,7 @@ impl<'a> Cfb<'a> {
         }
         let mut cfb = Self { bytes, sector_size, sector_count, fat, mini_fat: Vec::new(), entries: Vec::new() };
         let directory_start = dword(bytes, 48)?;
-        let directory_sectors = cfb.chain(directory_start, &cfb.fat, None, MAX_DIRECTORY_SECTORS)?;
+        let directory_sectors = cfb.chain(directory_start, &cfb.fat, None, MAX_DIRECTORY_SECTORS, false)?;
         let mut directory = Vec::new();
         for id in directory_sectors {
             let sector = cfb.sector(id)?;
@@ -261,7 +261,7 @@ impl<'a> Cfb<'a> {
             return Err(Error("mini FAT exceeds file"));
         }
         let mini_start = dword(bytes, 60)?;
-        let mini_ids = cfb.chain(mini_start, &cfb.fat, Some(mini_count), sector_count)?;
+        let mini_ids = cfb.chain(mini_start, &cfb.fat, Some(mini_count), sector_count, false)?;
         for id in mini_ids {
             let sector = cfb.sector(id)?;
             for chunk in sector.as_chunks::<4>().0 {
@@ -275,11 +275,12 @@ impl<'a> Cfb<'a> {
         raw_sector(self.bytes, self.sector_size, self.sector_count, id)
     }
 
-    fn chain(&self, start: u32, table: &[u32], needed: Option<usize>, cap: usize) -> Result<Vec<u32>, Error> {
+    fn chain(&self, start: u32, table: &[u32], needed: Option<usize>, cap: usize, allow_short_final: bool) -> Result<Vec<u32>, Error> {
         let mut ids = Vec::new();
         let mut seen = HashSet::new();
         let mut id = start;
-        let maximum = cap.min(table.len()).min(self.sector_count.max(1));
+        let file_cap = self.sector_count.saturating_add(usize::from(allow_short_final));
+        let maximum = cap.min(table.len()).min(file_cap.max(1));
         loop {
             if needed == Some(ids.len()) {
                 return Ok(ids);
@@ -293,23 +294,41 @@ impl<'a> Cfb<'a> {
             if ids.len() >= maximum {
                 return Err(Error("sector chain exceeds file or limit"));
             }
-            self.sector(id)?;
+            let next = *table.get(id as usize).ok_or(Error("sector missing from FAT"))?;
+            if !(allow_short_final && needed == Some(ids.len() + 1) && next == END) {
+                self.sector(id)?;
+            }
             ids.push(id);
-            id = *table.get(id as usize).ok_or(Error("sector missing from FAT"))?;
+            id = next;
         }
     }
 
     fn read_regular(&self, start: u32, length: usize) -> Result<Vec<u8>, Error> {
-        if length > MAX_STREAM || length > self.sector_count.saturating_mul(self.sector_size) {
+        if length > MAX_STREAM || length > self.bytes.len().saturating_sub(self.sector_size) {
             return Err(Error("stream exceeds file or size limit"));
         }
-        let ids = self.chain(start, &self.fat, Some(length.div_ceil(self.sector_size)), self.sector_count)?;
+        let needed = length.div_ceil(self.sector_size);
+        let cap = self.sector_count.saturating_add(1);
+        let ids = self.chain(start, &self.fat, Some(needed), cap, true)?;
         let mut data = Vec::new();
-        for id in ids {
-            let sector = self.sector(id)?;
-            data.extend_from_slice(&sector[..(length - data.len()).min(self.sector_size)]);
+        for (index, id) in ids.into_iter().enumerate() {
+            let sector = if index + 1 == needed { self.short_final_sector(id)? } else { self.sector(id)? };
+            let count = (length - data.len()).min(self.sector_size);
+            if sector.len() < count {
+                return Err(Error("truncated sector"));
+            }
+            data.extend_from_slice(&sector[..count]);
         }
         Ok(data)
+    }
+
+    fn short_final_sector(&self, id: u32) -> Result<&'a [u8], Error> {
+        if id >= MAX_SECTOR {
+            return Err(Error("sector outside file"));
+        }
+        let offset = (id as usize + 1).checked_mul(self.sector_size).ok_or(Error("sector offset overflow"))?;
+        let end = offset.checked_add(self.sector_size).ok_or(Error("sector offset overflow"))?;
+        self.bytes.get(offset..end.min(self.bytes.len())).ok_or(Error("truncated sector"))
     }
 
     /// Root directory entry.
