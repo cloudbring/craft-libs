@@ -4,6 +4,22 @@ Clean-room pure-Rust Opus decoder implementing **RFC 6716**, updated by **RFC 82
 SILK, CELT, hybrid packets, OpusHead, multistream surround and packet-loss concealment.
 No unsafe code; builds for `wasm32-unknown-unknown`.
 
+## Shared CELT tables
+
+Encoders can import `craft_opus::celt_tables` without enabling a feature flag.
+This constant-only API re-exports the decoder's existing definitions; it adds no
+dependencies, initialization, or decoding behavior changes. Each export documents
+its applicable RFC 6716 section.
+
+The surface contains exactly `NB_EBANDS`, `EBANDS`, `OVERLAP`, `MAX_LM`, `PREEMPH`,
+`ALLOC`, `E_MEANS`, `PRED_COEF`, `BETA_COEF`, `BETA_INTRA`, `E_PROB_MODEL`,
+`SMALL_ENERGY_ICDF`, `LOG2_FRAC_TABLE`, `TF_SELECT_TABLE`, `SPREAD_ICDF`, `TRIM_ICDF`,
+`EXP2_TABLE8`, `SPREAD_FACTOR`, `MAX_PSEUDO`, `LOG_MAX_PSEUDO`, `MAX_FINE_BITS`,
+`FINE_OFFSET`, `QTHETA_OFFSET`, `QTHETA_OFFSET_TWOPHASE`, and `ALLOC_STEPS`.
+Generated pulse caches, SILK codebooks, and the decoder's internal modules remain
+private. The integration checksum tests pin every export's original bytes,
+including floating-point bit patterns and architecture-independent `usize` values.
+
 ## Provenance and clean-room attribution
 
 Moved from `cloudbring/filmcraft`, branch `algo/49-mdct-craft-fft`, commit

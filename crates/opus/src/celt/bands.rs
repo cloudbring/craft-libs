@@ -2,7 +2,7 @@
 //! (RFC 6716 §4.3.4 – §4.3.6).
 
 use super::rate::{Mode, QTHETA_OFFSET, QTHETA_OFFSET_TWOPHASE, get_pulses};
-use super::tables::{E_MEANS, EBANDS, NB_EBANDS, ORDERY, SHORT_MDCT};
+use super::tables::{E_MEANS, EBANDS, EXP2_TABLE8, NB_EBANDS, ORDERY, SHORT_MDCT, SPREAD_FACTOR};
 use crate::range::{BITRES, RangeDecoder, ilog};
 
 pub const SPREAD_NONE: usize = 0;
@@ -99,7 +99,6 @@ fn exp_rotation1(x: &mut [f32], len: usize, stride: usize, c: f32, s: f32) {
 
 /// Inverse spreading rotation (decoder direction).
 fn exp_rotation(x: &mut [f32], len: usize, stride: usize, k: usize, spread: usize) {
-    const SPREAD_FACTOR: [usize; 3] = [15, 10, 5];
     if 2 * k >= len || spread == SPREAD_NONE {
         return;
     }
@@ -238,7 +237,6 @@ fn isqrt32(v: u32) -> u32 {
 }
 
 fn compute_qn(n: i32, b: i32, offset: i32, pulse_cap: i32, stereo: bool) -> i32 {
-    const EXP2_TABLE8: [i32; 8] = [16384, 17866, 19483, 21247, 23170, 25267, 27554, 30048];
     let mut n2 = 2 * n - 1;
     if stereo && n == 2 {
         n2 -= 1;

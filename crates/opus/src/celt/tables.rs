@@ -1,19 +1,19 @@
 //! Constant tables of the 48 kHz CELT mode (RFC 6716 §4.3).
 
-/// Number of energy bands.
+/// Number of energy bands (RFC 6716 §4.3, Table 55).
 pub const NB_EBANDS: usize = 21;
-/// Band edges in units of 2.5 ms MDCT bins (Table 55).
+/// Band edges in units of 2.5 ms MDCT bins (RFC 6716 §4.3, Table 55).
 pub const EBANDS: [i32; NB_EBANDS + 1] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 20, 24, 28, 34, 40, 48, 60, 78, 100];
-/// Overlap of the low-overlap window (samples at 48 kHz).
+/// Overlap of the low-overlap window, in samples at 48 kHz (RFC 6716 §4.3.7).
 pub const OVERLAP: usize = 120;
 /// Size of the shortest MDCT (2.5 ms).
 pub const SHORT_MDCT: usize = 120;
-/// Largest LM (20 ms frames).
+/// Largest `LM = log2(frame_size / 120)`, for 20 ms frames (RFC 6716 §4.3.3).
 pub const MAX_LM: usize = 3;
-/// Pre-emphasis coefficient.
+/// Pre-emphasis/de-emphasis coefficient (RFC 6716 §4.3.7.2).
 pub const PREEMPH: f32 = 0.850_006_1;
 
-/// Static allocation table (Table 57), indexed `[quality][band]`, in 1/32 bit per MDCT bin.
+/// Static allocation table, indexed `[quality][band]`, in 1/32 bit per MDCT bin (RFC 6716 §4.3.3, Table 57).
 pub const ALLOC: [[u8; NB_EBANDS]; 11] = transpose([
     [0, 90, 110, 118, 126, 134, 144, 152, 162, 172, 200],
     [0, 80, 100, 110, 119, 127, 137, 145, 155, 165, 200],
@@ -52,20 +52,21 @@ const fn transpose(t: [[u8; 11]; NB_EBANDS]) -> [[u8; NB_EBANDS]; 11] {
     out
 }
 
-/// Mean band energy (log2 domain) removed before coarse quantisation.
+/// Mean band energy in the log2 domain, removed before coarse quantisation (RFC 6716 §4.3.2.1).
 pub const E_MEANS: [f32; 25] = [
     6.4375, 6.25, 5.75, 5.3125, 5.0625, 4.8125, 4.5, 4.375, 4.875, 4.6875, 4.5625, 4.4375, 4.875, 4.625, 4.3125, 4.5, 4.375, 4.625, 4.75, 4.4375, 3.75, 3.75,
     3.75, 3.75, 3.75,
 ];
 
-/// Inter-frame prediction coefficient (alpha) per LM, Q15.
+/// Inter-frame prediction coefficient (alpha) per LM, normalized from Q15 (RFC 6716 §4.3.2.1).
 pub const PRED_COEF: [f32; 4] = [29440.0 / 32768.0, 26112.0 / 32768.0, 21248.0 / 32768.0, 16384.0 / 32768.0];
-/// Inter-band prediction coefficient (beta) per LM for inter frames, Q15.
+/// Inter-band prediction coefficient (beta) per LM for inter frames, normalized from Q15 (RFC 6716 §4.3.2.1).
 pub const BETA_COEF: [f32; 4] = [30147.0 / 32768.0, 22282.0 / 32768.0, 12124.0 / 32768.0, 6554.0 / 32768.0];
-/// Beta for intra frames.
+/// Beta for intra frames, normalized from Q15 (RFC 6716 §4.3.2.1).
 pub const BETA_INTRA: f32 = 4915.0 / 32768.0;
 
 /// Laplace model parameters for coarse energy: `[LM][intra][2*band + {0: prob, 1: decay}]`.
+/// Used by coarse energy decoding (RFC 6716 §4.3.2.1).
 pub const E_PROB_MODEL: [[[u8; 42]; 2]; 4] = [
     [
         [
@@ -109,16 +110,20 @@ pub const E_PROB_MODEL: [[[u8; 42]; 2]; 4] = [
     ],
 ];
 
-/// Inverse CDF for coarse energy when only a few bits remain.
+/// Inverse CDF for coarse energy when only a few bits remain (RFC 6716 §4.3.2.1).
 pub const SMALL_ENERGY_ICDF: [u8; 3] = [2, 1, 0];
-/// Conservative log2 in 1/8 bits of the number of coded bands (intensity reservation).
+/// Conservative log2 in 1/8 bits of the number of coded bands, for intensity reservation (RFC 6716 §4.3.3).
 pub const LOG2_FRAC_TABLE: [i32; 24] = [0, 8, 13, 16, 19, 21, 23, 24, 26, 27, 28, 29, 30, 31, 32, 32, 33, 34, 34, 35, 36, 36, 37, 37];
-/// TF resolution changes: `[LM][4*transient + 2*tf_select + tf_flag]`.
+/// TF resolution changes: `[LM][4*transient + 2*tf_select + tf_flag]` (RFC 6716 §4.3.4.5).
 pub const TF_SELECT_TABLE: [[i8; 8]; 4] = [[0, -1, 0, -1, 0, -1, 0, -1], [0, -1, 0, -2, 1, 0, 1, -1], [0, -2, 0, -3, 2, 0, 1, -1], [0, -2, 0, -3, 3, 0, 1, -1]];
-/// Spreading decision `{7, 2, 21, 2}/32`.
+/// Inverse CDF for the spreading decision `{7, 2, 21, 2}/32` (RFC 6716 §4.3, Table 56; §4.3.4.3).
 pub const SPREAD_ICDF: [u8; 4] = [25, 23, 2, 0];
-/// Allocation trim (Table 58).
+/// Inverse CDF for allocation trim (RFC 6716 §4.3.3, Table 58).
 pub const TRIM_ICDF: [u8; 11] = [126, 124, 119, 109, 87, 41, 19, 9, 4, 2, 0];
+/// Q14 approximations of `2^(index/8)` for split-angle quantization (RFC 6716 §4.3.4.4).
+pub const EXP2_TABLE8: [i32; 8] = [16384, 17866, 19483, 21247, 23170, 25267, 27554, 30048];
+/// Rotation gain factors for spreading values 1 through 3 (RFC 6716 §4.3.4.3, Table 59).
+pub const SPREAD_FACTOR: [usize; 3] = [15, 10, 5];
 /// Post-filter tapset `{2, 1, 1}/4`.
 pub const TAPSET_ICDF: [u8; 3] = [2, 1, 0];
 /// Post-filter tap gains per tapset.

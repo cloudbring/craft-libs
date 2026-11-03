@@ -5,6 +5,7 @@
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 #![allow(clippy::needless_range_loop, clippy::type_complexity)]
 pub(crate) mod celt;
+pub mod celt_tables;
 mod decoder;
 mod header;
 mod multistream;

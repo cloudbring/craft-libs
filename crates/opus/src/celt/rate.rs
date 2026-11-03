@@ -3,13 +3,20 @@
 use super::tables::{ALLOC, EBANDS, LOG2_FRAC_TABLE, MAX_LM, NB_EBANDS, OVERLAP};
 use crate::range::{BITRES, RangeDecoder};
 
-const MAX_PSEUDO: i32 = 40;
-const LOG_MAX_PSEUDO: i32 = 6;
+/// Maximum pseudo-pulse index in the bits-to-pulses cache (RFC 6716 §4.3.4.1).
+pub const MAX_PSEUDO: i32 = 40;
+/// Binary-search iteration bound for pseudo-pulse indices (RFC 6716 §4.3.4.1).
+pub const LOG_MAX_PSEUDO: i32 = 6;
+/// Maximum fine-energy bits per band per channel (RFC 6716 §4.3.2.2; §4.3.3).
 pub const MAX_FINE_BITS: i32 = 8;
-const FINE_OFFSET: i32 = 21;
+/// Fine-energy allocation offset, in 1/8-bit units (RFC 6716 §4.3.3).
+pub const FINE_OFFSET: i32 = 21;
+/// Split-angle allocation offset, in 1/8-bit units (RFC 6716 §4.3.4.4).
 pub const QTHETA_OFFSET: i32 = 4;
+/// Split-angle allocation offset for two-dimensional stereo, in 1/8-bit units (RFC 6716 §4.3.4.4).
 pub const QTHETA_OFFSET_TWOPHASE: i32 = 16;
-const ALLOC_STEPS: i32 = 6;
+/// Binary-search steps for interpolation between allocation vectors (RFC 6716 §4.3.3).
+pub const ALLOC_STEPS: i32 = 6;
 
 /// Number of pulses represented by pseudo-pulse index `i`.
 pub fn get_pulses(i: i32) -> i32 {
