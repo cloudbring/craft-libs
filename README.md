@@ -47,6 +47,10 @@ craft-<name> = { git = "https://github.com/storytold/craft-libs", rev = "<commit
   the event loop: queued requests shown at the end of the frame and answered on a later frame,
   free-standing Open and Folder panels and Save sheets on macOS, case-insensitive filters. What
   to do with the answer stays in each app.
+- [`craft-diff`](crates/diff/README.md): the anchored, budgeted sequence diff behind pdfcraft's and
+  wordcraft's compare — common edge trim, bounded saved-frontier Myers, patience and
+  longest-common-run anchors, recursion per gap under depth and work budgets, deterministic
+  replace fallback — generic over any `Hash + Eq` token. No dependencies.
 - [`craft-distortion`](crates/distortion/README.md): shared 8-bit SAD, SATD and SSE for the H.264,
   HEVC, VP9 and AV1 encoders. Blocks up to 64×64. 128-bit SIMD through `wide` (NEON, SSE2,
   optional wasm SIMD128) with a scalar fallback and no `unsafe`.

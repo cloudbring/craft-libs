@@ -26,6 +26,7 @@ craft-cfb = { path = "crates/cfb" }
 craft-cms = { path = "crates/cms" }
 craft-crw = { path = "crates/crw" }
 craft-dialogs = { path = "crates/dialogs" }
+craft-diff = { path = "crates/diff" }
 craft-distortion = { path = "crates/distortion" }
 craft-doc = { path = "crates/doc" }
 craft-docpath = { path = "crates/docpath" }

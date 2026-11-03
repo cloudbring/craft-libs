@@ -880,6 +880,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "craft-diff"
+version = "0.1.0"
+dependencies = [
+ "proptest",
+]
+
+[[package]]
 name = "craft-distortion"
 version = "0.1.0"
 dependencies = [
