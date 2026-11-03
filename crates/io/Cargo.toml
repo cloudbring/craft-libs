@@ -1,0 +1,24 @@
+[package]
+name = "craft-io"
+description = "Bounded reads of regular files and arbitrary readers."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+
+[dependencies]
+thiserror = { workspace = true }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Storage_FileSystem"] }
+
+[dev-dependencies]
+proptest = { workspace = true }
+tempfile = "3"
+
+[lints]
+workspace = true
