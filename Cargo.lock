@@ -1103,6 +1103,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "craft-scopes"
+version = "0.1.0"
+
+[[package]]
 name = "craft-settings"
 version = "0.1.0"
 dependencies = [
