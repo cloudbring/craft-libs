@@ -78,6 +78,63 @@ impl std::fmt::Display for SymlinkRefused {
 
 impl std::error::Error for SymlinkRefused {}
 
+/// A progress sink requested that the staged write be cancelled.
+#[derive(Debug)]
+pub struct Cancelled;
+
+impl std::fmt::Display for Cancelled {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("atomic write cancelled")
+    }
+}
+
+impl std::error::Error for Cancelled {}
+
+/// Receives the cumulative bytes written and optional expected total.
+/// Return `Err(Cancelled)` to discard the staging file before publication.
+pub trait Progress {
+    /// Report progress or cancel the operation.
+    fn update(&mut self, written: u64, total: Option<u64>) -> Result<(), Cancelled>;
+}
+
+impl<F: FnMut(u64, Option<u64>) -> Result<(), Cancelled>> Progress for F {
+    fn update(&mut self, written: u64, total: Option<u64>) -> Result<(), Cancelled> {
+        self(written, total)
+    }
+}
+
+struct ProgressWriter<'a> {
+    file: &'a mut File,
+    progress: &'a mut dyn Progress,
+    written: u64,
+    total: Option<u64>,
+    cancelled: bool,
+}
+
+impl ProgressWriter<'_> {
+    fn report(&mut self) -> io::Result<()> {
+        if self.cancelled || self.progress.update(self.written, self.total).is_err() {
+            self.cancelled = true;
+            return Err(io::Error::other(Cancelled));
+        }
+        Ok(())
+    }
+}
+
+impl Write for ProgressWriter<'_> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.report()?;
+        let count = self.file.write(buf)?;
+        self.written = self.written.saturating_add(count as u64);
+        self.report()?;
+        Ok(count)
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.file.flush()
+    }
+}
+
 /// File-system operations performed by atomic writes.
 /// [`RealFs`] provides the production implementation; test suites implement this to inject faults.
 pub trait AtomicFs {
@@ -243,6 +300,36 @@ impl Default for WriteOptions {
 }
 
 impl WriteOptions {
+    /// Stream through a progress-reporting writer with an injected filesystem and retry policy.
+    /// Reports describe bytes staged, not completion of sync or publication.
+    pub fn atomic_write_with_progress_custom(
+        self,
+        fs: &dyn AtomicFs,
+        retry: RenameRetry,
+        path: &Path,
+        total: Option<u64>,
+        progress: &mut dyn Progress,
+        write_fn: impl FnOnce(&mut dyn Write) -> io::Result<()>,
+    ) -> io::Result<()> {
+        self.atomic_write_with_custom(fs, retry, path, |file| {
+            let mut writer = ProgressWriter { file, progress, written: 0, total, cancelled: false };
+            writer.report()?;
+            write_fn(&mut writer)?;
+            writer.report()
+        })
+    }
+
+    /// Stream through a progress-reporting writer using the real filesystem.
+    pub fn atomic_write_with_progress(
+        self,
+        path: &Path,
+        total: Option<u64>,
+        progress: &mut dyn Progress,
+        write_fn: impl FnOnce(&mut dyn Write) -> io::Result<()>,
+    ) -> io::Result<()> {
+        self.atomic_write_with_progress_custom(&RealFs, RenameRetry::platform(), path, total, progress, write_fn)
+    }
+
     /// Select whether to follow a symbolic-link destination.
     pub const fn with_follow_symlinks(mut self, follow: bool) -> Self {
         self.follow_symlinks = follow;
@@ -623,6 +710,9 @@ fn unchanged(existed: bool) -> &'static str {
 }
 
 fn write_error(e: io::Error, path: &Path, dir: &Path, existed: bool) -> io::Error {
+    if e.get_ref().is_some_and(|inner| inner.is::<Cancelled>()) {
+        return e;
+    }
     let kept = unchanged(existed);
     let msg = match e.kind() {
         io::ErrorKind::AlreadyExists => format!("cannot save {}: the file already exists{kept}", path.display()),

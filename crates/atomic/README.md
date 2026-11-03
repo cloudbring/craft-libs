@@ -38,6 +38,12 @@ atomic_write(path, data).expect("safe atomic write");
 
 ### Streaming Atomic Writer
 
+For byte-count progress and cancellation, use `WriteOptions::atomic_write_with_progress`.
+Its sink receives the cumulative staged bytes and an optional caller-supplied total, and may
+return `Err(Cancelled)` to abort before publication. Progress completion does not imply that
+the subsequent file sync, rename, or directory sync has completed. The custom variant accepts
+an injected filesystem and rename retry policy.
+
 ```rust
 use std::io::Write;
 use std::path::Path;
