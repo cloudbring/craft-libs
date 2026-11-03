@@ -1,6 +1,6 @@
-//! Clamp hot paths with channel-sized scratch, direct eight-chain recurrences, and sampled tiles.
+//! Clamp/Wrap hot paths with channel-sized scratch, direct eight-chain recurrences, and sampled tiles.
 
-use crate::{Cancel, Error, LINE_BATCH as LANES, Recursive, Scratch, Separable, Shape, resize};
+use crate::{Cancel, Edge, Error, LINE_BATCH as LANES, Recursive, Scratch, Separable, Shape, resize};
 
 type Block<const CHANNELS: usize> = [[f64; LANES]; CHANNELS];
 
@@ -21,12 +21,12 @@ pub(crate) fn apply(kernel: &[f32], pixels: &mut [f32], shape: Shape, scratch: &
     }
 }
 
-pub(crate) fn rows(passes: &Separable, pixels: &mut [f32], shape: Shape, scratch: &mut Scratch, cancel: Cancel<'_>) -> Result<(), Error> {
+pub(crate) fn rows(passes: &Separable, pixels: &mut [f32], shape: Shape, edge: Edge, scratch: &mut Scratch, cancel: Cancel<'_>) -> Result<(), Error> {
     match shape.channels() {
-        1 => rows_channels(passes, pixels, shape, &mut scratch.native1, cancel),
-        2 => rows_channels(passes, pixels, shape, &mut scratch.native2, cancel),
-        3 => rows_channels(passes, pixels, shape, &mut scratch.native3, cancel),
-        _ => rows_channels(passes, pixels, shape, &mut scratch.native4, cancel),
+        1 => rows_channels(passes, pixels, shape, edge, &mut scratch.native1, cancel),
+        2 => rows_channels(passes, pixels, shape, edge, &mut scratch.native2, cancel),
+        3 => rows_channels(passes, pixels, shape, edge, &mut scratch.native3, cancel),
+        _ => rows_channels(passes, pixels, shape, edge, &mut scratch.native4, cancel),
     }
 }
 
@@ -34,6 +34,7 @@ fn rows_channels<const CHANNELS: usize>(
     passes: &Separable,
     pixels: &mut [f32],
     shape: Shape,
+    edge: Edge,
     scratch: &mut Native<CHANNELS>,
     cancel: Cancel<'_>,
 ) -> Result<(), Error> {
@@ -45,9 +46,14 @@ fn rows_channels<const CHANNELS: usize>(
                 let mut chunks = batch.chunks_mut(shape.width());
                 let mut rows: [&mut [[f32; CHANNELS]]; LANES] = std::array::from_fn(|_| chunks.next().unwrap_or(&mut []));
                 let count = rows.iter().take_while(|row| !row.is_empty()).count();
+                if edge == Edge::Wrap && coefficients.sigma > 128.0 {
+                    crate::periodic::filter::<true, CHANNELS>(coefficients, &mut rows[..count], &mut scratch.forward, cancel)?;
+                    continue;
+                }
                 coefficients.interleaved::<true, CHANNELS, _>(
                     &mut rows[..count],
                     &mut scratch.forward,
+                    edge,
                     |pixel| pixel.map(f64::from),
                     |pixel| pixel.map(|value| value as f32),
                     cancel,
@@ -56,7 +62,7 @@ fn rows_channels<const CHANNELS: usize>(
             Separable::Kernel(kernel) => {
                 cancel.check()?;
                 for row in batch.chunks_mut(shape.width()) {
-                    sampled_row(kernel, row, scratch)?;
+                    sampled_row(kernel, row, edge, scratch)?;
                 }
             }
             Separable::Boxes(_) => return Err(Error::InvalidPasses),
@@ -69,29 +75,35 @@ pub(crate) fn columns(
     coefficients: &Recursive,
     rows: &mut [&mut [f32]],
     channels: usize,
+    edge: Edge,
     scratch: &mut Scratch,
     cancel: Cancel<'_>,
 ) -> Result<(), Error> {
     match channels {
-        1 => columns_channels(coefficients, rows, &mut scratch.native1, cancel),
-        2 => columns_channels(coefficients, rows, &mut scratch.native2, cancel),
-        3 => columns_channels(coefficients, rows, &mut scratch.native3, cancel),
-        _ => columns_channels(coefficients, rows, &mut scratch.native4, cancel),
+        1 => columns_channels(coefficients, rows, edge, &mut scratch.native1, cancel),
+        2 => columns_channels(coefficients, rows, edge, &mut scratch.native2, cancel),
+        3 => columns_channels(coefficients, rows, edge, &mut scratch.native3, cancel),
+        _ => columns_channels(coefficients, rows, edge, &mut scratch.native4, cancel),
     }
 }
 
 fn columns_channels<const CHANNELS: usize>(
     coefficients: &Recursive,
     rows: &mut [&mut [f32]],
+    edge: Edge,
     scratch: &mut Native<CHANNELS>,
     cancel: Cancel<'_>,
 ) -> Result<(), Error> {
     let mut lines = Vec::new();
     lines.try_reserve_exact(rows.len()).map_err(|_| Error::Allocation)?;
     lines.extend(rows.iter_mut().map(|row| row.as_chunks_mut::<CHANNELS>().0));
+    if edge == Edge::Wrap && coefficients.sigma > 128.0 {
+        return crate::periodic::filter::<false, CHANNELS>(coefficients, &mut lines, &mut scratch.forward, cancel);
+    }
     coefficients.interleaved::<false, CHANNELS, _>(
         &mut lines,
         &mut scratch.forward,
+        edge,
         |pixel| pixel.map(f64::from),
         |pixel| pixel.map(|value| value as f32),
         cancel,
@@ -100,8 +112,24 @@ fn columns_channels<const CHANNELS: usize>(
 
 impl Recursive {
     /// Arithmetic from lightcraft 39aa4d25, crates/raster/src/blur/interleaved.rs::Gaussian::recursive.
-    /// Only allocation failure handling and per-eight-line cancellation are added to the kernel.
+    /// Clamp arithmetic is unchanged; Wrap reads a virtual periodic warmup around the line.
     fn interleaved<const ROWS: bool, const CHANNELS: usize, T: Copy>(
+        &self,
+        lines: &mut [&mut [T]],
+        forward: &mut Vec<Block<CHANNELS>>,
+        edge: Edge,
+        widen: impl Fn(T) -> [f64; CHANNELS],
+        narrow: impl Fn([f64; CHANNELS]) -> T,
+        cancel: Cancel<'_>,
+    ) -> Result<(), Error> {
+        if edge == Edge::Wrap {
+            self.interleaved_edge::<ROWS, true, CHANNELS, T>(lines, forward, widen, narrow, cancel)
+        } else {
+            self.interleaved_edge::<ROWS, false, CHANNELS, T>(lines, forward, widen, narrow, cancel)
+        }
+    }
+
+    fn interleaved_edge<const ROWS: bool, const WRAP: bool, const CHANNELS: usize, T: Copy>(
         &self,
         lines: &mut [&mut [T]],
         forward: &mut Vec<Block<CHANNELS>>,
@@ -109,13 +137,20 @@ impl Recursive {
         narrow: impl Fn([f64; CHANNELS]) -> T,
         cancel: Cancel<'_>,
     ) -> Result<(), Error> {
-        let length = if ROWS { lines[0].len() } else { lines.len() };
+        let original_length = if ROWS { lines[0].len() } else { lines.len() };
+        if original_length == 1 && WRAP {
+            return cancel.check();
+        }
+        let padding = if WRAP { (24.0 * f64::from(self.sigma)).ceil() as usize + 32 } else { 0 };
+        let length = original_length.checked_add(2 * padding).ok_or(Error::SizeOverflow)?;
+        let wrap_start = if WRAP { (original_length - padding % original_length) % original_length } else { 0 };
         let width = if ROWS { lines.len() } else { lines[0].len() };
         resize(forward, length, [[0.0; LANES]; CHANNELS])?;
         for start in (0..width).step_by(LANES) {
             cancel.check()?;
             let count = (width - start).min(LANES);
             let read = |position: usize| {
+                let position = if WRAP { (position + wrap_start) % original_length } else { position };
                 let mut block = [[0.0; LANES]; CHANNELS];
                 for lane in 0..count {
                     let pixel = if ROWS { lines[start + lane][position] } else { lines[position][start + lane] };
@@ -164,6 +199,10 @@ impl Recursive {
                     });
                     future = [value, future[0], future[1]];
                 }
+                if WRAP && (position < padding || position >= padding + original_length) {
+                    continue;
+                }
+                let position = position - padding;
                 for lane in 0..count {
                     let pixel = narrow(std::array::from_fn(|channel| future[0][channel][lane] + right[channel][lane]));
                     if ROWS {
@@ -178,14 +217,26 @@ impl Recursive {
     }
 }
 
-fn sampled_row<const CHANNELS: usize>(kernel: &[f32], pixels: &mut [[f32; CHANNELS]], scratch: &mut Native<CHANNELS>) -> Result<(), Error> {
+fn sampled_row<const CHANNELS: usize>(
+    kernel: &[f32],
+    pixels: &mut [[f32; CHANNELS]],
+    edge: Edge,
+    scratch: &mut Native<CHANNELS>,
+) -> Result<(), Error> {
     let half = kernel.len() / 2;
     let length = pixels.len().checked_add(2 * half).ok_or(Error::SizeOverflow)?;
     resize(&mut scratch.padded, length, [0.0; CHANNELS])?;
     let padded = &mut scratch.padded;
-    padded[..half].fill(pixels[0]);
     padded[half..half + pixels.len()].copy_from_slice(pixels);
-    padded[half + pixels.len()..].fill(pixels[pixels.len() - 1]);
+    if edge == Edge::Wrap {
+        for position in 0..half {
+            padded[position] = pixels[(position as i128 - half as i128).rem_euclid(pixels.len() as i128) as usize];
+            padded[half + pixels.len() + position] = pixels[position % pixels.len()];
+        }
+    } else {
+        padded[..half].fill(pixels[0]);
+        padded[half + pixels.len()..].fill(pixels[pixels.len() - 1]);
+    }
     if let Ok(weights) = <&[f32; 7]>::try_from(kernel) {
         for (window, pixel) in padded.array_windows::<7>().zip(pixels) {
             let mut value = [0.0; CHANNELS];
@@ -242,7 +293,7 @@ fn sampled_image<const CHANNELS: usize>(
     for batch in pixels.as_chunks_mut::<CHANNELS>().0.chunks_mut(batch_pixels) {
         cancel.check()?;
         for row in batch.chunks_mut(shape.width()) {
-            sampled_row(kernel, row, scratch)?;
+            sampled_row(kernel, row, Edge::Clamp, scratch)?;
         }
     }
     const ROWS: usize = 64;

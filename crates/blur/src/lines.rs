@@ -89,7 +89,7 @@ fn filter_channels<const CHANNELS: usize>(passes: &Separable, view: &mut View<'_
     Ok(())
 }
 
-fn mapped(position: i128, length: usize, edge: Edge) -> Option<usize> {
+pub(crate) fn mapped(position: i128, length: usize, edge: Edge) -> Option<usize> {
     if position >= 0 && position < length as i128 {
         return Some(position as usize);
     }
@@ -100,6 +100,7 @@ fn mapped(position: i128, length: usize, edge: Edge) -> Option<usize> {
             let index = position.rem_euclid(period);
             Some(index.min(period - 1 - index) as usize)
         }
+        Edge::Wrap => Some(position.rem_euclid(length as i128) as usize),
         Edge::Zero | Edge::Transparent => None,
     }
 }
@@ -208,6 +209,11 @@ fn running_box<const CHANNELS: usize>(input: &[Block], output: &mut [Block], pre
 fn extended_prefix(prefix: &[Block], position: i128, channel: usize, lane: usize, edge: Edge) -> f64 {
     let length = prefix.len() - 1;
     let total = prefix[length][channel][lane];
+    if edge == Edge::Wrap {
+        let cycles = position.div_euclid(length as i128);
+        let remainder = position.rem_euclid(length as i128) as usize;
+        return cycles as f64 * total + prefix[remainder][channel][lane];
+    }
     if edge == Edge::Mirror {
         let period = 2 * length as i128;
         let cycles = position.div_euclid(period);
