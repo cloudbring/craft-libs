@@ -76,17 +76,80 @@ pub enum DepKind {
     Build,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct Dep {
     pub name: String,
     pub kind: DepKind,
     pub workspace: bool,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct Crate {
     pub name: String,
     pub deps: Vec<Dep>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+pub struct Args {
+    pub metadata_path: Option<PathBuf>,
+}
+
+impl Args {
+    pub fn parse(args: &[String]) -> Result<Self> {
+        match args.iter().map(String::as_str).collect::<Vec<_>>().as_slice() {
+            [] => Ok(Self::default()),
+            ["--metadata", path] => Ok(Self { metadata_path: Some(path.into()) }),
+            _ => Err(format!("usage: {}", cli_help())),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct Violation {
+    pub from: String,
+    /// Empty for an unregistered crate, which has no dependency edge.
+    pub to: String,
+    pub rule: String,
+    pub kind: Option<DepKind>,
+}
+
+impl Violation {
+    fn edge(krate: &Crate, dep: &Dep, rule: &str, show_kind: bool) -> Self {
+        Self { from: krate.name.clone(), to: dep.name.clone(), rule: rule.into(), kind: show_kind.then_some(dep.kind) }
+    }
+}
+
+impl std::fmt::Display for Violation {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(formatter, "{}", self.from)?;
+        if !self.to.is_empty() {
+            write!(formatter, " -> {}", self.to)?;
+        }
+        if let Some(kind) = self.kind {
+            write!(formatter, " [{kind:?}]")?;
+        }
+        write!(formatter, ": {}", self.rule)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct Report {
+    pub crates: Vec<Crate>,
+    pub violations: Vec<Violation>,
+    pub ok: bool,
+}
+
+pub fn render(report: &Report) -> String {
+    if report.ok { "layers: ok\n".into() } else { report.violations.iter().map(ToString::to_string).collect::<Vec<_>>().join("\n") }
+}
+
+pub fn compute(cfg: &Config, args: &Args) -> Result<Report> {
+    let metadata = if let Some(path) = &args.metadata_path {
+        serde_json::from_str(&crate::read(&cfg.root.join(path))?).map_err(|error| error.to_string())?
+    } else {
+        Cargo { root: cfg.root.clone(), ..Cargo::default() }.metadata(false)?
+    };
+    check_graph(cfg, &from_metadata(&metadata)?)
 }
 
 fn glob(pattern: &str, name: &str) -> bool {
@@ -132,6 +195,11 @@ impl LayersConfig {
 
 /// Inspect all normal, build, optional and target-specific declared dependencies, including dev by default.
 pub fn check(cfg: &Config, crates: &[Crate]) -> Result<Vec<String>> {
+    Ok(check_graph(cfg, crates)?.violations.iter().map(ToString::to_string).collect())
+}
+
+/// Check an already loaded graph, retaining structured diagnostics and crate data.
+pub fn check_graph(cfg: &Config, crates: &[Crate]) -> Result<Report> {
     cfg.validate()?;
     let mut violations = Vec::new();
     for krate in crates {
@@ -144,7 +212,7 @@ pub fn check(cfg: &Config, crates: &[Crate]) -> Result<Vec<String>> {
         }
         let Some(from) = cfg.layer(&krate.name) else {
             if cfg.reject_unregistered {
-                violations.push(format!("{}: unregistered workspace crate", krate.name));
+                violations.push(Violation { from: krate.name.clone(), to: String::new(), rule: "unregistered workspace crate".into(), kind: None });
             }
             continue;
         };
@@ -160,33 +228,33 @@ pub fn check(cfg: &Config, crates: &[Crate]) -> Result<Vec<String>> {
                         && !crate::matches(&rule.allowed_from, &krate.name)
                         && !(dep.kind == DepKind::Dev && crate::matches(&rule.allowed_dev_from, &krate.name))
                     {
-                        violations.push(format!("{} -> {} [{:?}]: forbidden external dependency", krate.name, dep.name, dep.kind));
+                        violations.push(Violation::edge(krate, dep, "forbidden external dependency", true));
                     }
                 }
             }
         }
     }
-    violations.sort();
+    violations.sort_by_key(ToString::to_string);
     violations.dedup();
-    Ok(violations)
+    Ok(Report { crates: crates.to_vec(), ok: violations.is_empty(), violations })
 }
 
-fn check_workspace(cfg: &Config, krate: &Crate, dep: &Dep, from: usize, violations: &mut Vec<String>) {
+fn check_workspace(cfg: &Config, krate: &Crate, dep: &Dep, from: usize, violations: &mut Vec<Violation>) {
     let testkit = crate::matches(&cfg.testkits, &dep.name);
     let testkit_ok = testkit && (dep.kind == DepKind::Dev || cfg.testkits_may_depend_on_testkits && crate::matches(&cfg.testkits, &krate.name));
     let standalone = crate::matches(&cfg.standalone, &krate.name);
     let permitted = cfg.allowed(&krate.name, &dep.name);
     if standalone && !(permitted || cfg.standalone_may_use_testkits && testkit_ok) {
-        violations.push(format!("{} -> {}: standalone dependency", krate.name, dep.name));
+        violations.push(Violation::edge(krate, dep, "standalone dependency", false));
         return;
     }
     if testkit && !testkit_ok {
-        violations.push(format!("{} -> {}: testkit is dev-only", krate.name, dep.name));
+        violations.push(Violation::edge(krate, dep, "testkit is dev-only", false));
         return;
     }
     for rule in &cfg.workspace_rules {
         if glob(&rule.from, &krate.name) && !(rule.allow_dev && dep.kind == DepKind::Dev || crate::matches(&rule.allowed, &dep.name)) {
-            violations.push(format!("{} -> {}: workspace dependency allowlist", krate.name, dep.name));
+            violations.push(Violation::edge(krate, dep, "workspace dependency allowlist", false));
         }
     }
     let dev_permitted =
@@ -197,7 +265,7 @@ fn check_workspace(cfg: &Config, krate: &Crate, dep: &Dep, from: usize, violatio
     match cfg.layer(&dep.name) {
         Some(to) if cfg.allow_lower_layers && to < from => {}
         None if !cfg.reject_unregistered && !crate::matches(&cfg.exempt, &dep.name) => {}
-        _ => violations.push(format!("{} -> {} [{:?}]: disallowed layer edge", krate.name, dep.name, dep.kind)),
+        _ => violations.push(Violation::edge(krate, dep, "disallowed layer edge", true)),
     }
 }
 
@@ -234,15 +302,11 @@ pub fn cli_help() -> &'static str {
 }
 
 pub fn run(cfg: &Config, args: &[String]) -> Result {
-    let metadata = match args.iter().map(String::as_str).collect::<Vec<_>>().as_slice() {
-        [] => Cargo { root: cfg.root.clone(), ..Cargo::default() }.metadata(false)?,
-        ["--metadata", path] => serde_json::from_str(&crate::read(&cfg.root.join(path))?).map_err(|error| error.to_string())?,
-        _ => return Err(format!("usage: {}", cli_help())),
-    };
-    let violations = check(cfg, &from_metadata(&metadata)?)?;
-    if !violations.is_empty() {
-        return Err(violations.join("\n"));
+    let report = compute(cfg, &Args::parse(args)?)?;
+    let output = render(&report);
+    if !report.ok {
+        return Err(output);
     }
-    println!("layers: ok");
+    print!("{output}");
     Ok(())
 }

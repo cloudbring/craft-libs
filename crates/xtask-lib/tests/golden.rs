@@ -84,9 +84,12 @@ fn version_run_matches_original_manifest_and_real_cargo_lock_update() {
         }
     }
     ROOT.with(|root| *root.borrow_mut() = Some(original.path().to_owned()));
+    OUTPUT.with(|output| output.borrow_mut().clear());
     version_oracle::run(original.path(), &["set", "9.8.7-rc.1"]).unwrap();
     let mut config = craft_xtask::version::Config::default();
     config.cargo.root = shared.path().to_owned();
+    let plan = craft_xtask::version::compute(&config, &craft_xtask::version::Args::Set("9.8.7-rc.1".into())).unwrap();
+    OUTPUT.with(|output| assert_eq!(craft_xtask::version::render(&plan), *output.borrow()));
     craft_xtask::version::run(&config, &["set".into(), "9.8.7-rc.1".into()]).unwrap();
     for name in ["Cargo.toml", "Cargo.lock"] {
         assert_eq!(std::fs::read(original.path().join(name)).unwrap(), std::fs::read(shared.path().join(name)).unwrap(), "{name}");
@@ -146,6 +149,8 @@ fn stats_run_report_matches_original_on_copied_xtask_sources() {
     OUTPUT.with(|output| output.borrow_mut().clear());
     stats_oracle::run(temp.path(), false).unwrap();
     let actual = craft_xtask::stats::report(&Default::default(), &meta, false).unwrap();
+    let report = craft_xtask::stats::from_metadata(&Default::default(), &meta, &Default::default()).unwrap();
+    assert_eq!(craft_xtask::stats::render(&report), actual);
     OUTPUT.with(|output| assert_eq!(*output.borrow(), actual));
 }
 
@@ -171,8 +176,11 @@ fn ico_run_bytes_match_original_for_all_supported_sizes() {
         .collect();
     let mut args = vec![temp.path().join("oracle.ico").to_string_lossy().into_owned()];
     args.extend(paths);
+    OUTPUT.with(|output| output.borrow_mut().clear());
     ico_oracle::run(&args.iter().map(String::as_str).collect::<Vec<_>>()).unwrap();
     args[0] = temp.path().join("shared.ico").to_string_lossy().into_owned();
+    let report = craft_xtask::ico::compute(&Default::default(), &craft_xtask::ico::Args::parse(&args).unwrap()).unwrap();
+    OUTPUT.with(|output| assert_eq!(craft_xtask::ico::render(&report), output.borrow().replace("oracle.ico", "shared.ico")));
     craft_xtask::ico::run(&Default::default(), &args).unwrap();
     assert_eq!(std::fs::read(temp.path().join("oracle.ico")).unwrap(), std::fs::read(temp.path().join("shared.ico")).unwrap());
 }
@@ -186,8 +194,12 @@ fn icns_run_matches_launcher_slots_and_bytes() {
         std::fs::write(&path, png(size)).unwrap();
         args.push(path.to_string_lossy().into_owned());
     }
+    OUTPUT.with(|output| output.borrow_mut().clear());
     icns_oracle::run(&args.iter().map(String::as_str).collect::<Vec<_>>()).unwrap();
     args[0] = temp.path().join("shared.icns").to_string_lossy().into_owned();
+    let config = craft_xtask::ico::Config { icns: true, ..Default::default() };
+    let report = craft_xtask::ico::compute(&config, &craft_xtask::ico::Args::parse(&args).unwrap()).unwrap();
+    OUTPUT.with(|output| assert_eq!(craft_xtask::ico::render(&report), output.borrow().replace("oracle.icns", "shared.icns")));
     craft_xtask::ico::run_icns(&Default::default(), &args).unwrap();
     assert_eq!(std::fs::read(temp.path().join("oracle.icns")).unwrap(), std::fs::read(temp.path().join("shared.icns")).unwrap());
 }
@@ -205,6 +217,8 @@ fn parity_run_matches_original_checklist_bytes() {
     let mut config = craft_xtask::parity::Config::default();
     config.cargo.root = temp.path().to_owned();
     craft_xtask::parity::run(&config, &[]).unwrap();
+    let report = craft_xtask::parity::compute(&config, &Default::default()).unwrap();
+    assert_eq!(craft_xtask::parity::render(&report).as_bytes(), expected);
     assert_eq!(expected, std::fs::read(path).unwrap());
     craft_xtask::parity::run(&config, &["--check".into()]).unwrap();
 }

@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use crate::{Cargo, Result};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
 pub struct VersionConfig {
     pub cargo: Cargo,
     pub manifest_paths: Vec<PathBuf>,
@@ -20,6 +20,43 @@ pub struct VersionConfig {
 }
 
 pub type Config = VersionConfig;
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize)]
+pub enum Args {
+    #[default]
+    Show,
+    Tag,
+    Set(String),
+}
+
+impl Args {
+    pub fn parse(args: &[String]) -> Result<Self> {
+        match args.iter().map(String::as_str).collect::<Vec<_>>().as_slice() {
+            [] => Ok(Self::Show),
+            ["tag"] => Ok(Self::Tag),
+            ["set", version] => Ok(Self::Set((*version).into())),
+            _ => Err(format!("usage: cargo xtask {}", cli_help())),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+pub struct Plan {
+    pub edits: Vec<(PathBuf, String, String)>,
+    pub tag: String,
+    pub before: String,
+    pub after: String,
+    pub operation: Args,
+    config: Config,
+}
+
+pub fn render(plan: &Plan) -> String {
+    match &plan.operation {
+        Args::Show => format!("{}\n", plan.before),
+        Args::Tag => format!("{}\n", plan.tag),
+        Args::Set(_) => format!("version: {} -> {}\n", plan.before, plan.after),
+    }
+}
 
 impl Default for VersionConfig {
     fn default() -> Self {
@@ -81,19 +118,26 @@ fn atomic_write(cfg: &Config, path: &Path, text: &str) -> Result {
 }
 
 pub fn run(cfg: &Config, args: &[String]) -> Result {
-    let first = cfg.manifest_paths.first().ok_or("version: no manifest paths")?;
-    let text = crate::read(&cfg.cargo.root.join(first))?;
-    let args: Vec<_> = args.iter().map(String::as_str).collect();
-    match args.as_slice() {
-        [] => println!("{}", read(&text)?),
-        ["tag"] => println!("{}", cfg.tag_format.replace("{version}", &read(&text)?)),
-        ["set", new] => set(cfg, new)?,
-        _ => return Err(format!("usage: cargo xtask {}", cli_help())),
-    }
+    let plan = compute(cfg, &Args::parse(args)?)?;
+    apply(&plan)?;
+    print!("{}", render(&plan));
     Ok(())
 }
 
-fn set(cfg: &Config, new: &str) -> Result {
+/// Prepare byte-preserving edits without writing files or refreshing the lockfile.
+pub fn compute(cfg: &Config, args: &Args) -> Result<Plan> {
+    let first = cfg.manifest_paths.first().ok_or("version: no manifest paths")?;
+    let text = crate::read(&cfg.cargo.root.join(first))?;
+    let before = read(&text)?;
+    let mut plan = Plan {
+        edits: Vec::new(),
+        tag: cfg.tag_format.replace("{version}", &before),
+        before: before.clone(),
+        after: before,
+        operation: args.clone(),
+        config: cfg.clone(),
+    };
+    let Args::Set(new) = args else { return Ok(plan) };
     let mut edits = Vec::new();
     for relative in &cfg.manifest_paths {
         let path = cfg.cargo.root.join(relative);
@@ -101,7 +145,6 @@ fn set(cfg: &Config, new: &str) -> Result {
         let updated = rewrite(cfg, &old, new)?;
         edits.push((path, old, updated));
     }
-    let old_version = read(&edits.first().ok_or("version: no manifest paths")?.1)?;
     if let Some(relative) = &cfg.changelog_path {
         let path = cfg.cargo.root.join(relative);
         let old = crate::read(&path)?;
@@ -111,8 +154,26 @@ fn set(cfg: &Config, new: &str) -> Result {
         let updated = old.replacen("## [Unreleased]", &format!("## [{new}]"), 1);
         edits.push((path, old, updated));
     }
+    plan.edits = edits;
+    plan.after = new.clone();
+    plan.tag = cfg.tag_format.replace("{version}", new);
+    Ok(plan)
+}
+
+/// Apply a previously computed plan using its captured refresh and rollback policy.
+pub fn apply(plan: &Plan) -> Result {
+    if !matches!(plan.operation, Args::Set(_)) {
+        return Ok(());
+    }
+    let cfg = &plan.config;
+    let edits = &plan.edits;
+    for (path, before, _) in edits {
+        if crate::read(path)? != *before {
+            return Err(format!("version plan is stale: {}", path.display()));
+        }
+    }
     let result = (|| {
-        for (path, _, updated) in &edits {
+        for (path, _, updated) in edits {
             atomic_write(cfg, path, updated)?;
         }
         if cfg.refresh_lockfile {
@@ -127,13 +188,12 @@ fn set(cfg: &Config, new: &str) -> Result {
     })();
     if let Err(error) = result {
         if cfg.rollback_on_failure {
-            for (path, old, _) in &edits {
+            for (path, old, _) in edits {
                 atomic_write(cfg, path, old).map_err(|restore| format!("{error}; restore failed: {restore}"))?;
             }
         }
         return Err(error);
     }
-    println!("version: {old_version} -> {new}");
     Ok(())
 }
 /// The `version = "…"` value inside `[workspace.package]`.

@@ -27,6 +27,39 @@ impl Default for ParityConfig {
 
 pub type Config = ParityConfig;
 
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize)]
+pub struct Args {
+    pub check: bool,
+}
+
+impl Args {
+    pub fn parse(args: &[String]) -> Result<Self> {
+        match args.iter().map(String::as_str).collect::<Vec<_>>().as_slice() {
+            [] => Ok(Self::default()),
+            ["--check"] => Ok(Self { check: true }),
+            _ => Err(format!("usage: {}", cli_help())),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+pub struct Report {
+    pub rows: Vec<(String, String, u8, f64)>,
+    /// Weighted completion percentage, in the range 0–100.
+    pub weighted_score: f64,
+    pub path: PathBuf,
+    pub updated: String,
+    pub stale: bool,
+}
+
+pub fn render(report: &Report) -> String {
+    report.updated.clone()
+}
+
+pub fn apply(report: &Report) -> Result {
+    crate::write(&report.path, &report.updated)
+}
+
 pub fn cli_help() -> &'static str {
     "parity [--check]"
 }
@@ -44,11 +77,17 @@ pub fn rewrite(cfg: &Config, text: &str) -> Result<String> {
 }
 
 pub fn run(cfg: &Config, args: &[String]) -> Result {
-    let check = match args.iter().map(String::as_str).collect::<Vec<_>>().as_slice() {
-        [] => false,
-        ["--check"] => true,
-        _ => return Err(format!("usage: {}", cli_help())),
-    };
+    let args = Args::parse(args)?;
+    let report = compute(cfg, &args)?;
+    if !args.check {
+        apply(&report)?;
+    }
+    print!("{}", render(&report));
+    Ok(())
+}
+
+/// Compute the replacement checklist without writing it.
+pub fn compute(cfg: &Config, args: &Args) -> Result<Report> {
     let path = cfg.cargo.root.join(&cfg.checklist_path);
     let updated = if let Some(command) = &cfg.command {
         if command.is_empty() {
@@ -58,15 +97,14 @@ pub fn run(cfg: &Config, args: &[String]) -> Result {
     } else {
         rewrite(cfg, &crate::read(&path)?)?
     };
-    if check {
-        if crate::read(&path)? != updated {
-            return Err("parity checklist is stale".into());
-        }
-    } else {
-        crate::write(&path, &updated)?;
+    let stale = if args.check { crate::read(&path)? != updated } else { std::fs::read_to_string(&path).map_or(true, |text| text != updated) };
+    if args.check && stale {
+        return Err("parity checklist is stale".into());
     }
-    print!("{updated}");
-    Ok(())
+    let row_text = if cfg.command.is_none() { updated.find(&cfg.rows_marker).map_or(updated.as_str(), |start| &updated[start..]) } else { &updated };
+    let rows = rows(row_text);
+    let weighted_score = percentage(&rows.iter().collect::<Vec<_>>());
+    Ok(Report { rows, weighted_score, path, updated, stale })
 }
 /// (area, feature, priority 0–2, value 0 / 0.5 / 1) for each table row.
 pub fn rows(text: &str) -> Vec<(String, String, u8, f64)> {
@@ -97,15 +135,16 @@ fn weight(p: u8) -> f64 {
     [3.0, 2.0, 1.0].get(p as usize).copied().unwrap_or(0.0)
 }
 
+fn percentage(rows: &[&(String, String, u8, f64)]) -> f64 {
+    let total: f64 = rows.iter().map(|row| weight(row.2)).sum();
+    if total == 0.0 { 0.0 } else { 100.0 * rows.iter().map(|row| weight(row.2) * row.3).sum::<f64>() / total }
+}
+
 pub fn summary(rows: &[(String, String, u8, f64)]) -> String {
-    let pct = |rs: &[&(String, String, u8, f64)]| {
-        let tot: f64 = rs.iter().map(|r| weight(r.2)).sum();
-        if tot == 0.0 { 0.0 } else { 100.0 * rs.iter().map(|r| weight(r.2) * r.3).sum::<f64>() / tot }
-    };
     let all: Vec<_> = rows.iter().collect();
     let mut s = format!(
         "**Weighted breadth parity: {:.0}%** over {} features.\n\n| Priority | Features | Done | Partial | Missing | Parity |\n|---|---|---|---|---|---|\n",
-        pct(&all),
+        percentage(&all),
         rows.len()
     );
     for p in 0..3u8 {
@@ -123,7 +162,7 @@ pub fn summary(rows: &[(String, String, u8, f64)]) -> String {
     }
     for a in areas {
         let rr: Vec<_> = rows.iter().filter(|r| r.0 == a).collect();
-        s += &format!("| {a} | {:.0}% |\n", pct(&rr));
+        s += &format!("| {a} | {:.0}% |\n", percentage(&rr));
     }
     let open: Vec<&str> = rows.iter().filter(|r| r.2 == 0 && r.3 < 1.0).map(|r| r.1.as_str()).collect();
     s += &format!("\nOpen P0 items: {}.\n", open.join(", "));

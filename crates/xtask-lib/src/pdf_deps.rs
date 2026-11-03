@@ -18,6 +18,70 @@ pub struct PdfDepsConfig {
 
 pub type Config = PdfDepsConfig;
 
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+pub struct Args;
+
+impl Args {
+    pub fn parse(args: &[String]) -> Result<Self> {
+        if args.is_empty() { Ok(Self) } else { Err(format!("usage: {}", cli_help())) }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Package {
+    pub name: String,
+    pub version: String,
+    pub source: String,
+    pub features: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct TargetReport {
+    pub root_package: String,
+    pub target: String,
+    pub package: String,
+    pub features: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Report {
+    pub packages: Vec<Package>,
+    pub production_roots: Vec<String>,
+    pub target_features: Vec<TargetReport>,
+}
+
+pub fn render(_report: &Report) -> String {
+    "PDF dependencies: pins, features and production graph verified\n".into()
+}
+
+pub fn compute(cfg: &Config, _args: &Args) -> Result<Report> {
+    let mut report = from_metadata(cfg, &cfg.cargo.metadata(true)?)?;
+    for rule in &cfg.target_features {
+        report.target_features.push(check_target(&cfg.cargo, rule)?);
+    }
+    Ok(report)
+}
+
+/// Validate resolved pins and production reachability in an already loaded graph.
+/// Target-specific checks require `compute`, which invokes Cargo for each target.
+pub fn from_metadata(cfg: &Config, metadata: &Value) -> Result<Report> {
+    validate(cfg, metadata)?;
+    let packages = metadata["packages"].as_array().ok_or("metadata: no packages")?;
+    let mut checked = Vec::new();
+    for pin in &cfg.packages {
+        let package = one(packages, &pin.name)?;
+        let features = metadata
+            .pointer("/resolve/nodes")
+            .and_then(Value::as_array)
+            .and_then(|nodes| nodes.iter().find(|node| node["id"] == package["id"]))
+            .and_then(|node| node["features"].as_array())
+            .map(|features| features.iter().filter_map(Value::as_str).map(str::to_owned).collect())
+            .unwrap_or_default();
+        checked.push(Package { name: pin.name.clone(), version: pin.version.clone(), source: pin.source.clone(), features });
+    }
+    Ok(Report { packages: checked, production_roots: cfg.production_roots.clone(), target_features: Vec::new() })
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PackagePin {
     pub name: String,
@@ -138,7 +202,7 @@ pub fn validate_target_features(rule: &TargetFeatures, tree: &str) -> Result {
     Ok(())
 }
 
-fn check_target(cargo: &Cargo, rule: &TargetFeatures) -> Result {
+fn check_target(cargo: &Cargo, rule: &TargetFeatures) -> Result<TargetReport> {
     let target = if let Some(target) = &rule.target {
         target.clone()
     } else {
@@ -171,7 +235,8 @@ fn check_target(cargo: &Cargo, rule: &TargetFeatures) -> Result {
         "--format",
         "{p}|{f}",
     ])?;
-    validate_target_features(rule, &String::from_utf8_lossy(&output.stdout)).map_err(|error| format!("{target}: {error}"))
+    validate_target_features(rule, &String::from_utf8_lossy(&output.stdout)).map_err(|error| format!("{target}: {error}"))?;
+    Ok(TargetReport { root_package: rule.root_package.clone(), target, package: rule.package.clone(), features: rule.features.clone() })
 }
 
 pub fn cli_help() -> &'static str {
@@ -179,13 +244,6 @@ pub fn cli_help() -> &'static str {
 }
 
 pub fn run(cfg: &Config, args: &[String]) -> Result {
-    if !args.is_empty() {
-        return Err(format!("usage: {}", cli_help()));
-    }
-    validate(cfg, &cfg.cargo.metadata(true)?)?;
-    for rule in &cfg.target_features {
-        check_target(&cfg.cargo, rule)?;
-    }
-    println!("PDF dependencies: pins, features and production graph verified");
+    print!("{}", render(&compute(cfg, &Args::parse(args)?)?));
     Ok(())
 }

@@ -1,6 +1,5 @@
 // Provenance: lightcraft/xtask/src/stats.rs (counts/report), cadcraft and gridcraft/xtask/src/stats.rs (bounded walks).
 use std::collections::BTreeSet;
-use std::fmt::Write;
 use std::path::Path;
 
 use crate::{Cargo, Result};
@@ -30,12 +29,46 @@ impl Default for StatsConfig {
 
 pub type Config = StatsConfig;
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 pub struct Counts {
     pub files: usize,
     pub lines: usize,
     pub tests: usize,
     pub proptests: usize,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize)]
+pub struct Args {
+    pub exact: bool,
+}
+
+impl Args {
+    pub fn parse(args: &[String]) -> Result<Self> {
+        match args.iter().map(String::as_str).collect::<Vec<_>>().as_slice() {
+            [] => Ok(Self::default()),
+            ["--exact"] => Ok(Self { exact: true }),
+            _ => Err(format!("usage: {}", cli_help())),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct Row {
+    pub name: String,
+    pub counts: Counts,
+    pub harness: Option<usize>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct Report {
+    pub rows: Vec<Row>,
+    pub exact: bool,
+    pub total: Counts,
+    pub total_harness: usize,
+}
+
+pub fn compute(cfg: &Config, args: &Args) -> Result<Report> {
+    from_metadata(cfg, &cfg.cargo.metadata(false)?, args)
 }
 
 pub fn count_tests(src: &str) -> (usize, usize) {
@@ -107,6 +140,10 @@ fn exhausted(cfg: &Config, counts: Counts) -> Result<Counts> {
 
 /// The original table, returned as text so callers can capture or test it without global stdout hooks.
 pub fn report(cfg: &Config, metadata: &serde_json::Value, exact: bool) -> Result<String> {
+    Ok(render(&from_metadata(cfg, metadata, &Args { exact })?))
+}
+
+pub fn from_metadata(cfg: &Config, metadata: &serde_json::Value, args: &Args) -> Result<Report> {
     let packages = metadata["packages"].as_array().ok_or("metadata: no packages array")?;
     let mut rows = Vec::new();
     for package in packages {
@@ -115,7 +152,7 @@ pub fn report(cfg: &Config, metadata: &serde_json::Value, exact: bool) -> Result
         let path = cfg.cargo.root.join(path);
         let dir = path.parent().ok_or("manifest without parent")?;
         let counts = count(cfg, dir)?;
-        let harness = if exact {
+        let harness = if args.exact {
             cfg.cargo
                 .output(&["test", "-q", "-p", name, "--", "--list"])
                 .ok()
@@ -123,44 +160,45 @@ pub fn report(cfg: &Config, metadata: &serde_json::Value, exact: bool) -> Result
         } else {
             None
         };
-        rows.push((name, counts, harness));
+        rows.push(Row { name: name.to_owned(), counts, harness });
     }
-    rows.sort_by_key(|row| row.0);
-    render(&rows, exact)
+    rows.sort_by(|left, right| left.name.cmp(&right.name));
+    let mut total = Counts::default();
+    for row in &rows {
+        total.files += row.counts.files;
+        total.lines += row.counts.lines;
+        total.tests += row.counts.tests;
+        total.proptests += row.counts.proptests;
+    }
+    let total_harness = rows.iter().filter_map(|row| row.harness).sum();
+    Ok(Report { rows, exact: args.exact, total, total_harness })
 }
 
-fn render(rows: &[(&str, Counts, Option<usize>)], exact: bool) -> Result<String> {
+pub fn render(report: &Report) -> String {
+    let exact = report.exact;
     let mut output = String::new();
     let exact_col = if exact { format!(" {:>8}", "harness") } else { String::new() };
     let line = "-".repeat(62 + if exact { 9 } else { 0 });
-    writeln!(output, "{:<26} {:>6} {:>8} {:>7} {:>10}{exact_col}", "crate", "files", "lines", "#[test]", "proptest!")
-        .map_err(|error| error.to_string())?;
-    writeln!(output, "{line}").map_err(|error| error.to_string())?;
-    let mut total = Counts::default();
-    let mut total_exact = 0;
-    for (name, counts, harness) in rows {
+    output.push_str(&format!("{:<26} {:>6} {:>8} {:>7} {:>10}{exact_col}\n", "crate", "files", "lines", "#[test]", "proptest!"));
+    output.push_str(&format!("{line}\n"));
+    for Row { name, counts, harness } in &report.rows {
         let column = match (exact, harness) {
             (false, _) => String::new(),
             (true, Some(count)) => {
-                total_exact += count;
                 format!(" {count:>8}")
             }
             (true, None) => format!(" {:>8}", "error"),
         };
-        writeln!(output, "{name:<26} {:>6} {:>8} {:>7} {:>10}{column}", counts.files, counts.lines, counts.tests, counts.proptests)
-            .map_err(|error| error.to_string())?;
-        total.files += counts.files;
-        total.lines += counts.lines;
-        total.tests += counts.tests;
-        total.proptests += counts.proptests;
+        output.push_str(&format!("{name:<26} {:>6} {:>8} {:>7} {:>10}{column}\n", counts.files, counts.lines, counts.tests, counts.proptests));
     }
+    let total = report.total;
+    let total_exact = report.total_harness;
     let column = if exact { format!(" {total_exact:>8}") } else { String::new() };
-    writeln!(output, "{line}\n{:<26} {:>6} {:>8} {:>7} {:>10}{column}", "TOTAL", total.files, total.lines, total.tests, total.proptests)
-        .map_err(|error| error.to_string())?;
+    output.push_str(&format!("{line}\n{:<26} {:>6} {:>8} {:>7} {:>10}{column}\n", "TOTAL", total.files, total.lines, total.tests, total.proptests));
     if !exact {
         output.push_str("\n(#[test] counts source attributes; macro-generated tests count once. Use --exact for harness counts.)\n");
     }
-    Ok(output)
+    output
 }
 
 pub fn cli_help() -> &'static str {
@@ -168,11 +206,6 @@ pub fn cli_help() -> &'static str {
 }
 
 pub fn run(cfg: &Config, args: &[String]) -> Result {
-    let exact = match args.iter().map(String::as_str).collect::<Vec<_>>().as_slice() {
-        [] => false,
-        ["--exact"] => true,
-        _ => return Err(format!("usage: {}", cli_help())),
-    };
-    print!("{}", report(cfg, &cfg.cargo.metadata(false)?, exact)?);
+    print!("{}", render(&compute(cfg, &Args::parse(args)?)?));
     Ok(())
 }

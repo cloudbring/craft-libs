@@ -15,7 +15,7 @@ pub mod version;
 pub type Result<T = (), E = String> = std::result::Result<T, E>;
 
 /// Every child command has an explicit working directory; the process cwd is never changed.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct Cargo {
     pub root: PathBuf,
     pub program: PathBuf,

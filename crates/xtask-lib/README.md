@@ -9,7 +9,16 @@ support. Workspace membership comes from `crates/*`; the dependency is registere
 Add `craft-xtask` to the app's **xtask crate** dependencies, then configure its policies:
 
 ```rust,no_run
-use craft_xtask::{Configs, dispatch};
+use craft_xtask::{Configs, dispatch, layers};
+
+fn app_layers(config: &layers::Config, args: &[String]) -> craft_xtask::Result {
+    let report = layers::compute(config, &layers::Args::parse(args)?)?;
+    println!("Architecture: {} crates, {} violations", report.crates.len(), report.violations.len());
+    for violation in &report.violations {
+        println!("  {} depends on {}: {}", violation.from, violation.to, violation.rule);
+    }
+    if report.ok { Ok(()) } else { Err("architecture check failed".into()) }
+}
 
 fn main() -> std::process::ExitCode {
     let mut args = std::env::args().skip(1);
@@ -18,7 +27,13 @@ fn main() -> std::process::ExitCode {
         .parent().unwrap_or(std::path::Path::new("."));
     let configs = Configs::for_root(root);
     // Set the app's layer policy and PDF pins before enabling those tasks.
-    match dispatch(&task, &configs, &args.collect::<Vec<_>>()) {
+    let args = args.collect::<Vec<_>>();
+    let result = if task == "layers" {
+        app_layers(&configs.layers, &args)
+    } else {
+        dispatch(&task, &configs, &args)
+    };
+    match result {
         Ok(()) => std::process::ExitCode::SUCCESS,
         Err(error) => {
             eprintln!("{error}");
@@ -30,9 +45,24 @@ fn main() -> std::process::ExitCode {
 
 Each module exposes `Config` (also named `VersionConfig`, `StatsConfig`, `IcoConfig`,
 `LayersConfig`, `ParityConfig`, `PdfDepsConfig`), `run(&Config, &[String]) -> Result<()>`,
-and `cli_help()`. Errors are strings, matching the original first-party tasks.
+and `cli_help()`. Each also exposes typed `Args` with `Args::parse(&[String])`,
+`compute(&Config, &Args) -> Result<Report>` and `render(&Report) -> String`.
+Version returns a `Plan` instead of a `Report`. Results implement `Debug`, `Clone`,
+`PartialEq` and `serde::Serialize`; their public fields can be formatted without
+parsing the default output. Errors are strings, matching the original first-party tasks.
 `dispatch` also accepts `icns`, `pdf-deps`, and help aliases. Commands inherit the caller's
 environment, including `CARGO_TARGET_DIR`, and never change the process working directory.
+
+Computation never prints or writes task outputs. It may read files and invoke Cargo
+(including the configured parity generator). Version's `apply(&Plan)` writes the
+planned edits and refreshes the lockfile using the captured configuration; inspecting
+`plan.edits` first provides a dry run with before/after text. Applying a stale version
+plan fails before any write. Icon and parity reports also have explicit `apply`
+functions. `run` preserves the existing write/check behavior and default text.
+Layer violations are report data (`ok == false`), while `run` still returns their
+diagnostics as an error. Parity `Args { check: true }` still rejects a stale checklist.
+The shared parity parser remains the weighted checklist format: this API does not
+implement app-owned command/control/path evidence validation or `--write` semantics.
 
 ## Configuration and behavior
 

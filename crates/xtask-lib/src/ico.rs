@@ -20,15 +20,52 @@ impl Default for IcoConfig {
 
 pub type Config = IcoConfig;
 
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize)]
+pub struct Args {
+    pub output: Option<PathBuf>,
+    pub inputs: Vec<PathBuf>,
+}
+
+impl Args {
+    pub fn parse(args: &[String]) -> Result<Self> {
+        Ok(Self { output: args.first().map(PathBuf::from), inputs: args.iter().skip(1).map(PathBuf::from).collect() })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct Report {
+    pub output: PathBuf,
+    pub destination: PathBuf,
+    pub sizes: Vec<u32>,
+    pub bytes: Vec<u8>,
+    pub icns: bool,
+}
+
+pub fn render(report: &Report) -> String {
+    format!("{}: {} images, {} bytes\n", report.output.display(), report.sizes.len(), report.bytes.len())
+}
+
+pub fn apply(report: &Report) -> Result {
+    crate::write(&report.destination, &report.bytes)
+}
+
 pub fn cli_help() -> &'static str {
     "ico/icns <out.ico|out.icns> <in.png>… (or configured paths)"
 }
 
 pub fn run(cfg: &Config, args: &[String]) -> Result {
-    let (output, inputs) = if args.is_empty() {
-        (cfg.output_path.clone().ok_or_else(|| cli_help().to_string())?, cfg.source_pngs.clone())
+    let report = compute(cfg, &Args::parse(args)?)?;
+    apply(&report)?;
+    print!("{}", render(&report));
+    Ok(())
+}
+
+/// Pack the icon in memory without writing the destination.
+pub fn compute(cfg: &Config, args: &Args) -> Result<Report> {
+    let (output, inputs) = if let Some(output) = &args.output {
+        (output.clone(), args.inputs.clone())
     } else {
-        (PathBuf::from(&args[0]), args[1..].iter().map(PathBuf::from).collect())
+        (cfg.output_path.clone().ok_or_else(|| cli_help().to_string())?, cfg.source_pngs.clone())
     };
     let pngs = inputs
         .iter()
@@ -41,9 +78,8 @@ pub fn run(cfg: &Config, args: &[String]) -> Result {
         }
     }
     let bytes = if cfg.icns { pack_icns(&pngs)? } else { pack_ico(&pngs)? };
-    crate::write(&cfg.root.join(&output), &bytes)?;
-    println!("{}: {} images, {} bytes", output.display(), pngs.len(), bytes.len());
-    Ok(())
+    let sizes = pngs.iter().map(|png| square(png)).collect::<Result<Vec<_>>>()?;
+    Ok(Report { destination: cfg.root.join(&output), output, sizes, bytes, icns: cfg.icns })
 }
 
 pub fn run_icns(cfg: &Config, args: &[String]) -> Result {

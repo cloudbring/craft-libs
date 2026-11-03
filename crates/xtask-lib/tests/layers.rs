@@ -14,11 +14,17 @@ macro_rules! app_graph {
         fn $name() {
             let (config, mut graph) = fixture(stringify!($name));
             assert_eq!(layers::check(&config, &graph).unwrap(), Vec::<String>::new(), "current graph");
+            let report = layers::check_graph(&config, &graph).unwrap();
+            assert_eq!(layers::render(&report), "layers: ok\n");
             let source = config.layers[0].1[0].clone();
             let target = config.layers.iter().rev().flat_map(|(_, names)| names).find(|name| !config.testkits.contains(name)).unwrap().clone();
             let krate = graph.iter_mut().find(|krate| krate.name == source).unwrap();
             krate.deps.push(Dep { name: target, kind: DepKind::Normal, workspace: true });
             assert!(!layers::check(&config, &graph).unwrap().is_empty(), "upward edge must fail");
+            let changed = layers::check_graph(&config, &graph).unwrap();
+            assert_ne!(report, changed);
+            assert!(!changed.ok);
+            assert_eq!(layers::render(&changed), layers::check(&config, &graph).unwrap().join("\n"));
         }
     )+ };
 }
