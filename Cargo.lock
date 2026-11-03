@@ -1345,6 +1345,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "craft-view"
+version = "0.1.0"
+dependencies = [
+ "emath",
+ "proptest",
+]
+
+[[package]]
 name = "craft-vp8"
 version = "0.1.0"
 dependencies = [
