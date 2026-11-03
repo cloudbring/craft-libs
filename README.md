@@ -37,6 +37,8 @@ craft-<name> = { git = "https://github.com/storytold/craft-libs", rev = "<commit
 - [`craft-atomic`](crates/atomic/README.md): Crash-safe atomic file writing and replacement with same-directory staging, directory fsync, Apple `F_FULLFSYNC` fallback, transient lock backoff, and fault injection for the Craft suite.
 - [`craft-bvh`](crates/bvh/README.md): binned surface-area-heuristic mesh BVH (12 bins, leaf size 4) over `[f32; 3]` triangles: closest-hit and any-hit rays, nearest point and box queries. No dependencies. Each split is scored from a prefix/suffix sweep of the bin bounds.
 - [`craft-blur`](crates/blur/README.md): separable floating-point Gaussian and running-sum box filters with explicit exact, recursive and box approximation contracts, edge policies, cancellation and reusable worker scratch.
+- [`craft-av1`](crates/av1/README.md): clean-room pure-Rust AV1 decoder from FilmCraft,
+  including film grain and optional threading; ffmpeg/libsvtav1/libaom/libdav1d are test oracles only.
 - [`craft-bitstream`](crates/bitstream/README.md): shared bit-level reader/writer from `craft-media` and the allocation-free VP8/VP9 boolean decoder from FilmCraft.
 - [`craft-cms`](crates/cms/README.md): pure-Rust ICC v2/v4 colour management: profile parsing
   and writing, transforms, rendering intents, black point compensation, soft proofing, gamut

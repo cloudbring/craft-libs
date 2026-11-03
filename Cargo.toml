@@ -31,6 +31,7 @@ craft-cache = { path = "crates/cache" }
 craft-cache-derive = { path = "crates/cache-derive" }
 craft-audio-rt = { path = "crates/audio-rt" }
 craft-blur = { path = "crates/blur" }
+craft-av1 = { path = "crates/av1" }
 craft-cms = { path = "crates/cms" }
 craft-crw = { path = "crates/crw" }
 craft-dialogs = { path = "crates/dialogs" }
