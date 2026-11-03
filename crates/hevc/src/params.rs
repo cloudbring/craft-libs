@@ -724,7 +724,9 @@ impl Pps {
         let num_ref_idx_l0_default = r.read_ue_plus(1)?;
         let num_ref_idx_l1_default = r.read_ue_plus(1)?;
         ensure!(num_ref_idx_l0_default <= 15 && num_ref_idx_l1_default <= 15, "num_ref_idx_default_active out of range");
-        let init_qp = 26 + r.read_se()?;
+        let init_qp_minus26 = r.read_se()?;
+        ensure!((-74..=25).contains(&init_qp_minus26), "init_qp_minus26 out of range");
+        let init_qp = 26 + init_qp_minus26;
         let constrained_intra_pred = r.read_flag()?;
         let transform_skip = r.read_flag()?;
         let cu_qp_delta_enabled = r.read_flag()?;
@@ -938,6 +940,7 @@ impl Layout {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Error;
 
     #[test]
     fn picture_size_has_an_aggregate_pixel_budget() {
@@ -946,6 +949,10 @@ mod tests {
         assert!(err.to_string().contains("decoded-frame budget"));
     }
     fn pps_bits(num_ref_idx: u32, tiles: u32) -> Vec<u8> {
+        pps_bits_with_qp(num_ref_idx, tiles, 0)
+    }
+
+    fn pps_bits_with_qp(num_ref_idx: u32, tiles: u32, init_qp_minus26: i32) -> Vec<u8> {
         let mut w = craft_bitstream::BitWriter::new();
         w.write_ue(0); // pps id
         w.write_ue(0); // sps id
@@ -956,7 +963,7 @@ mod tests {
         w.write_bit(false); // cabac_init_present
         w.write_ue(num_ref_idx);
         w.write_ue(num_ref_idx);
-        w.write_se(0); // init_qp
+        w.write_se(init_qp_minus26);
         w.write_bit(false); // constrained intra
         w.write_bit(false); // transform skip
         w.write_bit(false); // cu_qp_delta
@@ -985,6 +992,35 @@ mod tests {
         Pps::parse(&pps_bits(0, 0)).unwrap();
         assert!(Pps::parse(&pps_bits(m, 0)).is_err(), "num_ref_idx_default_active_minus1");
         assert!(Pps::parse(&pps_bits(0, m)).is_err(), "num_tile_columns_minus1");
+    }
+
+    #[test]
+    fn deckcraft_pps_qp_boundaries() {
+        for (delta, qp) in [(-74, -48), (0, 26), (25, 51)] {
+            assert_eq!(Pps::parse(&pps_bits_with_qp(0, 0, delta)).unwrap().init_qp, qp);
+        }
+        for delta in [-75, 26] {
+            assert!(matches!(Pps::parse(&pps_bits_with_qp(0, 0, delta)), Err(Error::Invalid(_))), "{delta}");
+        }
+    }
+
+    #[test]
+    fn deckcraft_pps_qp_extreme_is_invalid() {
+        assert!(matches!(Pps::parse(&pps_bits_with_qp(0, 0, i32::MAX)), Err(Error::Invalid(_))));
+    }
+
+    #[test]
+    fn deckcraft_hostile_st_rps_deltas_are_errors_not_overflows() {
+        for delta in [0x7fff_ffff, 0x8000_0000, u32::MAX] {
+            let mut writer = craft_bitstream::BitWriter::new();
+            writer.write_ue(1);
+            writer.write_ue(0);
+            writer.write_ue(delta);
+            writer.write_bit(true);
+            writer.rbsp_trailing();
+            let bytes = writer.finish();
+            assert!(StRps::parse(&mut BitReader::new(&bytes), 0, &[], 1).is_err(), "{delta:#x}");
+        }
     }
 
     /// 64x64 4:2:0 SPS; `huge` replaces the `ue(v)` field named by the test, `conf` the window.

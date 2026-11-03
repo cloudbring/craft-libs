@@ -391,7 +391,7 @@ fn parse_inter_slice_params(r: &mut BitReader, sh: &mut SliceHeader, pps: &Pps, 
 /// Slice QP delta, chroma QP offsets and deblocking / in-loop filter controls.
 fn parse_qp_and_loop_filter(r: &mut BitReader, sh: &mut SliceHeader, pps: &Pps, sps: &Sps) -> Result<()> {
     sh.qp_delta = r.read_se()?;
-    let qp = pps.init_qp + sh.qp_delta;
+    let qp = pps.init_qp.checked_add(sh.qp_delta).ok_or_else(|| crate::Error::Invalid("SliceQpY out of range".into()))?;
     let qp_bd = 6 * (sps.bit_depth_luma as i32 - 8);
     ensure!((-qp_bd..=51).contains(&qp), "SliceQpY {qp} out of range");
     if pps.slice_chroma_qp_offsets_present {
@@ -450,7 +450,9 @@ fn parse_pwt(r: &mut BitReader, sh: &SliceHeader, sps: &Sps) -> Result<PredWeigh
     ensure!(t.luma_log2_denom <= 7, "luma_log2_weight_denom out of range");
     let chroma = sps.chroma_array_type() != 0;
     if chroma {
-        let d = t.luma_log2_denom as i32 + r.read_se()?;
+        let delta = r.read_se()?;
+        ensure!((-7..=7).contains(&delta), "delta_chroma_log2_weight_denom out of range");
+        let d = t.luma_log2_denom as i32 + delta;
         ensure!((0..=7).contains(&d), "ChromaLog2WeightDenom out of range");
         t.chroma_log2_denom = d as u32;
     }
@@ -495,6 +497,7 @@ fn parse_pwt(r: &mut BitReader, sh: &SliceHeader, sps: &Sps) -> Result<PredWeigh
 #[cfg(test)]
 mod entry_point_tests {
     use super::*;
+    use crate::Error;
     use craft_bitstream::BitWriter;
 
     fn offsets(len_minus1: u32, values: &[u32], bits: u32) -> Result<Vec<u32>> {
@@ -589,12 +592,16 @@ mod entry_point_tests {
 
     /// An IDR slice header with one entry point of `offset_minus1` (32-bit field).
     fn idr_slice(offset_minus1: u32) -> Vec<u8> {
+        idr_slice_with_qp(offset_minus1, 0)
+    }
+
+    fn idr_slice_with_qp(offset_minus1: u32, delta: i32) -> Vec<u8> {
         let mut w = BitWriter::new();
         w.write_bit(true); // first_slice_segment_in_pic_flag
         w.write_bit(false); // no_output_of_prior_pics_flag
         w.write_ue(0); // pps id
         w.write_ue(2); // I slice
-        w.write_se(0); // slice_qp_delta
+        w.write_se(delta);
         w.write_ue(1); // num_entry_point_offsets
         w.write_ue(31); // offset_len_minus1
         w.write_bits(offset_minus1, 32);
@@ -613,5 +620,64 @@ mod entry_point_tests {
     fn a_slice_header_with_a_maximal_32_bit_entry_point_is_rejected() {
         assert_eq!(parse_slice(7).unwrap().entry_points, vec![8]);
         assert!(parse_slice(u32::MAX).is_err());
+    }
+
+    fn parse_slice_qp(delta: i32, bit_depth: u32) -> Result<SliceHeader> {
+        let mut sps = Sps::parse(&sps_bytes())?;
+        sps.bit_depth_luma = bit_depth;
+        let sps = std::sync::Arc::new(sps);
+        let pps = std::sync::Arc::new(Pps::parse(&pps_bytes())?);
+        let nal = NalHeader { nal_type: nal_type::IDR_W_RADL, layer_id: 0, temporal_id: 0 };
+        SliceHeader::parse(&idr_slice_with_qp(7, delta), nal, |_| Ok((pps, sps)), None).map(|(header, _, _)| header)
+    }
+
+    #[test]
+    fn deckcraft_slice_qp_extreme_is_invalid() {
+        assert!(matches!(parse_slice_qp(i32::MAX, 8), Err(Error::Invalid(_))));
+    }
+
+    #[test]
+    fn deckcraft_slice_qp_bit_depth_boundaries() {
+        for bit_depth in [8, 10, 12] {
+            let minimum = -26 - 6 * (bit_depth as i32 - 8);
+            for delta in [minimum, 0, 25] {
+                assert_eq!(parse_slice_qp(delta, bit_depth).unwrap().qp_delta, delta);
+            }
+            for delta in [minimum - 1, 26, -i32::MAX] {
+                assert!(matches!(parse_slice_qp(delta, bit_depth), Err(Error::Invalid(_))), "{bit_depth}/{delta}");
+            }
+        }
+    }
+
+    fn weight_denominators(luma: u32, delta: i32) -> Result<PredWeightTable> {
+        let sps = Sps::parse(&sps_bytes())?;
+        let mut header = parse_slice(7)?;
+        header.slice_type = SliceType::P;
+        header.num_ref_idx = [1, 0];
+        let mut writer = BitWriter::new();
+        writer.write_ue(luma);
+        writer.write_se(delta);
+        writer.write_bit(false);
+        writer.write_bit(false);
+        writer.rbsp_trailing();
+        let bytes = writer.finish();
+        parse_pwt(&mut BitReader::new(&bytes), &header, &sps)
+    }
+
+    #[test]
+    fn deckcraft_weight_denom_extreme_is_invalid() {
+        assert!(matches!(weight_denominators(1, i32::MAX), Err(Error::Invalid(_))));
+    }
+
+    #[test]
+    fn deckcraft_weight_denom_boundaries() {
+        for (luma, delta, chroma) in [(0, 7, 7), (7, -7, 0), (7, 0, 7), (0, 0, 0)] {
+            let table = weight_denominators(luma, delta).unwrap();
+            assert_eq!(table.chroma_log2_denom, chroma);
+            assert_eq!(table.l[0][0].chroma, [(1 << chroma, 0); 2]);
+        }
+        for (luma, delta) in [(7, -8), (0, 8), (0, -1), (7, 1), (7, -i32::MAX)] {
+            assert!(matches!(weight_denominators(luma, delta), Err(Error::Invalid(_))), "{luma}/{delta}");
+        }
     }
 }

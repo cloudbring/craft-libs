@@ -663,3 +663,59 @@ fn slices_without_tiles() {
         vec![Segment { start: 0, len: 7, dependent: false }, Segment { start: 7, len: 9, dependent: true }, Segment { start: 16, len: 8, dependent: false }];
     run("slices", None, false, segs);
 }
+
+#[test]
+fn deckcraft_picture_store_is_checked_against_the_memory_budget() {
+    let (stream, expected) = sequence(&None, true, whole(WC * HC));
+    let sps_nal = sps(true);
+    let parsed = crate::params::Sps::parse(&craft_bitstream::unescape_rbsp(&sps_nal[6..])).unwrap();
+    let one = (W * H + 2 * (W / 2) * (H / 2)) as u64;
+    for threads in [1, 4] {
+        let pictures = u64::from(parsed.max_dec_pic_buffering) + 2 + threads as u64 + 2;
+        let mut decoder = Decoder::with_threads(threads);
+        decoder.set_memory_budget(pictures * one - 1);
+        let error = decoder.decode(&stream, 0).unwrap_err();
+        assert!(matches!(error, crate::Error::Invalid(ref message) if message.contains("memory budget")));
+        assert!(decoder.flush().is_empty());
+        assert_eq!(decoder.stats().pictures, 0);
+        decoder.set_memory_budget(pictures * one);
+        let mut pictures = decoder.decode(&stream, 0).unwrap();
+        pictures.extend(decoder.flush());
+        assert!(decoder.take_error().is_none());
+        assert_eq!(pictures.len(), expected.len());
+        for (picture, expected) in pictures.iter().zip(&expected) {
+            assert_eq!(as_u8(&picture.y), expected.y);
+            assert_eq!(as_u8(&picture.u), expected.u);
+            assert_eq!(as_u8(&picture.v), expected.v);
+        }
+    }
+}
+
+fn generated_hvcc(include_slice: bool) -> Vec<u8> {
+    let stream = missing_reference_picture(0, &[]);
+    let mut config = vec![0; 23];
+    config[0] = 1;
+    let nals: Vec<_> = craft_bitstream::annexb_nals(&stream).into_iter().take(if include_slice { 4 } else { 3 }).collect();
+    config[22] = nals.len() as u8;
+    for nal in nals {
+        config.extend_from_slice(&[nal[0] >> 1, 0, 1]);
+        config.extend_from_slice(&(nal.len() as u16).to_be_bytes());
+        config.extend_from_slice(nal);
+    }
+    config
+}
+
+#[test]
+fn deckcraft_hvcc_accepts_generated_vps_sps_and_pps() {
+    let decoder = Decoder::from_hvcc(&generated_hvcc(false)).unwrap();
+    assert_eq!(decoder.nal_length_size(), Some(1));
+}
+
+#[test]
+fn deckcraft_hvcc_rejects_a_valid_picture_slice_without_starting_a_picture() {
+    let mut decoder = Decoder::with_threads(1);
+    assert!(matches!(decoder.configure_hvcc(&generated_hvcc(true)), Err(crate::Error::Invalid(_))));
+    assert!(decoder.flush().is_empty());
+    assert_eq!(decoder.stats().pictures, 0);
+    assert_eq!(decoder.nal_length_size(), None);
+}

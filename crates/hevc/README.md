@@ -18,12 +18,32 @@ and fixture generators.
 
 Copied verbatim from FilmCraft `crates/hevc` on `algo/48-use-craft-h264` at
 `eb3487a5c24c0d9d03fee9c01c207d52c050d8aa` for artcraft-algorithms #48 / #7.
-Only crate names, workspace metadata/dependencies/lints, formatting configuration and the
-test-only adapter changed; decoder algorithms, tables and test cases are unchanged. The
+The initial import changed only crate names, workspace metadata/dependencies/lints,
+formatting configuration and the test-only adapter. The
 source already uses `craft-bitstream`. The clean-room statement above and the specification
 extraction script/table provenance are retained from FilmCraft. FilmCraft's `ATTRIBUTION.md`
 and `NOTICE` have no separate HEVC decoder attribution or third-party notice to transfer;
 the NVIDIA HEVC API entry concerns `crates/platform`, not this decoder.
+
+Hardening for typed two-pass `hvcC` preflight, whole-picture-store memory budgeting,
+PPS initial QP, slice QP at both parsing and decode initialization, and chroma weight
+denominators is ported from DeckCraft `main` at
+`3e178d8f5a59c787a6a53a7ed0f052b3e4a1489f`, following the fork-divergence audit at
+`0c593bc1` (audited fork `a42c666684ca8b96d4d7835848b7822d589d98e5`). Its synthetic
+budget/configuration and hostile parameter regressions are retained alongside the
+FilmCraft tests. No app-side budget dependency or stale decoder implementation was ported.
+Structural/type preflight leaves parameter stores untouched on failure; semantic errors
+during the second pass can still update earlier parameter sets. Framing changes only on success.
+
+`Decoder::set_memory_budget` defaults to 4 GiB on 64-bit targets and 1 GiB on 32-bit
+targets. Before starting a picture, checked arithmetic budgets samples for
+`max_dec_pic_buffering + 1 current + max_in_flight + 1 gray backing` pictures, where
+`max_in_flight = max(threads, 1) + 2`. Unlike the fork's all-`u16` storage, shared
+storage uses one byte per sample only when both planes' bit depths are at most 8,
+otherwise two. Missing-reference identities share one reserved gray backing, not
+one allocation per missing reference. This is conservative sample-store admission,
+not a hard allocator limit: metadata, decoder work buffers, queued pictures from
+previous formats and pictures retained by callers are not accounted for.
 
 ## Status
 
@@ -183,6 +203,46 @@ libx265 unless noted (x265 enables WPP by default, so most streams carry entry p
 
 `cargo test -p craft-hevc --test it conformance::coverage_report -- --ignored --nocapture` prints the
 decoder statistics per fixture.
+
+### DeckCraft hardening validation (#48, 2026-11-03)
+
+The unchanged FilmCraft-origin suite passed **89/0** before the port (41 unit,
+1 hostile-input, 46 integration, 1 doctest; 4 existing ignored utility/benchmark
+tests). With the new budget field/setter present but no enforcement or parser
+fixes, `cargo test -p craft-hevc --lib deckcraft_` produced **5 passed, 14 failed**.
+The same checks pass **19/0** after the fixes:
+
+| Fix | Before-fix evidence | Red → green tests |
+|---|---|---|
+| F1: typed `hvcC` preflight | Mismatched types, AUD and valid VCL accepted; late truncation populated VPS storage; semantic failure changed framing from 2 to 4 bytes | 5 |
+| F2: picture-store budget | One-byte-under budget decoded successfully; admission accepted insufficient sample/worker/gray budgets and an overflowing store count | 4 |
+| F3: PPS QP | `-75` accepted; `i32::MAX` panicked at `26 + read_se()` | 2 |
+| F4: slice QP | `i32::MAX` panicked in both header parsing and `SliceDecoder::decode` initialization | 2 |
+| F5: weight denominator | Luma denominator 1 plus `i32::MAX` chroma delta panicked | 1 |
+
+Five positive/boundary controls already passed: SEI arrays, valid VPS/SPS/PPS,
+SPS-dependent slice-QP bounds, weight-denominator bounds, and hostile short-term
+RPS deltas. Existing hostile SPS/crop coverage is unchanged. Budget coverage checks
+8/10/12-bit and mixed-depth storage, 1/4 threads, exact and one-byte-under limits,
+failure before state changes, and one shared gray backing for multiple identities.
+The 64-bit store-count overflow test also fails with `u64::MAX` budget when the
+admission guard is removed, then passes after restoring it.
+
+Validation uses rustup stable (`PATH`, `RUSTC` and `RUSTDOC` explicitly set), with
+`CARGO_TARGET_DIR=/Users/emm/ArtCraft/worktrees/craft-libs-48-hevc-fixes/target-48`.
+Generated ffmpeg/libx265 fixtures and temporary files also live inside that directory,
+which is deleted after validation. No fixtures are checked in.
+
+- `cargo test -p craft-hevc`: **108 passed, 0 failed**, 4 existing ignored.
+- `cargo test -p craft-hevc -- --skip deckcraft_`: the original suite remains **89/0**.
+- `cargo test -p craft-hevc --no-default-features`: **108 passed, 0 failed**, 4 existing ignored.
+- `CRAFT_MEDIA_REQUIRE_ORACLES=1 cargo test -p craft-hevc --lib` and `--test it`:
+  **60/0** and **46/0**, confirming required ffmpeg fixtures do not silently skip.
+- `cargo clippy -p craft-hevc --all-targets -- -D warnings`, `cargo fmt --all -- --check`,
+  `cargo doc -p craft-hevc --no-deps` and
+  `cargo check -p craft-hevc --target wasm32-unknown-unknown`: passed.
+- Existing environment limits: the optional hostile-input libkvazaar seed is unavailable;
+  four pre-existing rustdoc link warnings and two unused workspace patch warnings remain.
 
 ## Performance
 
