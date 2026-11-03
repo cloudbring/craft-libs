@@ -1295,6 +1295,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "craft-tiledir"
+version = "0.1.0"
+dependencies = [
+ "proptest",
+]
+
+[[package]]
 name = "craft-time"
 version = "0.1.0"
 dependencies = [

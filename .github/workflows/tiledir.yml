@@ -1,0 +1,33 @@
+name: Shared Tile Directory
+on:
+  push:
+    branches: [main]
+    paths: ["crates/tiledir/**", "Cargo.toml", "Cargo.lock", ".github/workflows/tiledir.yml"]
+  pull_request:
+    paths: ["crates/tiledir/**", "Cargo.toml", "Cargo.lock", ".github/workflows/tiledir.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec
+        with:
+          components: rustfmt, clippy
+      - run: cargo fmt -p craft-tiledir --check
+      - run: cargo clippy -p craft-tiledir --all-targets --locked -- -D warnings
+      - run: cargo test -p craft-tiledir --locked
+  wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec
+        with:
+          targets: wasm32-unknown-unknown
+      - run: cargo check -p craft-tiledir --locked --target wasm32-unknown-unknown

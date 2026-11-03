@@ -145,6 +145,7 @@ Its process/filesystem tooling is native-only and is not part of the per-crate w
 - [`craft-text`](crates/text/README.md): text processing below the composer. Its `hyphen` module finds
   hyphenation points, with a bundled US English dictionary and patterns and optional hypher patterns
   for 47 more languages (one cargo feature each).
+- [`craft-tiledir`](crates/tiledir/README.md): persistent (structurally shared, O(1)-clone) sparse radix-tree and dense 64-slot chunked tile directories for undo history and copy-on-write canvases.
 - [`craft-time`](crates/time/README.md): exact rational media time, frame rates, SMPTE drop-frame
   timecode and sample-position conversions. App-specific timeline and musical-meter policy stays in each app.
 - [`craft-ui`](crates/ui/README.md): SVG catalogs, icon buttons, tabs, pane controls, transactional docking, print settings and theme helpers for egui frontends;
