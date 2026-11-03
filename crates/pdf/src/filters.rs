@@ -5,11 +5,17 @@
 use craft_archive::{BoundedInflate, InflateError, Wrapper};
 use weezl::{BitOrder, LzwStatus, decode::Decoder};
 
+mod encode;
 mod predictor;
 mod simple;
+pub use encode::{EncodeParams, encode, encode_chain};
 pub use predictor::Predictor;
 
-/// Per-stage and cumulative resource ceilings.
+/// Resource ceilings. `max_output` bounds the sum of bytes emitted by all
+/// decoders, before predictor reversal (including PNG row tags). Predictor
+/// reversal is not charged again. `max_input` bounds each stage's input;
+/// `max_ratio` bounds each decoder's output relative to its consumed input;
+/// `max_depth` bounds the number of filters.
 #[derive(Clone, Copy, Debug)]
 pub struct Limits {
     pub max_output: u64,
@@ -94,6 +100,16 @@ pub struct Decoded {
     pub stages: Vec<Accounting>,
 }
 
+/// Accounting from completed stages and the currently failing stage, if any.
+#[derive(Debug, Default)]
+pub struct ChainAccounting {
+    pub stages: Vec<Accounting>,
+    /// Sum of input bytes consumed by all stage attempts.
+    pub total_input: u64,
+    /// Sum of stage output bytes charged against `Limits::max_output`.
+    pub total: u64,
+}
+
 /// A chain of bounded stream decoders.
 #[derive(Clone, Debug)]
 pub struct FilterChain {
@@ -104,6 +120,17 @@ pub struct FilterChain {
 
 impl FilterChain {
     pub fn decode(&self, input: &[u8]) -> Result<Decoded, Error> {
+        self.decode_with_accounting(input).0
+    }
+
+    /// Decode while retaining completed work on both success and failure.
+    pub fn decode_with_accounting(&self, input: &[u8]) -> (Result<Decoded, Error>, ChainAccounting) {
+        let mut accounting = ChainAccounting::default();
+        let result = self.decode_inner(input, &mut accounting);
+        (result, accounting)
+    }
+
+    fn decode_inner(&self, input: &[u8], chain: &mut ChainAccounting) -> Result<Decoded, Error> {
         if self.filters.len() > self.limits.max_depth {
             return Err(Error::DepthLimit);
         }
@@ -113,81 +140,100 @@ impl FilterChain {
         let mut current = Vec::new();
         current.try_reserve_exact(input.len()).map_err(|_| Error::Allocation)?;
         current.extend_from_slice(input);
-        let mut stages = Vec::new();
-        stages.try_reserve_exact(self.filters.len()).map_err(|_| Error::Allocation)?;
-        let mut total = 0u64;
+        chain.stages.try_reserve_exact(self.filters.len()).map_err(|_| Error::Allocation)?;
         for filter in &self.filters {
             if current.len() as u64 > self.limits.max_input {
                 return Err(Error::InputLimit);
             }
-            let remaining = self.limits.max_output.saturating_sub(total);
-            let (mut output, mut accounting, predictor) = match *filter {
-                Filter::Flate => {
-                    let (output, accounting) = self.flate(&current, remaining)?;
-                    (output, accounting, None)
-                }
-                Filter::Lzw { early_change } => {
-                    let (output, accounting) = self.lzw(&current, remaining, early_change)?;
-                    (output, accounting, None)
-                }
-                Filter::FlatePredictor(predictor) => {
-                    let (output, accounting) = self.flate(&current, remaining)?;
-                    (output, accounting, Some(predictor))
-                }
-                Filter::LzwPredictor { early_change, predictor } => {
-                    let (output, accounting) = self.lzw(&current, remaining, early_change)?;
-                    (output, accounting, Some(predictor))
-                }
-                Filter::AsciiHex | Filter::Ascii85 | Filter::RunLength => {
-                    let (output, accounting) = simple::decode(*filter, &current, remaining, self.limits.max_ratio, self.mode)?;
-                    (output, accounting, None)
-                }
-                Filter::Dct => {
-                    let size = current.len() as u64;
-                    if size > remaining {
-                        return Err(Error::OutputLimit);
+            let remaining = self.limits.max_output.saturating_sub(chain.total);
+            chain.stages.push(Accounting::default());
+            let stage = chain.stages.last_mut().ok_or(Error::Allocation)?;
+            let result = (|| -> Result<(Vec<u8>, Option<Predictor>), Error> {
+                let (mut output, mut accounting, predictor) = match *filter {
+                    Filter::Flate => {
+                        let (output, accounting) = self.flate(&current, remaining, stage)?;
+                        (output, accounting, None)
                     }
-                    if size > size.saturating_mul(self.limits.max_ratio) {
-                        return Err(Error::RatioLimit);
+                    Filter::Lzw { early_change } => {
+                        let (output, accounting) = self.lzw(&current, remaining, early_change, stage)?;
+                        (output, accounting, None)
                     }
-                    let mut copy = Vec::new();
-                    copy.try_reserve_exact(current.len()).map_err(|_| Error::Allocation)?;
-                    copy.extend_from_slice(&current);
-                    (copy, Accounting { bytes_in: size, bytes_out: size, incomplete: false }, None)
+                    Filter::FlatePredictor(predictor) => {
+                        let (output, accounting) = self.flate(&current, remaining, stage)?;
+                        (output, accounting, Some(predictor))
+                    }
+                    Filter::LzwPredictor { early_change, predictor } => {
+                        let (output, accounting) = self.lzw(&current, remaining, early_change, stage)?;
+                        (output, accounting, Some(predictor))
+                    }
+                    Filter::AsciiHex | Filter::Ascii85 | Filter::RunLength => {
+                        let (output, accounting) = simple::decode_counted(*filter, &current, remaining, self.limits.max_ratio, self.mode, stage)?;
+                        (output, accounting, None)
+                    }
+                    Filter::Dct => {
+                        let size = current.len() as u64;
+                        if size > remaining {
+                            return Err(Error::OutputLimit);
+                        }
+                        if size > size.saturating_mul(self.limits.max_ratio) {
+                            return Err(Error::RatioLimit);
+                        }
+                        let mut copy = Vec::new();
+                        copy.try_reserve_exact(current.len()).map_err(|_| Error::Allocation)?;
+                        copy.extend_from_slice(&current);
+                        (copy, Accounting { bytes_in: size, bytes_out: size, incomplete: false }, None)
+                    }
+                    Filter::Ccitt(_) => return Err(Error::Unsupported("CCITTFaxDecode")),
+                };
+                *stage = accounting;
+                if let Some(predictor) = predictor {
+                    let (decoded, incomplete) = predictor::decode(predictor, output, self.mode)?;
+                    output = decoded;
+                    accounting.incomplete |= incomplete;
+                    stage.incomplete = accounting.incomplete;
                 }
-                Filter::Ccitt(_) => return Err(Error::Unsupported("CCITTFaxDecode")),
-            };
-            if let Some(predictor) = predictor {
-                let (decoded, incomplete) = predictor::decode(predictor, output, self.mode)?;
-                output = decoded;
-                accounting.incomplete |= incomplete;
-                accounting.bytes_out = output.len() as u64;
-            }
-            total += accounting.bytes_out;
-            stages.push(accounting);
+                Ok((output, predictor))
+            })();
+            chain.total_input = chain.total_input.saturating_add(stage.bytes_in);
+            chain.total = chain.total.saturating_add(stage.bytes_out);
+            let (output, _) = result?;
             current = output;
         }
         if self.filters.is_empty() && current.len() as u64 > self.limits.max_output {
             return Err(Error::OutputLimit);
         }
-        Ok(Decoded { data: current, stages })
+        Ok(Decoded { data: current, stages: chain.stages.clone() })
     }
 
-    fn flate(&self, input: &[u8], max_output: u64) -> Result<(Vec<u8>, Accounting), Error> {
-        match self.inflate(input, max_output, Wrapper::Zlib) {
-            Err(Error::Corrupt | Error::Truncated) if self.mode == Mode::Tolerant => self.inflate(input, max_output, Wrapper::Raw),
+    fn flate(&self, input: &[u8], max_output: u64, stage: &mut Accounting) -> Result<(Vec<u8>, Accounting), Error> {
+        match self.inflate(input, max_output, Wrapper::Zlib, stage) {
+            Err(Error::Corrupt | Error::Truncated) if self.mode == Mode::Tolerant => {
+                let previous = *stage;
+                let remaining = max_output.saturating_sub(previous.bytes_out);
+                *stage = Accounting::default();
+                let result = self.inflate(input, remaining, Wrapper::Raw, stage);
+                stage.bytes_in = stage.bytes_in.saturating_add(previous.bytes_in);
+                stage.bytes_out = stage.bytes_out.saturating_add(previous.bytes_out);
+                result.map(|(output, _)| (output, *stage))
+            }
             result => result,
         }
     }
 
-    fn inflate(&self, input: &[u8], max_output: u64, wrapper: Wrapper) -> Result<(Vec<u8>, Accounting), Error> {
+    fn inflate(&self, input: &[u8], max_output: u64, wrapper: Wrapper, stage: &mut Accounting) -> Result<(Vec<u8>, Accounting), Error> {
         let limits = craft_archive::Limits { max_output, max_input: self.limits.max_input, max_ratio: self.limits.max_ratio, wrapper };
         let mut decoder = BoundedInflate::new(input, limits).map_err(InflateError::Io).map_err(Error::Inflate)?;
         let mut output = Vec::new();
         let mut buffer = [0u8; 8192];
         let mut incomplete = false;
         loop {
-            let count = match decoder.read_chunk(&mut buffer) {
+            let remaining = max_output.saturating_sub(decoder.accounting().bytes_out);
+            let size = buffer.len().min(usize::try_from(remaining.max(1)).unwrap_or(usize::MAX));
+            let read = decoder.read_chunk(&mut buffer[..size]);
+            let progress = decoder.accounting();
+            stage.bytes_in = progress.bytes_in;
+            stage.bytes_out = progress.bytes_out;
+            let count = match read {
                 Ok(count) => count,
                 Err(InflateError::Truncated) if self.mode == Mode::Tolerant => {
                     incomplete = true;
@@ -210,7 +256,7 @@ impl FilterChain {
         Ok((output, Accounting { bytes_in: accounting.bytes_in, bytes_out: accounting.bytes_out, incomplete }))
     }
 
-    fn lzw(&self, input: &[u8], max_output: u64, early_change: bool) -> Result<(Vec<u8>, Accounting), Error> {
+    fn lzw(&self, input: &[u8], max_output: u64, early_change: bool, stage: &mut Accounting) -> Result<(Vec<u8>, Accounting), Error> {
         let mut decoder = if early_change { Decoder::with_tiff_size_switch(BitOrder::Msb, 8) } else { Decoder::new(BitOrder::Msb, 8) };
         let mut output = Vec::new();
         let mut consumed = 0usize;
@@ -218,6 +264,8 @@ impl FilterChain {
         loop {
             let result = decoder.decode_bytes(&input[consumed..], &mut buffer);
             consumed += result.consumed_in;
+            stage.bytes_in = consumed as u64;
+            stage.bytes_out = (output.len() as u64).saturating_add(result.consumed_out as u64);
             let next = (output.len() as u64).saturating_add(result.consumed_out as u64);
             if next > max_output {
                 return Err(Error::OutputLimit);
@@ -395,6 +443,102 @@ mod tests {
         assert_eq!(result.stages[0].bytes_out, 4);
         assert!(matches!(chain(Filter::Dct, 3).decode(&jpeg), Err(Error::OutputLimit)));
         assert!(matches!(chain(Filter::Ccitt(CcittParams::default()), 4).decode(&jpeg), Err(Error::Unsupported("CCITTFaxDecode"))));
+        Ok(())
+    }
+
+    #[test]
+    fn pdfcraft_bomb_thresholds_and_failure_accounting() -> Result<(), Box<dyn std::error::Error>> {
+        let data = vec![0; 16 << 20];
+        let encoded = encode(Filter::Flate, &data, EncodeParams::default()).map_err(|error| format!("{error:?}"))?;
+        let mut test = chain(Filter::Flate, 0);
+        test.limits.max_input = u64::MAX;
+        test.limits.max_ratio = u64::MAX;
+        for limit in [0, 1 << 20, (16 << 20) - 1] {
+            test.limits.max_output = limit;
+            let (result, accounting) = test.decode_with_accounting(&encoded);
+            assert!(matches!(result, Err(Error::OutputLimit)));
+            assert_eq!(accounting.total, limit);
+            assert_eq!(accounting.stages[0].bytes_out, limit);
+        }
+        test.limits.max_output = 16 << 20;
+        assert_eq!(test.decode(&encoded).map_err(|error| format!("{error:?}"))?.data, data);
+        let inner = encode(Filter::Flate, &vec![0; 32 << 20], EncodeParams::default()).map_err(|error| format!("{error:?}"))?;
+        let outer = encode(Filter::Flate, &inner, EncodeParams::default()).map_err(|error| format!("{error:?}"))?;
+        test.filters.push(Filter::Flate);
+        test.limits.max_depth = 2;
+        test.limits.max_output = 1 << 20;
+        let (result, accounting) = test.decode_with_accounting(&outer);
+        assert!(matches!(result, Err(Error::OutputLimit)));
+        assert_eq!(accounting.stages.len(), 2);
+        assert_eq!(accounting.stages[0].bytes_out, inner.len() as u64);
+        assert_eq!(accounting.stages[1].bytes_out, (1 << 20) - inner.len() as u64);
+        assert_eq!(accounting.total, 1 << 20);
+        Ok(())
+    }
+
+    #[test]
+    fn predictor_count_and_encoder_compatibility() -> Result<(), Box<dyn std::error::Error>> {
+        let params = EncodeParams::default();
+        for (filter, input, expected) in [
+            (Filter::AsciiHex, &b"Hello"[..], &b"48656C6C6F>"[..]),
+            (Filter::Ascii85, &b"Man "[..], &b"9jqo^~>"[..]),
+            (Filter::Ascii85, &b"M"[..], &b"9`~>"[..]),
+            (Filter::RunLength, &b"abcxxx"[..], &[2, b'a', b'b', b'c', 254, b'x', 128][..]),
+        ] {
+            assert_eq!(encode(filter, input, params).map_err(|error| format!("{error:?}"))?, expected);
+        }
+        let data: Vec<u8> = (0..=255).cycle().take(4096).collect();
+        let filters = [Filter::Flate, Filter::AsciiHex, Filter::Ascii85, Filter::RunLength];
+        for filter in filters {
+            let encoded = encode(filter, &data, params).map_err(|error| format!("{error:?}"))?;
+            if filter == Filter::Flate {
+                assert_eq!(&encoded[..2], &[0x78, 0x9c]);
+            }
+            let mut test = chain(filter, 100_000);
+            test.limits.max_input = 100_000;
+            assert_eq!(test.decode(&encoded).map_err(|error| format!("{error:?}"))?.data, data);
+        }
+        for predictor in [2, 10, 11, 12, 13, 14, 15] {
+            let filter = Filter::FlatePredictor(Predictor { predictor, columns: 16, ..Predictor::default() });
+            let encoded = encode(filter, &data, params).map_err(|error| format!("{error:?}"))?;
+            let mut test = chain(filter, 100_000);
+            test.limits.max_input = 100_000;
+            let decoded = test.decode(&encoded).map_err(|error| format!("{error:?}"))?;
+            assert_eq!(decoded.data, data);
+            assert_eq!(decoded.stages[0].bytes_out, (data.len() + if predictor == 2 { 0 } else { data.len() / 16 }) as u64);
+        }
+        let predictor = Filter::FlatePredictor(Predictor { predictor: 12, ..Predictor::default() });
+        let rows = vec![7; 1 << 16];
+        let encoded = encode(predictor, &rows, params).map_err(|error| format!("{error:?}"))?;
+        let mut test = chain(predictor, 2 << 16);
+        test.limits.max_ratio = u64::MAX;
+        let decoded = test.decode(&encoded).map_err(|error| format!("{error:?}"))?;
+        assert_eq!(decoded.data, rows);
+        assert_eq!(decoded.stages[0].bytes_out, 2 << 16);
+        let stages = [(Filter::Ascii85, params), (Filter::Flate, params)];
+        let encoded = encode_chain(&stages, &data).map_err(|error| format!("{error:?}"))?;
+        let test = FilterChain {
+            filters: stages.iter().map(|stage| stage.0).collect(),
+            limits: Limits { max_input: 100_000, max_output: 100_000, max_ratio: 100, max_depth: 2 },
+            mode: Mode::Strict,
+        };
+        assert_eq!(test.decode(&encoded).map_err(|error| format!("{error:?}"))?.data, data);
+        Ok(())
+    }
+
+    #[test]
+    fn failure_preserves_stage_progress() -> Result<(), Box<dyn std::error::Error>> {
+        let test = chain(Filter::AsciiHex, 100);
+        let (result, progress) = test.decode_with_accounting(b"4142G>");
+        assert!(matches!(result, Err(Error::Corrupt)));
+        assert_eq!(progress.stages[0].bytes_in, 5);
+        assert_eq!(progress.total, 2);
+        let predictor = Predictor { predictor: 12, ..Predictor::default() };
+        let bad = encode(Filter::Flate, &[0, 7, 9, 7], EncodeParams::default()).map_err(|error| format!("{error:?}"))?;
+        let (result, progress) = chain(Filter::FlatePredictor(predictor), 100).decode_with_accounting(&bad);
+        assert!(matches!(result, Err(Error::Corrupt)));
+        assert_eq!(progress.total, 4);
+        assert_eq!(progress.stages[0].bytes_out, 4);
         Ok(())
     }
 

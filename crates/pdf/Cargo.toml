@@ -12,7 +12,7 @@ workspace = true
 
 [features]
 default = []
-filters = ["dep:craft-archive", "dep:weezl"]
+filters = ["dep:craft-archive", "dep:weezl", "dep:flate2"]
 read = ["dep:hayro-syntax", "dep:thiserror"]
 interpret = ["read", "dep:hayro-interpret"]
 raster = ["interpret", "dep:hayro", "dep:bytemuck"]
@@ -23,6 +23,7 @@ write-simple-text = ["write", "krilla/simple-text"]
 [dependencies]
 craft-archive = { workspace = true, optional = true }
 weezl = { version = "0.1.12", optional = true }
+flate2 = { version = "1", default-features = false, features = ["rust_backend"], optional = true }
 hayro-syntax = { workspace = true, optional = true }
 hayro-interpret = { workspace = true, optional = true }
 hayro = { workspace = true, optional = true }

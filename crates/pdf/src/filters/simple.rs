@@ -4,14 +4,16 @@ fn whitespace(byte: u8) -> bool {
     matches!(byte, 0 | 9 | 10 | 12 | 13 | 32)
 }
 
-struct Output {
+struct Output<'a> {
     bytes: Vec<u8>,
     max: u64,
     ratio: u64,
+    accounting: &'a mut Accounting,
 }
 
-impl Output {
+impl Output<'_> {
     fn push(&mut self, bytes: &[u8], consumed: usize) -> Result<(), Error> {
+        self.accounting.bytes_in = consumed as u64;
         let size = (self.bytes.len() as u64).checked_add(bytes.len() as u64).ok_or(Error::OutputLimit)?;
         if size > self.max {
             return Err(Error::OutputLimit);
@@ -21,12 +23,25 @@ impl Output {
         }
         self.bytes.try_reserve_exact(bytes.len()).map_err(|_| Error::Allocation)?;
         self.bytes.extend_from_slice(bytes);
+        self.accounting.bytes_out = size;
         Ok(())
     }
 }
 
+#[cfg(test)]
 pub(super) fn decode(filter: Filter, input: &[u8], max: u64, ratio: u64, mode: Mode) -> Result<(Vec<u8>, Accounting), Error> {
-    let mut output = Output { bytes: Vec::new(), max, ratio };
+    decode_counted(filter, input, max, ratio, mode, &mut Accounting::default())
+}
+
+pub(super) fn decode_counted(
+    filter: Filter,
+    input: &[u8],
+    max: u64,
+    ratio: u64,
+    mode: Mode,
+    accounting: &mut Accounting,
+) -> Result<(Vec<u8>, Accounting), Error> {
+    let mut output = Output { bytes: Vec::new(), max, ratio, accounting };
     let (consumed, complete) = match filter {
         Filter::AsciiHex => hex(input, &mut output)?,
         Filter::Ascii85 => ascii85(input, &mut output)?,
@@ -40,12 +55,13 @@ pub(super) fn decode(filter: Filter, input: &[u8], max: u64, ratio: u64, mode: M
     Ok((output.bytes, accounting))
 }
 
-fn hex(input: &[u8], output: &mut Output) -> Result<(usize, bool), Error> {
+fn hex(input: &[u8], output: &mut Output<'_>) -> Result<(usize, bool), Error> {
     let mut high = None;
     let mut consumed = 0;
     let mut complete = false;
     for byte in input.iter().copied() {
         consumed += 1;
+        output.accounting.bytes_in = consumed as u64;
         if whitespace(byte) {
             continue;
         }
@@ -71,7 +87,7 @@ fn hex(input: &[u8], output: &mut Output) -> Result<(usize, bool), Error> {
     Ok((consumed, complete))
 }
 
-fn ascii85(input: &[u8], output: &mut Output) -> Result<(usize, bool), Error> {
+fn ascii85(input: &[u8], output: &mut Output<'_>) -> Result<(usize, bool), Error> {
     let mut consumed = 0;
     let mut accumulator = 0u64;
     let mut count = 0;
@@ -79,6 +95,7 @@ fn ascii85(input: &[u8], output: &mut Output) -> Result<(usize, bool), Error> {
     while consumed < input.len() {
         let byte = input[consumed];
         consumed += 1;
+        output.accounting.bytes_in = consumed as u64;
         if whitespace(byte) {
             continue;
         }
@@ -116,11 +133,12 @@ fn ascii85(input: &[u8], output: &mut Output) -> Result<(usize, bool), Error> {
     Ok((consumed, complete))
 }
 
-fn run_length(input: &[u8], output: &mut Output) -> Result<(usize, bool), Error> {
+fn run_length(input: &[u8], output: &mut Output<'_>) -> Result<(usize, bool), Error> {
     let mut consumed = 0usize;
     while consumed < input.len() {
         let length = input[consumed];
         consumed += 1;
+        output.accounting.bytes_in = consumed as u64;
         if length == 128 {
             return Ok((consumed, true));
         }

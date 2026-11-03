@@ -112,6 +112,68 @@ fn paeth(left: u8, up: u8, upper_left: u8) -> u8 {
     }
 }
 
+pub(super) fn encode(params: Predictor, data: &[u8]) -> Result<Vec<u8>, Error> {
+    if params.predictor == 1 {
+        return Ok(data.to_vec());
+    }
+    if !matches!(params.predictor, 2 | 10..=15)
+        || !matches!(params.bits_per_component, 1 | 2 | 4 | 8 | 16)
+        || params.colors == 0
+        || params.columns == 0
+    {
+        return Err(Error::Corrupt);
+    }
+    let bits = usize::from(params.bits_per_component);
+    let samples = params.colors.checked_mul(params.columns).ok_or(Error::Corrupt)?;
+    let row = samples.checked_mul(bits).and_then(|n| n.checked_add(7)).ok_or(Error::Corrupt)? / 8;
+    let bpp = params.colors.checked_mul(bits).and_then(|n| n.checked_add(7)).ok_or(Error::Corrupt)? / 8;
+    if !data.len().is_multiple_of(row) {
+        return Err(Error::Truncated);
+    }
+    if params.predictor == 2 {
+        let mut result = data.to_vec();
+        for line in result.chunks_mut(row) {
+            for index in (params.colors..samples).rev() {
+                let value = sample(line, index, bits).wrapping_sub(sample(line, index - params.colors, bits));
+                set_sample(line, index, bits, value);
+            }
+        }
+        return Ok(result);
+    }
+    let mut result = Vec::new();
+    let mut previous: Option<&[u8]> = None;
+    for line in data.chunks(row) {
+        let filter = |tag: u8| -> Vec<u8> {
+            let mut encoded = vec![tag];
+            for (index, &byte) in line.iter().enumerate() {
+                let left = if index >= bpp { line[index - bpp] } else { 0 };
+                let up = previous.map_or(0, |p| p[index]);
+                let upper_left = if index >= bpp { previous.map_or(0, |p| p[index - bpp]) } else { 0 };
+                let prediction = match tag {
+                    1 => left,
+                    2 => up,
+                    3 => ((u16::from(left) + u16::from(up)) / 2) as u8,
+                    4 => paeth(left, up, upper_left),
+                    _ => 0,
+                };
+                encoded.push(byte.wrapping_sub(prediction));
+            }
+            encoded
+        };
+        let encoded = if params.predictor == 15 {
+            (0..=4)
+                .map(filter)
+                .min_by_key(|bytes| bytes[1..].iter().map(|&byte| u64::from((byte as i8).unsigned_abs())).sum::<u64>())
+                .ok_or(Error::Corrupt)?
+        } else {
+            filter(params.predictor - 10)
+        };
+        result.extend_from_slice(&encoded);
+        previous = Some(line);
+    }
+    Ok(result)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
