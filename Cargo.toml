@@ -36,6 +36,7 @@ craft-font-manager = { path = "crates/font-manager" }
 craft-font-store = { path = "crates/font-store" }
 craft-fonts-build = { path = "crates/fonts-build" }
 craft-h264 = { path = "crates/h264" }
+craft-hevc = { path = "crates/hevc" }
 craft-i18n = { path = "crates/i18n" }
 craft-jpeg = { path = "crates/jpeg" }
 craft-keymap = { path = "crates/keymap" }

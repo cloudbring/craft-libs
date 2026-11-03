@@ -70,6 +70,8 @@ craft-<name> = { git = "https://github.com/storytold/craft-libs", rev = "<commit
   of `EmbeddedFace`s. No dependencies; the app picks the faces.
 - [`craft-h264`](crates/h264/README.md): clean-room pure-Rust H.264/AVC decoder from FilmCraft,
   with CAVLC/CABAC and optional frame threading; ffmpeg is a test oracle, not a dependency.
+- [`craft-hevc`](crates/hevc/README.md): clean-room pure-Rust H.265/HEVC Main / Main 10 decoder
+  from FilmCraft, with optional frame threading; ffmpeg/libx265 are external test oracles only.
 - [`craft-i18n`](crates/i18n/README.md): translations over the embedded craft-i18n catalogs:
   lookup with fallback (`pt-br` → `pt` → English), plurals, language names, the system locale and
   a pseudo locale. The catalogs stay a fully optional build input; apps keep `tl!` and their
