@@ -1,0 +1,20 @@
+[package]
+name = "craft-fft"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+description = "Cached FFT, real FFT, MDCT and STFT plans for realtime audio and spectral analysis"
+
+[lints]
+workspace = true
+
+[dependencies]
+rustfft.workspace = true
+realfft.workspace = true
+
+[dev-dependencies]
+allocation-counter = "0.8.1"
+proptest.workspace = true
+rustdct.workspace = true
