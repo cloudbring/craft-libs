@@ -46,6 +46,9 @@ craft-<name> = { git = "https://github.com/storytold/craft-libs", rev = "<commit
   the event loop: queued requests shown at the end of the frame and answered on a later frame,
   free-standing Open and Folder panels and Save sheets on macOS, case-insensitive filters. What
   to do with the answer stays in each app.
+- [`craft-distortion`](crates/distortion/README.md): shared 8-bit SAD, SATD and SSE for the H.264,
+  HEVC, VP9 and AV1 encoders. Blocks up to 64×64. 128-bit SIMD through `wide` (NEON, SSE2,
+  optional wasm SIMD128) with a scalar fallback and no `unsafe`.
 - [`craft-doc`](crates/doc/README.md): reads PhotoCraft `.pcraft`, VectorCraft `.vectorcraft`
   and EffectCraft `.ecproj` documents without the apps: the kind and version, the previews and
   PDF they carry, and their pages and layers. Rendering and editing stay in each app.
