@@ -32,10 +32,31 @@ use crate::{Error, Picture, Result};
 const MAX_FRAME_WIDTH: u32 = 16384;
 const MAX_FRAME_HEIGHT: u32 = 8704;
 const MAX_FRAME_AREA: u64 = 35_651_584;
+const DECODE_MEMORY_BUDGET: u64 = if cfg!(target_pointer_width = "64") { 4 << 30 } else { 1 << 30 };
 
 /// Whether a frame of `width` x `height` luma samples is within the decoder's resource limits.
 fn frame_size_allowed(width: u32, height: u32) -> bool {
     width <= MAX_FRAME_WIDTH && height <= MAX_FRAME_HEIGHT && u64::from(width) * u64::from(height) <= MAX_FRAME_AREA
+}
+
+/// Account for the padded u16 planes allocated by `FrameBuf::new` in every reference slot,
+/// the new frame, and all in-flight frames. Overflow cannot fit any finite budget.
+fn store_fits(width: u32, height: u32, color: &crate::header::ColorConfig, pictures: usize, budget: u64) -> bool {
+    if color.subsampling_x > 1 || color.subsampling_y > 1 {
+        return false;
+    }
+    let padded_width = u64::from(width).div_ceil(128) * 128 + 160;
+    let padded_height = u64::from(height).div_ceil(128) * 128 + 160;
+    let luma = padded_width.checked_mul(padded_height);
+    let chroma = if color.mono_chrome {
+        Some(0)
+    } else {
+        (padded_width >> color.subsampling_x).checked_mul(padded_height >> color.subsampling_y).and_then(|samples| samples.checked_mul(2))
+    };
+    luma.and_then(|samples| chroma.and_then(|chroma| samples.checked_add(chroma)))
+        .and_then(|samples| samples.checked_mul(2))
+        .and_then(|bytes| u64::try_from(pictures).ok().and_then(|count| bytes.checked_mul(count)))
+        .is_some_and(|bytes| bytes <= budget)
 }
 const OBU_SEQUENCE_HEADER_T: u32 = 1;
 const OBU_TEMPORAL_DELIMITER_T: u32 = 2;
@@ -238,6 +259,8 @@ pub struct Decoder {
     /// Frames submitted to the workers and not known to be finished (oldest first).
     in_flight: VecDeque<Arc<FrameSlot>>,
     max_in_flight: usize,
+    /// Maximum bytes reserved for decoded pictures in the store.
+    memory_budget: u64,
     /// Shown pictures not yet returned, in output order.
     out: VecDeque<Output>,
     /// pts of the temporal unit being decoded.
@@ -303,6 +326,7 @@ impl Decoder {
             workers,
             in_flight: VecDeque::new(),
             max_in_flight: fthreads + 2,
+            memory_budget: DECODE_MEMORY_BUDGET,
             out: VecDeque::new(),
             pts: 0,
             #[cfg(test)]
@@ -317,6 +341,11 @@ impl Decoder {
     /// every other picture is unchanged.
     pub fn set_draft(&mut self, on: bool) {
         self.draft = on;
+    }
+
+    /// Cap the bytes of decoded pictures (references, current, in flight) this decoder may hold.
+    pub fn set_memory_budget(&mut self, bytes: u64) {
+        self.memory_budget = bytes;
     }
 
     pub fn stats(&self) -> DecodeStats {
@@ -475,6 +504,9 @@ impl Decoder {
                     let mut r = BitReader::new(payload);
                     let shown = self.frame_header(&mut r, temporal_id, spatial_id)?;
                     if let Some(o) = shown {
+                        if matches!(&o, Output::Existing(_)) && out.iter().filter(|(output, _, _)| matches!(output, Output::Existing(_))).count() >= 32 {
+                            return Err(Error::Invalid("too many frame outputs in chunk"));
+                        }
                         out.push((o, tu, spatial_id));
                         continue;
                     }
@@ -545,6 +577,10 @@ impl Decoder {
         if !frame_size_allowed(fh.upscaled_width, fh.frame_height) {
             return Err(Error::Invalid("frame size"));
         }
+        let width = fh.upscaled_width.max(fh.frame_width);
+        if !store_fits(width, fh.frame_height, &seq.color, NUM_REF_FRAMES + 1 + self.max_in_flight, self.memory_budget) {
+            return Err(Error::Invalid("frame size exceeds the decoder memory budget"));
+        }
         if !fh.frame_is_intra {
             for i in 0..REFS_PER_FRAME {
                 if self.ref_frames[fh.ref_frame_idx[i]].is_none() {
@@ -595,6 +631,9 @@ impl Decoder {
         r.byte_align();
         if tg_end >= num_tiles || tg_start > tg_end {
             return Err(Error::Invalid("tile group range"));
+        }
+        if tg_start != job.tiles.len() {
+            return Err(Error::Invalid("tile group out of order"));
         }
         let mut pos = r.byte_pos();
         for tile_num in tg_start..=tg_end {
@@ -1039,6 +1078,47 @@ mod tests {
         // #2801: the LEB128 size 2^32 became zero on wasm32, accepting a truncated OBU.
         let result = std::panic::catch_unwind(|| Decoder::with_threads(1).decode(&[0x7a, 0x80, 0x80, 0x80, 0x80, 0x10]));
         assert!(matches!(result.expect("OBU size parsing must not panic"), Err(Error::Truncated)));
+    }
+
+    #[test]
+    fn shown_existing_frames_are_bounded_per_chunk() {
+        let mut decoder = Decoder::with_threads(1);
+        decoder.seq = Some(SequenceHeader::default());
+        decoder.refs[0].valid = true;
+        decoder.ref_frames[0] = Some(Slot::new());
+        let mut data = Vec::new();
+        for _ in 0..33 {
+            data.extend([0x1a, 1, 0x80]);
+        }
+        let mut outputs = Vec::new();
+        assert_eq!(decoder.parse_obus(&data, &mut outputs), Err(Error::Invalid("too many frame outputs in chunk")));
+        assert_eq!(outputs.len(), 32);
+    }
+
+    #[test]
+    fn tile_groups_reject_out_of_order_first_group() {
+        let mut decoder = tile_group_decoder(1);
+        assert!(matches!(decoder.tile_group(&[0xa8, 0xab]), Err(Error::Invalid("tile group out of order"))));
+    }
+
+    #[test]
+    fn frame_budget_rejects_a_valid_small_frame_before_allocating() {
+        let mut decoder = Decoder::with_threads(1);
+        decoder.set_memory_budget(0);
+        assert_eq!(decoder.decode(KEY_FRAME_16X16), Err(Error::Invalid("frame size exceeds the decoder memory budget")));
+    }
+
+    #[test]
+    fn padded_store_budget_is_exact_and_counts_all_pictures() {
+        let color = crate::header::ColorConfig { subsampling_x: 1, subsampling_y: 1, ..Default::default() };
+        let one = (288 * 288 + 2 * 144 * 144) * 2;
+        assert!(store_fits(8, 8, &color, 9, 9 * one));
+        assert!(!store_fits(8, 8, &color, 9, 9 * one - 1));
+        assert!(!store_fits(8, 8, &color, 10, 9 * one));
+        assert!(!store_fits(u32::MAX, u32::MAX, &color, 9, u64::MAX));
+        let mono = crate::header::ColorConfig { mono_chrome: true, ..color };
+        assert!(store_fits(8, 8, &mono, 9, 9 * 288 * 288 * 2));
+        assert!(store_fits(3840, 2160, &mono, NUM_REF_FRAMES + 1 + 4, DECODE_MEMORY_BUDGET));
     }
 
     #[test]

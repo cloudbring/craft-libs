@@ -25,6 +25,14 @@ The source already uses `craft-bitstream`; film grain is implemented within this
 from FilmCraft. FilmCraft's `ATTRIBUTION.md` and `NOTICE` have no separate AV1 decoder attribution
 or third-party notice to transfer; the specification is credited above.
 
+DeckCraft-only hardening was ported from `cloudbring/deckcraft` `main` at
+`3e178d8f5a59c787a6a53a7ed0f052b3e4a1489f` (audit `a77db2662f0d92c478938041419d639043bcf4fe`):
+whole-store padded-picture budgeting (including references and in-flight frames), a 32
+shown-existing-frame per-chunk limit, contiguous tile-group ordering and explicit tile-column
+and row bounds. Each guard has a red-first regression in `src/decoder.rs` or `src/header.rs`.
+The shared crate retains its level-based per-frame cap and uses a crate-local checked budget
+calculation instead of adding DeckCraft's bitstream budget module.
+
 ## Tests and fixtures
 
 `cargo test -p craft-av1` uses a crate-local `test-support` adapter over the dev-only
