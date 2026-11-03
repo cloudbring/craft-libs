@@ -98,6 +98,18 @@ Scratch buffers grow to a high-water mark; no allocation occurs per line after
 capacity is available. The whole-plane convenience call allocates row references,
 but no full-image intermediate or transpose.
 
+Clamp recurrence passes read/write the image directly, interleaving eight rows
+or eight adjacent columns with `[[f64; 8]; CHANNELS]` forward scratch. One-channel
+planes do not pay for unused RGBA lanes or the generic edge engine's gathered
+input/output buffers. The column pass traverses row-major eight-pixel blocks.
+`Exact` and the `Recursive` sampled fallback use a padded horizontal window
+(unrolled for the seven-tap sigma-1 kernel), then a 64-row vertical working tile
+plus its kernel halos. Both halos are retained from the horizontal result before
+in-place vertical writes; only an eight-row output batch is advanced between
+cancellation checks. The split line APIs produce identical results, but only
+`apply` uses the cache-local sampled vertical tiles. Other edges and boxes retain
+the general edge-policy engine; all accumulation orders are unchanged.
+
 Apps may use their own rayon `par_chunks_mut(row_samples * LINE_BATCH)` with
 `for_each_init(Scratch::default, ...)` and `filter_rows`, passing the batch's
 `Shape`. For columns, split every row into equal-width disjoint stripes, collect
@@ -121,9 +133,14 @@ The recurrence and coefficients come from `cloudbring/lightcraft` commit
 `crates/raster/src/blur/interleaved.rs::Gaussian::recursive`.
 `src/lines/tests/lightcraft.rs` retains verbatim independent constructor/filter
 bodies and sampled helper (only constructor visibility changed). Differential
-tests compare every output bit for 1–4 channels, short lines, row/column tails,
+image tests and the same-binary performance benchmark also use the verbatim
+`src/lines/tests/lightcraft/interleaved.rs` image kernel, with only its Image/Pixel
+import redirected to local test adapters. This is the actual eight-chain/tiled
+upstream path, not the much slower scalar line reference. Differential tests
+compare every output bit for 1–4 channels, short lines, row/column tails,
 negative/HDR values, sigma 2.5–64 on the raw port, and public Recursive at >=8
-and below 2.5. The public guard-band range intentionally differs from raw YvV.
+and below 2.5, including 64-row tile boundaries. The public guard-band range
+intentionally differs from raw YvV.
 No app source is linked as a build/test dependency.
 
 PhotoCraft's `crates/algo/src/blur.rs` and `separable.rs` informed the running-sum,
@@ -135,8 +152,12 @@ Conditions for Young–van Vliet Recursive Filtering*, IEEE TSP 54(6), 2365–23
 
 Run `cargo test -p craft-blur`, `cargo clippy -p craft-blur --all-targets -- -D warnings`,
 `cargo fmt --check -p craft-blur`, and `cargo doc -p craft-blur --no-deps`.
-The three ignored benchmarks each run a 6000x4000 single-channel plane at sigma
-1/8/64 serially, excluding allocation of the input/filter from timing:
+The three quality benchmarks each run a 6000x4000 single-channel plane at sigma
+1/8/64 serially, excluding allocation of the input/filter from timing. A fourth
+ignored benchmark compares `Recursive` with the verbatim LightCraft image kernel
+for 1/3/4 channels using seven-run medians after two warmups, alternating run
+order. It checks every output bit on every iteration, and asserts a single-channel
+craft/LightCraft ratio <=1.10:
 
 ```sh
 cargo test -p craft-blur --release --test bench -- --ignored --nocapture --test-threads=1

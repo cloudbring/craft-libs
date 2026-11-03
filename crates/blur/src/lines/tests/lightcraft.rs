@@ -1,7 +1,28 @@
-#![allow(dead_code)]
+#![allow(dead_code, unexpected_cfgs)]
 //! Verbatim bodies from cloudbring/lightcraft 39aa4d256939c3703f1e22c0f2a715a4c98a189f,
 //! crates/raster/src/blur.rs::{variance_exact_kernel, Gaussian::{new, filter}}.
 //! Only constructor visibility is widened; independent fixture never calls production math.
+
+#[rustfmt::skip]
+#[allow(clippy::type_complexity)]
+#[path = "lightcraft/interleaved.rs"]
+mod interleaved;
+
+#[derive(Clone)]
+pub struct Image<T> {
+    pub width: usize,
+    pub height: usize,
+    pub data: Vec<T>,
+}
+
+impl<T: Copy + Default> Image<T> {
+    pub fn new(width: usize, height: usize) -> Self {
+        Self { width, height, data: vec![T::default(); width * height] }
+    }
+}
+
+pub trait Pixel: Copy + Default + Send + Sync {}
+impl<T: Copy + Default + Send + Sync> Pixel for T {}
 
 #[rustfmt::skip]
 pub fn variance_exact_kernel(sigma: f32) -> Option<Vec<f32>> {

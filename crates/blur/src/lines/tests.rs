@@ -79,10 +79,43 @@ fn scratch_capacities_are_reused_between_batches_and_calls() -> Result<(), crate
         let mut input = vec![0.25; 31 * 19 * 4];
         let shape = Shape::new(31, 19, 4)?;
         filter.apply(&mut input, shape, Edge::Clamp, &mut scratch, Cancel::Never)?;
-        let capacities = [scratch.input.capacity(), scratch.output.capacity(), scratch.forward.capacity()];
+        let capacities = capacities(&scratch);
         for _ in 0..3 {
             filter.apply(&mut input, shape, Edge::Clamp, &mut scratch, Cancel::Never)?;
-            assert_eq!([scratch.input.capacity(), scratch.output.capacity(), scratch.forward.capacity()], capacities);
+            assert_eq!(self::capacities(&scratch), capacities);
+        }
+    }
+    Ok(())
+}
+
+fn capacities(scratch: &Scratch) -> Vec<usize> {
+    let mut capacities = vec![scratch.input.capacity(), scratch.output.capacity(), scratch.forward.capacity()];
+    capacities.extend(native_capacities(&scratch.native1));
+    capacities.extend(native_capacities(&scratch.native2));
+    capacities.extend(native_capacities(&scratch.native3));
+    capacities.extend(native_capacities(&scratch.native4));
+    capacities
+}
+
+fn native_capacities<const CHANNELS: usize>(scratch: &crate::native::Native<CHANNELS>) -> [usize; 4] {
+    [scratch.forward.capacity(), scratch.padded.capacity(), scratch.values.capacity(), scratch.tile.capacity()]
+}
+
+#[test]
+fn native_scratch_is_compact_and_reused() -> Result<(), crate::Error> {
+    for channels in 1..=4 {
+        for sigma in [1.0, 4.0, 8.0, 64.0] {
+            let shape = Shape::new(31, 129, channels)?;
+            let filter = Gaussian::new(sigma, Quality::Recursive)?;
+            let mut pixels = vec![0.25; shape.samples()];
+            let mut scratch = Scratch::default();
+            filter.apply(&mut pixels, shape, Edge::Clamp, &mut scratch, Cancel::Never)?;
+            assert!(scratch.input.is_empty() && scratch.output.is_empty() && scratch.forward.is_empty());
+            let capacities = capacities(&scratch);
+            for _ in 0..3 {
+                filter.apply(&mut pixels, shape, Edge::Clamp, &mut scratch, Cancel::Never)?;
+                assert_eq!(self::capacities(&scratch), capacities);
+            }
         }
     }
     Ok(())

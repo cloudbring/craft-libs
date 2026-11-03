@@ -8,6 +8,7 @@
 
 mod kernel;
 mod lines;
+mod native;
 mod recursive;
 
 pub use kernel::{box_widths, gaussian_kernel};
@@ -22,8 +23,9 @@ pub const LINE_BATCH: usize = 8;
 pub enum Quality {
     /// Normalized, variance-calibrated sampled Gaussian at every supported sigma.
     Exact,
-    /// Variance-exact YvV with Triggs–Sdika boundaries; sampled below sigma 8 or above 65,536.
-    /// The guard band below 8 enforces the 0.01 maximum absolute impulse-shape error.
+    /// Variance-exact YvV with Triggs–Sdika boundaries. LightCraft's sampled fast path below
+    /// sigma 2.5 also covers the 2.5–8 guard band for the 0.01 impulse-shape bound.
+    /// Above 65,536 the variance-calibrated sampled kernel is used as well.
     Recursive,
     /// Kovesi odd-width boxes. Only three passes are supported. Construction rejects widths
     /// whose relative variance error exceeds `1 / (3 * sigma)` (notably some subpixel sigmas).
@@ -135,6 +137,10 @@ pub struct Scratch {
     input: Vec<Block>,
     output: Vec<Block>,
     forward: Vec<Block>,
+    native1: native::Native<1>,
+    native2: native::Native<2>,
+    native3: native::Native<3>,
+    native4: native::Native<4>,
 }
 
 /// A device-neutral pass description. Boxes contain odd widths, not radii.
@@ -210,6 +216,11 @@ impl Gaussian {
         if pixels.is_empty() {
             return Ok(());
         }
+        if edge == Edge::Clamp
+            && let Separable::Kernel(kernel) = &self.passes
+        {
+            return native::apply(kernel, pixels, shape, scratch, cancel);
+        }
         let row_samples = shape.width * shape.channels;
         let mut rows = Vec::new();
         rows.try_reserve_exact(shape.height).map_err(|_| Error::Allocation)?;
@@ -232,6 +243,9 @@ impl Gaussian {
         }
         if !pixels.len().is_multiple_of(row_samples) {
             return Err(Error::InvalidDimensions);
+        }
+        if edge == Edge::Clamp && !matches!(self.passes, Separable::Boxes(_)) {
+            return native::rows(&self.passes, pixels, shape, scratch, cancel);
         }
         let batch_samples = row_samples.checked_mul(LINE_BATCH).ok_or(Error::SizeOverflow)?;
         for batch in pixels.chunks_mut(batch_samples) {
@@ -260,6 +274,13 @@ impl Gaussian {
             return Err(Error::InvalidDimensions);
         }
         cancel.check()?;
+        if !rows.is_empty()
+            && width != 0
+            && edge == Edge::Clamp
+            && let Separable::Recursive(coefficients) = &self.passes
+        {
+            return native::columns(coefficients, rows, channels, scratch, cancel);
+        }
         for start in (0..width / channels).step_by(LINE_BATCH) {
             cancel.check()?;
             lines::filter(&self.passes, &mut lines::View::columns(rows, channels, start), edge, scratch)?;
