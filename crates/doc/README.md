@@ -9,8 +9,10 @@ or composite. No `unsafe`, no panics on malformed input, and it builds for
 `check_manifest`),
 [`craft-vectorcraft-format`](../vectorcraft-format/README.md) (`Head`, `Image`, `sniff`, the
 version and the marker) and [`craft-ecproj-format`](../ecproj-format/README.md) (`Head`, the
-schema check). The outlines are read with craft-doc's own read-only views of the documents. The
-other dependencies are `serde`, `serde_json`, `thiserror` and `flate2` (its pure-Rust backend).
+schema check). `.pcraft` ZIP entries are read through
+[`craft-archive`](../archive/README.md)'s bounded in-memory reader. The outlines are read with
+craft-doc's own read-only views of the documents. The other dependencies are `serde`,
+`serde_json`, `thiserror` and `flate2` (its pure-Rust backend).
 
 ```toml
 craft-doc = { git = "https://github.com/storytold/craft-libs", rev = "<commit>" }
