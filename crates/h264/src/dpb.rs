@@ -212,6 +212,7 @@ impl<F: Clone> Dpb<F> {
                 let mut ref_idx = 0usize;
                 for m in &sh.ref_pic_list_mod[l] {
                     ensure!(ref_idx < n, "too many ref_pic_list_modification entries");
+                    ensure!(m.idc >= 2 || i64::from(m.value) < i64::from(max_pic_num), "abs_diff_pic_num_minus1 out of range");
                     list.push(None); // temporarily one longer
                     let (target, is_long): (Option<&DpbEntry<F>>, bool) = match m.idc {
                         0 | 1 => {
@@ -276,9 +277,9 @@ impl<F: Clone> Dpb<F> {
         for m in mmcos {
             match m.op {
                 1 => {
-                    let pn = curr_pic_num - (m.difference_of_pic_nums_minus1 as i32 + 1);
+                    let pn = i64::from(curr_pic_num) - (i64::from(m.difference_of_pic_nums_minus1) + 1);
                     for e in &mut self.entries {
-                        if e.mark == RefMark::Short && Self::frame_num_wrap(e, cur_frame_num, max_frame_num) == pn {
+                        if e.mark == RefMark::Short && i64::from(Self::frame_num_wrap(e, cur_frame_num, max_frame_num)) == pn {
                             e.mark = RefMark::Unused;
                         }
                     }
@@ -292,14 +293,14 @@ impl<F: Clone> Dpb<F> {
                 }
                 3 => {
                     ensure!(self.max_long_term_frame_idx.is_some_and(|max| m.long_term_frame_idx <= max), "MMCO long-term index exceeds the configured limit");
-                    let pn = curr_pic_num - (m.difference_of_pic_nums_minus1 as i32 + 1);
+                    let pn = i64::from(curr_pic_num) - (i64::from(m.difference_of_pic_nums_minus1) + 1);
                     for e in &mut self.entries {
                         if e.mark == RefMark::Long && e.long_term_frame_idx == m.long_term_frame_idx {
                             e.mark = RefMark::Unused;
                         }
                     }
                     for e in &mut self.entries {
-                        if e.mark == RefMark::Short && Self::frame_num_wrap(e, cur_frame_num, max_frame_num) == pn {
+                        if e.mark == RefMark::Short && i64::from(Self::frame_num_wrap(e, cur_frame_num, max_frame_num)) == pn {
                             e.mark = RefMark::Long;
                             e.long_term_frame_idx = m.long_term_frame_idx;
                         }
@@ -444,6 +445,18 @@ mod tests {
             sar: (1, 1),
             draft: false,
         })
+    }
+
+    #[test]
+    fn mmco_huge_difference_does_not_panic() {
+        for op in [1, 3] {
+            for diff in [i32::MAX as u32, u32::MAX] {
+                let mut dpb: Dpb<u32> = Dpb::new();
+                dpb.max_long_term_frame_idx = Some(0);
+                let mmco = Mmco { op, difference_of_pic_nums_minus1: diff, long_term_pic_num: 0, long_term_frame_idx: 0, max_long_term_frame_idx_plus1: 0 };
+                assert!(dpb.apply_mmcos(&[mmco], 5, 16, &mut None).is_ok());
+            }
+        }
     }
 
     /// A huge frame_num jump must only materialise the frames the sliding window keeps (#2779).

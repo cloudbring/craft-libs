@@ -127,6 +127,21 @@ pub struct FrameRow {
     pub intra: Box<[bool]>,
 }
 
+#[cfg(not(feature = "threads"))]
+impl FrameRow {
+    fn grey(mb_w: usize) -> Self {
+        Self {
+            y: vec![128; mb_w * 16 * 16].into(),
+            cb: vec![128; mb_w * 8 * 8].into(),
+            cr: vec![128; mb_w * 8 * 8].into(),
+            mv: [vec![[0; 2]; mb_w * 16].into(), vec![[0; 2]; mb_w * 16].into()],
+            ref_idx: [vec![-1; mb_w * 4].into(), vec![-1; mb_w * 4].into()],
+            ref_id: [vec![u32::MAX; mb_w * 4].into(), vec![u32::MAX; mb_w * 4].into()],
+            intra: vec![true; mb_w].into(),
+        }
+    }
+}
+
 /// A decoded (or in-progress) frame as stored in the DPB and referenced by later pictures.
 ///
 /// Rows are published in order by the thread decoding the picture; readers block (per row) until the
@@ -169,7 +184,7 @@ impl Frame {
         }
         #[cfg(not(feature = "threads"))]
         {
-            self.rows[r].get().expect("reference row decoded before use")
+            self.rows[r].get_or_init(|| FrameRow::grey(self.mb_w))
         }
     }
 
@@ -333,5 +348,23 @@ impl RefPic {
     }
     pub fn id(&self) -> u32 {
         self.frame.id
+    }
+}
+
+#[cfg(all(test, not(feature = "threads")))]
+mod tests {
+    use super::Frame;
+
+    #[test]
+    fn missing_reference_row_is_concealed() {
+        let frame = Frame::new(1, 0, 2, 1);
+        let row = frame.row(0);
+        assert!(row.y.iter().all(|&sample| sample == 128));
+        assert!(row.cb.iter().all(|&sample| sample == 128));
+        assert!(row.cr.iter().all(|&sample| sample == 128));
+        assert!(row.ref_idx.iter().all(|list| list.iter().all(|&index| index == -1)));
+        assert!(row.ref_id.iter().all(|list| list.iter().all(|&id| id == u32::MAX)));
+        assert!(row.intra.iter().all(|&intra| intra));
+        assert!(frame.is_published(0));
     }
 }

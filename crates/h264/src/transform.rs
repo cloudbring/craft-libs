@@ -93,6 +93,7 @@ fn clip_u8(v: i32) -> u8 {
 /// Rows first, then columns (the spec's order: the `>> 1` steps make it matter). The column
 /// pass and the reconstruction run across all columns at once so they vectorise.
 pub fn idct4_add(d: &[i32; 16], dst: &mut [u8], stride: usize) {
+    let d = d.map(|coefficient| coefficient.clamp(-32768, 32767));
     let mut t = [[0i32; 4]; 4];
     for (i, row) in t.iter_mut().enumerate() {
         let r = &d[i * 4..i * 4 + 4];
@@ -126,7 +127,7 @@ pub fn idct4_add(d: &[i32; 16], dst: &mut [u8], stride: usize) {
 /// `idct4_add` / `idct8_add` when all AC coefficients are zero: every output sample is
 /// `(dc + 32) >> 6`, so the transform reduces to adding that to the `N`x`N` block.
 pub fn idct_dc_add<const N: usize>(dc: i32, dst: &mut [u8], stride: usize) {
-    let v = (dc + 32) >> 6;
+    let v = (dc.clamp(-32768, 32767) + 32) >> 6;
     for i in 0..N {
         let Some(line) = dst.get_mut(i * stride..).and_then(|d| d.first_chunk_mut::<N>()) else {
             return;
@@ -161,6 +162,7 @@ fn idct8_1d(d: [i32; 8]) -> [i32; 8] {
 /// Inverse 8x8 transform of raster-order `d` and add to `dst` (8.5.13.2): rows, then columns,
 /// the column pass and reconstruction across all columns at once (they vectorise).
 pub fn idct8_add(d: &[i32; 64], dst: &mut [u8], stride: usize) {
+    let d = d.map(|coefficient| coefficient.clamp(-32768, 32767));
     let mut t = [[0i32; 8]; 8];
     for (row, src) in t.iter_mut().zip(d.as_chunks::<8>().0) {
         *row = idct8_1d(*src);
@@ -185,6 +187,45 @@ pub fn idct8_add(d: &[i32; 64], dst: &mut [u8], stride: usize) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn huge_coefficients_are_clamped_before_inverse_transform() {
+        for coefficients in [[i32::MAX; 16], [i32::MIN; 16]] {
+            let bounded = coefficients.map(|value| value.clamp(-32768, 32767));
+            let (mut actual, mut expected) = ([0u8; 64], [0u8; 64]);
+            idct4_add(&coefficients, &mut actual, 8);
+            idct4_add(&bounded, &mut expected, 8);
+            assert_eq!(actual, expected);
+        }
+        for coefficients in [[i32::MAX; 64], [i32::MIN; 64]] {
+            let bounded = coefficients.map(|value| value.clamp(-32768, 32767));
+            let (mut actual, mut expected) = ([0u8; 64], [0u8; 64]);
+            idct8_add(&coefficients, &mut actual, 8);
+            idct8_add(&bounded, &mut expected, 8);
+            assert_eq!(actual, expected);
+        }
+    }
+
+    #[test]
+    fn huge_dc_only_coefficients_match_bounded_full_transforms() {
+        for coefficient in [i32::MAX, i32::MIN] {
+            let mut actual4 = [128u8; 16];
+            let mut expected4 = actual4;
+            let mut bounded4 = [0i32; 16];
+            bounded4[0] = coefficient.clamp(-32768, 32767);
+            idct_dc_add::<4>(coefficient, &mut actual4, 4);
+            idct4_add(&bounded4, &mut expected4, 4);
+            assert_eq!(actual4, expected4);
+
+            let mut actual8 = [128u8; 64];
+            let mut expected8 = actual8;
+            let mut bounded8 = [0i32; 64];
+            bounded8[0] = coefficient.clamp(-32768, 32767);
+            idct_dc_add::<8>(coefficient, &mut actual8, 8);
+            idct8_add(&bounded8, &mut expected8, 8);
+            assert_eq!(actual8, expected8);
+        }
+    }
 
     /// The straightforward per-column formulation (8.5.12.2 / 8.5.13.2) the vectorised
     /// transforms must equal.

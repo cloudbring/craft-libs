@@ -15,6 +15,10 @@ use craft_bitstream::BitReader;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+fn skip_run_fits(addr: usize, run: usize, total: usize) -> bool {
+    addr < total && run <= total - addr
+}
+
 /// Per-slice data kept with the picture (deblocking, motion field export).
 #[derive(Clone, Debug, Default)]
 pub struct SliceInfo {
@@ -591,6 +595,12 @@ impl<'a> SliceDecoder<'a> {
     }
 
     /// Derive direct-mode motion for the 8x8 blocks in `b8_mask` of the current MB.
+    fn temporal_direct_mvs(dsf: i32, mv_col: [i16; 2]) -> ([i16; 2], [i16; 2]) {
+        let scaled = mv_col.map(|component| (dsf * i32::from(component) + 128) >> 8);
+        let clip = |component: i32| component.clamp(i16::MIN as i32, i16::MAX as i32) as i16;
+        (scaled.map(clip), [clip(scaled[0] - i32::from(mv_col[0])), clip(scaled[1] - i32::from(mv_col[1]))])
+    }
+
     fn derive_direct(&mut self, b8_mask: u8) -> Result<()> {
         let spatial = self.sh.direct_spatial_mv_pred;
         let (base_refs, base_mvs, direct_zero) = if spatial { self.spatial_direct_base() } else { ([0, 0], [[0, 0]; 2], false) };
@@ -624,13 +634,7 @@ impl<'a> SliceDecoder<'a> {
                         }
                     };
                     let (dsf, ltr) = self.tdirect.get(ref0 as usize).copied().unwrap_or((256, true));
-                    let (mv0, mv1) = if ltr {
-                        (mv_col, [0, 0])
-                    } else {
-                        let s = |c: i16| ((dsf * c as i32 + 128) >> 8) as i16;
-                        let m0 = [s(mv_col[0]), s(mv_col[1])];
-                        (m0, [m0[0] - mv_col[0], m0[1] - mv_col[1]])
-                    };
+                    let (mv0, mv1) = if ltr { (mv_col, [0, 0]) } else { Self::temporal_direct_mvs(dsf, mv_col) };
                     ([ref0, 0], [mv0, mv1])
                 };
                 self.set_motion(x, y, unit, unit, refs, mvs);
@@ -1497,7 +1501,7 @@ impl<'a> SliceDecoder<'a> {
             ensure!(addr < total, "macroblock address {addr} out of range");
             if !intra_slice {
                 let run = r.read_ue()? as usize;
-                ensure!(addr + run <= total, "mb_skip_run out of range");
+                ensure!(skip_run_fits(addr, run, total), "mb_skip_run out of range");
                 for _ in 0..run {
                     self.start_mb(addr);
                     self.decode_skip()?;
@@ -1518,5 +1522,26 @@ impl<'a> SliceDecoder<'a> {
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::SliceDecoder;
+    use super::skip_run_fits;
+
+    #[test]
+    fn skip_run_must_fit_remaining_macroblocks_without_overflow() {
+        assert!(skip_run_fits(1, 98, 99));
+        assert!(!skip_run_fits(1, 99, 99));
+        assert!(!skip_run_fits(1, usize::MAX, 99));
+        assert!(!skip_run_fits(99, 0, 99));
+    }
+
+    #[test]
+    fn temporal_direct_extremes_clip_without_overflow() {
+        assert_eq!(SliceDecoder::temporal_direct_mvs(256, [i16::MIN, i16::MAX]), ([i16::MIN, i16::MAX], [0, 0]));
+        assert_eq!(SliceDecoder::temporal_direct_mvs(512, [i16::MAX, 0]), ([i16::MAX, 0], [i16::MAX, 0]));
+        assert_eq!(SliceDecoder::temporal_direct_mvs(-1024, [i16::MIN, i16::MAX]).0, [i16::MAX, i16::MIN]);
     }
 }

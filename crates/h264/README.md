@@ -20,6 +20,14 @@ and the statement above: no FFmpeg, x264, JM or openh264 code was ported. The
 Tables 9-12–9-33 as its source. FilmCraft's `ATTRIBUTION.md` has no separate
 H.264 decoder entry or third-party notice to transfer. This copy changes only
 workspace naming and test-fixture support; the decoder remains app-independent.
+Hardening for `avcC` validation, whole-store memory budgeting, large frame-number
+gaps, checked QP, temporal direct MVs and bounded inverse-transform coefficients was
+ported from DeckCraft `main` at `3e178d8f5a59c787a6a53a7ed0f052b3e4a1489f`
+(migration audit `a42c6666`). Additional reference-list and MMCO bounds, missing-row
+concealment, saturating POC and CAVLC skip-run bounds were ported from SoundCraft
+`main` at `b35dd0f9eb0c08a198c1306021bd138f3a22d87c`; its overlapping
+QP, MV and transform hardening is covered by the same fixes. Neither fork's app-side
+budget crate was added as a dependency.
 Conformance fixtures are generated on demand by ffmpeg/libx264 into
 `target/fixtures/h264/` (or `CRAFT_MEDIA_FIXTURES_DIR/h264/`), not checked in or
 downloaded. Set `CRAFT_MEDIA_REQUIRE_ORACLES=1` in CI to disallow skips.

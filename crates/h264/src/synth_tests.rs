@@ -28,12 +28,16 @@ enum PocType {
 }
 
 fn sps(profile: u8, max_refs: u32, gaps: bool, poc: PocType) -> Vec<u8> {
+    sps_with_frame_bits(profile, max_refs, gaps, poc, 4)
+}
+
+fn sps_with_frame_bits(profile: u8, max_refs: u32, gaps: bool, poc: PocType, frame_bits: u32) -> Vec<u8> {
     let mut w = BitWriter::new();
     w.write_bits(profile as u32, 8);
     w.write_bits(0, 8);
     w.write_bits(30, 8);
     w.write_ue(0); // sps id
-    w.write_ue(0); // log2_max_frame_num - 4 -> 16
+    w.write_ue(frame_bits - 4); // log2_max_frame_num - 4
     match poc {
         PocType::T0 => {
             w.write_ue(0);
@@ -82,6 +86,32 @@ fn pps(cabac: bool, weighted: bool) -> Vec<u8> {
     nal(3, 8, &w.finish())
 }
 
+#[test]
+fn avcc_validates_types_and_keeps_configuration_on_failure() {
+    let sequence = sps(66, 4, false, PocType::T2);
+    let picture = pps(false, false);
+    let mut decoder = Decoder::with_threads(1);
+    let mut valid = vec![1, 66, 0, 30, 0xff, 0xe1];
+    valid.extend_from_slice(&((sequence.len() - 4) as u16).to_be_bytes());
+    valid.extend_from_slice(&sequence[4..]);
+    valid.push(1);
+    valid.extend_from_slice(&((picture.len() - 4) as u16).to_be_bytes());
+    valid.extend_from_slice(&picture[4..]);
+    decoder.configure_avcc(&valid).unwrap();
+
+    let mut invalid = valid.clone();
+    let sequence_offset = 8;
+    invalid[sequence_offset] = picture[4];
+    assert!(decoder.configure_avcc(&invalid).is_err());
+    assert_eq!(decoder.nal_length_size(), Some(4));
+
+    let mut truncated = valid;
+    truncated[4] = 0xfc;
+    truncated.pop();
+    assert!(decoder.configure_avcc(&truncated).is_err());
+    assert_eq!(decoder.nal_length_size(), Some(4));
+}
+
 #[derive(Default, Clone)]
 struct Pic {
     idr: bool,
@@ -114,7 +144,7 @@ impl Pic {
     }
 }
 
-fn slice_header(w: &mut BitWriter, p: &Pic, cabac: bool) {
+fn slice_header(w: &mut BitWriter, p: &Pic, cabac: bool, frame_bits: u32, qp_delta: i32) {
     w.write_ue(0); // first_mb
     w.write_ue(if p.b {
         6
@@ -124,7 +154,7 @@ fn slice_header(w: &mut BitWriter, p: &Pic, cabac: bool) {
         7
     });
     w.write_ue(0); // pps id
-    w.write_bits(p.frame_num, 4);
+    w.write_bits(p.frame_num, frame_bits);
     if p.idr {
         w.write_ue(0);
     }
@@ -193,7 +223,7 @@ fn slice_header(w: &mut BitWriter, p: &Pic, cabac: bool) {
     if cabac && p.inter() {
         w.write_ue(0); // cabac_init_idc
     }
-    w.write_se(0); // slice_qp_delta
+    w.write_se(qp_delta);
     w.write_ue(0); // disable_deblocking_filter_idc
     w.write_se(0);
     w.write_se(0);
@@ -279,8 +309,12 @@ fn write_pcm(w: &mut BitWriter, samples: &[u8]) {
 }
 
 fn slice_nal(p: &Pic, cabac: bool) -> Vec<u8> {
+    slice_nal_with_options(p, cabac, 4, 0)
+}
+
+fn slice_nal_with_options(p: &Pic, cabac: bool, frame_bits: u32, qp_delta: i32) -> Vec<u8> {
     let mut w = BitWriter::new();
-    slice_header(&mut w, p, cabac);
+    slice_header(&mut w, p, cabac, frame_bits, qp_delta);
     if !cabac && p.b {
         w.write_ue(NMB as u32);
         w.rbsp_trailing();
@@ -555,4 +589,51 @@ fn poc_type1_reordering() {
             }
         }
     }
+}
+
+#[test]
+fn huge_slice_qp_delta_returns_error_instead_of_panicking() {
+    let mut stream = sps(66, 4, false, PocType::T2);
+    stream.extend(pps(false, false));
+    stream.extend(slice_nal_with_options(&Pic { idr: true, ref_idc: 3, mbs: vec![None; NMB], ..Default::default() }, false, 4, i32::MAX - 1));
+    assert!(Decoder::with_threads(1).decode(&stream, 0).is_err());
+}
+
+#[test]
+fn picture_store_checks_the_entire_memory_budget() {
+    let mut seed = 5u32;
+    let mbs = (0..NMB).map(|_| Some(random_mb(&mut seed))).collect();
+    let mut stream = sps(66, 4, false, PocType::T2);
+    stream.extend(pps(false, false));
+    stream.extend(slice_nal(&Pic { idr: true, ref_idc: 3, mbs, ..Default::default() }, false));
+    let sps_nal = sps(66, 4, false, PocType::T2);
+    let parsed = crate::params::Sps::parse(&craft_bitstream::unescape_rbsp(&sps_nal[5..])).unwrap();
+    let picture_bytes = (NMB * (256 + 2 * 64)) as u64;
+    let store_bytes = picture_bytes * (parsed.max_dpb_frames() + 1 + 3) as u64;
+    for (budget, accepted) in [(store_bytes - 1, false), (store_bytes, true)] {
+        let mut decoder = Decoder::with_threads(1);
+        decoder.set_memory_budget(budget);
+        let result = decoder.decode(&stream, 0);
+        assert_eq!(result.is_ok(), accepted, "budget {budget}");
+        if accepted {
+            assert_eq!(decoder.flush().len(), 1);
+            assert!(decoder.take_error().is_none());
+        }
+    }
+}
+
+#[test]
+fn large_frame_num_gap_remains_bounded_and_decodable() {
+    let mut seed = 7u32;
+    let mbs = (0..NMB).map(|_| Some(random_mb(&mut seed))).collect();
+    let mut stream = sps_with_frame_bits(66, 2, true, PocType::T2, 6);
+    stream.extend(pps(false, false));
+    stream.extend(slice_nal_with_options(&Pic { idr: true, ref_idc: 3, mbs, ..Default::default() }, false, 6, 0));
+    stream.extend(slice_nal_with_options(&Pic { frame_num: 40, ref_idc: 2, mbs: vec![None; NMB], ..Default::default() }, false, 6, 0));
+    let mut decoder = Decoder::with_threads(1);
+    let mut pictures = decoder.decode(&stream, 0).unwrap();
+    pictures.extend(decoder.flush());
+    assert!(decoder.take_error().is_none());
+    assert_eq!(pictures.len(), 2);
+    assert_eq!(decoder.stats().frame_num_gaps, 1);
 }

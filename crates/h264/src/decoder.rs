@@ -19,9 +19,7 @@ use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
-/// The decoder supports at most 16 reference pictures, so constructing more
-/// inferred gap pictures cannot improve a usable reference list.
-const MAX_INFERRED_GAP_FRAMES: u32 = 16;
+const DECODE_MEMORY_BUDGET: u64 = if cfg!(target_pointer_width = "64") { 4 << 30 } else { 1 << 30 };
 
 /// One slice of a picture job.
 struct SliceJob {
@@ -102,6 +100,7 @@ pub struct Decoder {
     pool: Option<rayon::ThreadPool>,
     in_flight: VecDeque<FrameRef>,
     max_in_flight: usize,
+    memory_budget: u64,
     threads: usize,
     /// Draft mode: skip deblocking of non-reference pictures ([`Decoder::set_draft`]).
     draft: bool,
@@ -162,6 +161,7 @@ impl Decoder {
             pool,
             in_flight: VecDeque::new(),
             max_in_flight: threads.max(1) + 2,
+            memory_budget: DECODE_MEMORY_BUDGET,
             threads: workers,
             draft: false,
         }
@@ -170,6 +170,11 @@ impl Decoder {
     /// Worker threads decoding pictures (1: on the calling thread).
     pub fn threads(&self) -> usize {
         self.threads
+    }
+
+    /// Cap the total bytes of decoded pictures (current, references and in flight).
+    pub fn set_memory_budget(&mut self, bytes: u64) {
+        self.memory_budget = bytes;
     }
 
     /// Draft mode (off by default) for reduced-resolution playback: pictures submitted from now
@@ -217,26 +222,49 @@ impl Decoder {
     pub fn configure_avcc(&mut self, avcc: &[u8]) -> Result<()> {
         ensure!(avcc.len() >= 7, "avcC too short");
         ensure!(avcc[0] == 1, "unsupported avcC version {}", avcc[0]);
-        self.nal_length_size = Some((avcc[4] & 3) as usize + 1);
         let mut pos = 5;
-        let read_sets = |pos: &mut usize, count: usize, d: &mut Decoder| -> Result<()> {
+        let mut sets = Vec::new();
+        let read_sets = |pos: &mut usize, count: usize, sets: &mut Vec<(usize, usize)>| -> Result<()> {
             for _ in 0..count {
                 ensure!(*pos + 2 <= avcc.len(), "avcC truncated");
                 let len = u16::from_be_bytes([avcc[*pos], avcc[*pos + 1]]) as usize;
                 *pos += 2;
                 ensure!(*pos + len <= avcc.len(), "avcC truncated");
-                d.handle_nal(&avcc[*pos..*pos + len], 0)?;
+                sets.push((*pos, len));
                 *pos += len;
             }
             Ok(())
         };
         let nsps = (avcc[pos] & 0x1f) as usize;
         pos += 1;
-        read_sets(&mut pos, nsps, self)?;
+        read_sets(&mut pos, nsps, &mut sets)?;
         ensure!(pos < avcc.len(), "avcC truncated");
         let npps = avcc[pos] as usize;
         pos += 1;
-        read_sets(&mut pos, npps, self)
+        read_sets(&mut pos, npps, &mut sets)?;
+        let mut spss = self.spss.clone();
+        let mut ppss = self.ppss.clone();
+        for (index, (start, len)) in sets.into_iter().enumerate() {
+            let nal = &avcc[start..start + len];
+            let header = NalHeader::parse(*nal.first().ok_or_else(|| Error::Invalid("empty avcC parameter set".into()))?)?;
+            let expected = if index < nsps { nal_type::SPS } else { nal_type::PPS };
+            ensure!(header.nal_unit_type == expected, "avcC parameter set has NAL type {}, expected {expected}", header.nal_unit_type);
+            let rbsp = unescape_rbsp(&nal[1..]);
+            if expected == nal_type::SPS {
+                let sps = Sps::parse(&rbsp)?;
+                let id = sps.id as usize;
+                spss[id] = Some(Arc::new(sps));
+            } else {
+                let available: Vec<Option<Sps>> = spss.iter().map(|sps| sps.as_ref().map(|sps| (**sps).clone())).collect();
+                let pps = Pps::parse(&rbsp, &available)?;
+                let id = pps.id as usize;
+                ppss[id] = Some(Arc::new(pps));
+            }
+        }
+        self.spss = spss;
+        self.ppss = ppss;
+        self.nal_length_size = Some((avcc[4] & 3) as usize + 1);
+        Ok(())
     }
 
     /// Length of NAL length prefixes (from avcC), or None for Annex-B input.
@@ -427,7 +455,29 @@ impl Decoder {
         Ok(())
     }
 
+    fn check_budget(&self, sps: &Sps) -> Result<()> {
+        let width = u64::from(sps.width());
+        let height = u64::from(sps.height());
+        let luma = width.checked_mul(height);
+        let chroma = match sps.chroma_array_type() {
+            0 => Some(0),
+            1 => (width / 2).checked_mul(height / 2).and_then(|samples| samples.checked_mul(2)),
+            2 => (width / 2).checked_mul(height).and_then(|samples| samples.checked_mul(2)),
+            _ => width.checked_mul(height).and_then(|samples| samples.checked_mul(2)),
+        };
+        let pictures = (sps.max_dpb_frames() + 1 + self.max_in_flight) as u64;
+        let store_bytes = luma.and_then(|bytes| chroma.and_then(|chroma| bytes.checked_add(chroma))).and_then(|bytes| bytes.checked_mul(pictures));
+        ensure!(
+            store_bytes.is_some_and(|bytes| bytes <= self.memory_budget),
+            "{}x{} pictures with {pictures} in the decoder exceed the memory budget",
+            sps.width(),
+            sps.height()
+        );
+        Ok(())
+    }
+
     fn start_picture(&mut self, sh: &SliceHeader, sps: &Arc<Sps>, pts: i64) -> Result<()> {
+        self.check_budget(sps)?;
         // Activate SPS; a resolution change flushes the DPB.
         let changed = match &self.active_sps {
             None => true,
@@ -452,10 +502,6 @@ impl Decoder {
         } else {
             let max = sps.max_frame_num();
             if sh.frame_num != self.prev_ref_frame_num && sh.frame_num != (self.prev_ref_frame_num + 1) % max {
-                let gap = (sh.frame_num + max - self.prev_ref_frame_num - 1) % max;
-                if gap > MAX_INFERRED_GAP_FRAMES {
-                    return Err(Error::Invalid("frame number gap exceeds the supported reference limit".into()));
-                }
                 // frame_num gap (8.2.5.2): insert "non-existing" frames. Their samples are never used by
                 // conforming streams; copy the latest decoded frame for concealment.
                 let meta = Arc::new(output_meta(sps, pts, false));
