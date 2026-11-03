@@ -2,10 +2,13 @@
 //!
 //! Applications retain document models, layout, shaping, font policy and scheduling.
 //! Advanced backend re-exports are coupled to the pinned backend, not a universal document model.
+#![forbid(unsafe_code)]
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
 #[cfg(feature = "interpret")]
 pub use hayro_interpret as interpret;
+#[cfg(feature = "filters")]
+pub mod filters;
 mod link;
 #[cfg(feature = "read")]
 pub use hayro_syntax as syntax;

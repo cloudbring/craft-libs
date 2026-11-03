@@ -12,6 +12,7 @@ workspace = true
 
 [features]
 default = []
+filters = ["dep:craft-archive", "dep:weezl"]
 read = ["dep:hayro-syntax", "dep:thiserror"]
 interpret = ["read", "dep:hayro-interpret"]
 raster = ["interpret", "dep:hayro", "dep:bytemuck"]
@@ -20,6 +21,8 @@ write-pdf = ["write", "krilla/pdf"]
 write-simple-text = ["write", "krilla/simple-text"]
 
 [dependencies]
+craft-archive = { workspace = true, optional = true }
+weezl = { version = "0.1.12", optional = true }
 hayro-syntax = { workspace = true, optional = true }
 hayro-interpret = { workspace = true, optional = true }
 hayro = { workspace = true, optional = true }
@@ -28,6 +31,7 @@ krilla = { workspace = true, optional = true }
 thiserror = { workspace = true, optional = true }
 
 [dev-dependencies]
+flate2 = "1"
 hayro-syntax = "=0.7.2"
 hayro-interpret = { version = "=0.7.0", default-features = false }
 hayro-cmap = "=0.1.0"

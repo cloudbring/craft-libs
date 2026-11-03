@@ -4,6 +4,13 @@ Shared PDF infrastructure with independent optional features. Applications own d
 models, editing, layout, font policy, worker scheduling, output presets and printing.
 No feature is enabled by default.
 
+The independent `filters` feature provides bounded Flate, LZW, ASCIIHex, ASCII85
+and RunLength decoding, and optional TIFF/PNG predictor reversal. Limits also apply
+to the encoded predictor rows before their row tags are removed; stage accounting
+reports the final bytes.
+`Dct` passes the JPEG bytes through unchanged for the caller to decode;
+`Ccitt` returns `Error::Unsupported("CCITTFaxDecode")` and does not decode fax data.
+
 | Feature | Provides |
 | --- | --- |
 | `read` | Bounded opening and the patched Hayro syntax types |
