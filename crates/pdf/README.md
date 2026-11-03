@@ -4,6 +4,10 @@ Shared PDF infrastructure with independent optional features. Applications own d
 models, editing, layout, font policy, worker scheduling, output presets and printing.
 No feature is enabled by default.
 
+The independent `filters` feature provides bounded Flate and LZW decoding and
+optional TIFF/PNG predictor reversal. Limits also apply to the encoded predictor
+rows before their row tags are removed; stage accounting reports the final bytes.
+
 | Feature | Provides |
 | --- | --- |
 | `read` | Bounded opening and the patched Hayro syntax types |

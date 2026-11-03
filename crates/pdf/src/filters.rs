@@ -5,6 +5,9 @@
 use craft_archive::{BoundedInflate, InflateError, Wrapper};
 use weezl::{BitOrder, LzwStatus, decode::Decoder};
 
+mod predictor;
+pub use predictor::Predictor;
+
 /// Per-stage and cumulative resource ceilings.
 #[derive(Clone, Copy, Debug)]
 pub struct Limits {
@@ -26,6 +29,8 @@ pub enum Mode {
 pub enum Filter {
     Flate,
     Lzw { early_change: bool },
+    FlatePredictor(Predictor),
+    LzwPredictor { early_change: bool, predictor: Predictor },
 }
 
 /// Bytes consumed and emitted by a stage.
@@ -83,10 +88,30 @@ impl FilterChain {
                 return Err(Error::InputLimit);
             }
             let remaining = self.limits.max_output.saturating_sub(total);
-            let (output, accounting) = match *filter {
-                Filter::Flate => self.flate(&current, remaining)?,
-                Filter::Lzw { early_change } => self.lzw(&current, remaining, early_change)?,
+            let (mut output, mut accounting, predictor) = match *filter {
+                Filter::Flate => {
+                    let (output, accounting) = self.flate(&current, remaining)?;
+                    (output, accounting, None)
+                }
+                Filter::Lzw { early_change } => {
+                    let (output, accounting) = self.lzw(&current, remaining, early_change)?;
+                    (output, accounting, None)
+                }
+                Filter::FlatePredictor(predictor) => {
+                    let (output, accounting) = self.flate(&current, remaining)?;
+                    (output, accounting, Some(predictor))
+                }
+                Filter::LzwPredictor { early_change, predictor } => {
+                    let (output, accounting) = self.lzw(&current, remaining, early_change)?;
+                    (output, accounting, Some(predictor))
+                }
             };
+            if let Some(predictor) = predictor {
+                let (decoded, incomplete) = predictor::decode(predictor, output, self.mode)?;
+                output = decoded;
+                accounting.incomplete |= incomplete;
+                accounting.bytes_out = output.len() as u64;
+            }
             total += accounting.bytes_out;
             stages.push(accounting);
             current = output;
