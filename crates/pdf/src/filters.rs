@@ -6,6 +6,7 @@ use craft_archive::{BoundedInflate, InflateError, Wrapper};
 use weezl::{BitOrder, LzwStatus, decode::Decoder};
 
 mod predictor;
+mod simple;
 pub use predictor::Predictor;
 
 /// Per-stage and cumulative resource ceilings.
@@ -31,6 +32,9 @@ pub enum Filter {
     Lzw { early_change: bool },
     FlatePredictor(Predictor),
     LzwPredictor { early_change: bool, predictor: Predictor },
+    AsciiHex,
+    Ascii85,
+    RunLength,
 }
 
 /// Bytes consumed and emitted by a stage.
@@ -104,6 +108,10 @@ impl FilterChain {
                 Filter::LzwPredictor { early_change, predictor } => {
                     let (output, accounting) = self.lzw(&current, remaining, early_change)?;
                     (output, accounting, Some(predictor))
+                }
+                Filter::AsciiHex | Filter::Ascii85 | Filter::RunLength => {
+                    let (output, accounting) = simple::decode(*filter, &current, remaining, self.limits.max_ratio, self.mode)?;
+                    (output, accounting, None)
                 }
             };
             if let Some(predictor) = predictor {
