@@ -1,0 +1,26 @@
+name: Cache
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['crates/cache/**', 'crates/cache-derive/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/cache.yml']
+  pull_request:
+    paths: ['crates/cache/**', 'crates/cache-derive/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/cache.yml']
+permissions:
+  contents: read
+jobs:
+  cache:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec
+        with:
+          components: rustfmt, clippy
+      - run: cargo fmt --check
+      - run: cargo clippy -p craft-cache -p craft-cache-derive --all-targets --locked -- -D warnings
+      - run: cargo test -p craft-cache --locked

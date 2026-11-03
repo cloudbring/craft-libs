@@ -791,6 +791,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "craft-cache"
+version = "0.1.0"
+dependencies = [
+ "craft-cache-derive",
+ "proptest",
+]
+
+[[package]]
+name = "craft-cache-derive"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
+]
+
+[[package]]
 name = "craft-cms"
 version = "0.1.0"
 dependencies = [
