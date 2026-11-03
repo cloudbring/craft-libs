@@ -218,3 +218,31 @@ fn lenient_open_skips_escaping_relationship_targets() -> Result<(), Box<dyn std:
     assert!(rels.by_id("rId2").is_none());
     Ok(())
 }
+
+#[test]
+fn verbatim_relationship_sidecars_round_trip_byte_for_byte() -> Result<(), Box<dyn std::error::Error>> {
+    const RAW: &[u8] = br#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/customXmlProps" Target="itemProps1.xml"/></Relationships>"#;
+    let mut writer = PackageWriter::new();
+    writer.add_part("customXml/item1.xml", "application/xml", b"<i/>".to_vec())?;
+    writer.add_part("customXml/itemProps1.xml", "application/xml", b"<p/>".to_vec())?;
+    writer.add_relationships_bytes("customXml/item1.xml", RAW)?;
+    assert!(writer.add_relationship("customXml/item1.xml", "rId9", "t", "itemProps1.xml", TargetMode::Internal).is_err());
+    let bytes = writer.finish()?;
+    let mut archive = zip::ZipArchive::new(std::io::Cursor::new(&bytes))?;
+    let mut out = Vec::new();
+    std::io::Read::read_to_end(&mut archive.by_name("customXml/_rels/item1.xml.rels")?, &mut out)?;
+    assert_eq!(out, RAW);
+    let package = Package::open(&bytes, &OpcLimits::default())?;
+    // Resolved targets are canonical (lowercase) like every other `Package` lookup key.
+    assert!(package.rels_of("customXml/item1.xml").and_then(|r| r.by_id("rId1")).is_some_and(|r| r.target.eq_ignore_ascii_case("customXml/itemProps1.xml")));
+    let mut bad = PackageWriter::new();
+    bad.add_part("a/x.xml", "application/xml", b"<x/>".to_vec())?;
+    assert!(
+        bad.add_relationships_bytes(
+            "a/x.xml",
+            br#"<Relationships xmlns="r"><Relationship Id="rId1" Type="t" Target="../../etc/passwd"/></Relationships>"#.to_vec()
+        )
+        .is_err()
+    );
+    Ok(())
+}

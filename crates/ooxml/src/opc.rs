@@ -410,6 +410,8 @@ pub struct PackageWriter {
     parts: BTreeMap<String, (String, String, Vec<u8>)>,
     insertion: Vec<String>,
     rels: BTreeMap<String, Relationships>,
+    /// Relationship sidecars supplied verbatim (kept parts round-trip byte-for-byte).
+    raw_rels: BTreeMap<String, Vec<u8>>,
     policy: WritePolicy,
 }
 
@@ -445,11 +447,42 @@ impl PackageWriter {
         if mode == TargetMode::Internal {
             resolve_target(source, target)?;
         }
-        let rels = self.rels.entry(source.to_ascii_lowercase()).or_default();
+        let key = source.to_ascii_lowercase();
+        if self.raw_rels.contains_key(&key) {
+            return Err(OpcError::Invalid("relationships for this source were supplied verbatim".into()));
+        }
+        let rels = self.rels.entry(key).or_default();
         if rels.by_id(id).is_some() {
             return Err(OpcError::Invalid("duplicate relationship id".into()));
         }
         rels.0.push(Relationship { id: id.into(), kind: kind.into(), target: target.into(), mode });
+        Ok(())
+    }
+
+    /// Emit a part's `.rels` sidecar exactly as given (for parts carried over from an input
+    /// package). The bytes must parse as a `Relationships` document whose internal targets stay
+    /// inside the package; they are not reformatted. Mutually exclusive with
+    /// [`add_relationship`](Self::add_relationship) for the same source.
+    pub fn add_relationships_bytes(&mut self, source: &str, bytes: impl Into<Vec<u8>>) -> Result<(), OpcError> {
+        let source = if source.is_empty() { "" } else { checked_part(source)? };
+        let bytes = bytes.into();
+        let root = dom::parse(&bytes, &Limits::default())?;
+        if root.name != "Relationships" {
+            return Err(OpcError::Invalid("relationships root".into()));
+        }
+        for node in root.children("Relationship") {
+            let (Some(_), Some(_), Some(raw)) = (node.attr("Id"), node.attr("Type"), node.attr("Target")) else {
+                return Err(OpcError::Invalid("incomplete relationship".into()));
+            };
+            if !node.attr("TargetMode").is_some_and(|value| value.eq_ignore_ascii_case("external")) {
+                resolve_target(source, raw)?;
+            }
+        }
+        let key = source.to_ascii_lowercase();
+        if self.rels.contains_key(&key) || self.raw_rels.contains_key(&key) {
+            return Err(OpcError::Invalid("relationships for this source already added".into()));
+        }
+        self.raw_rels.insert(key, bytes);
         Ok(())
     }
 
@@ -519,6 +552,13 @@ impl PackageWriter {
 
     fn relationship_files(&self) -> Result<Vec<(String, Vec<u8>)>, OpcError> {
         let mut files = Vec::new();
+        for (source, bytes) in &self.raw_rels {
+            if !source.is_empty() && !self.parts.contains_key(source) {
+                return Err(OpcError::Invalid(format!("missing relationship source: {source}")));
+            }
+            let original = if source.is_empty() { "" } else { self.parts[source].0.as_str() };
+            files.push((rels_path(original), bytes.clone()));
+        }
         for (source, rels) in &self.rels {
             if !source.is_empty() && !self.parts.contains_key(source) {
                 return Err(OpcError::Invalid(format!("missing relationship source: {source}")));
