@@ -1,0 +1,16 @@
+# Provenance: gridcraft/xtask/src/layers.rs; captured 2026-11-03.
+layers = [["L0", ["gridcraft-core", "gridcraft-numfmt", "gridcraft-pdf"]], ["L1", ["gridcraft-formula", "gridcraft-functions", "gridcraft-math"]], ["L2", ["gridcraft-model", "gridcraft-calc", "gridcraft-xlsx"]], ["L3", ["gridcraft-chart"]], ["L4", []], ["L5", ["gridcraft-engine"]], ["L6", ["gridcraft-ui-egui", "gridcraft-mcp"]]]
+exempt = ["gridcraft", "gridcraft-cli", "gridcraft-web", "xtask"]
+standalone = []
+testkits = []
+allowed_edges = [["gridcraft-numfmt", "gridcraft-core"], ["gridcraft-functions", "gridcraft-formula"], ["gridcraft-calc", "gridcraft-model"], ["gridcraft-xlsx", "gridcraft-model"]]
+allowed_dev_edges = []
+
+[[external_rules]]
+dependencies = ["egui*", "eframe", "winit", "rfd", "wgpu*"]
+allowed_from = ["gridcraft-ui-egui", "gridcraft-mcp"]
+
+[[workspace_rules]]
+from = "gridcraft-xlsx"
+allowed = ["gridcraft-core", "gridcraft-formula", "gridcraft-math", "gridcraft-model"]
+allow_dev = true

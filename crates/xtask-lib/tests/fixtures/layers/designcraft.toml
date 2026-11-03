@@ -1,0 +1,11 @@
+# Provenance: designcraft/xtask/src/layers.rs; captured 2026-11-03.
+layers = [["L0", ["designcraft-geom", "designcraft-color"]], ["L1", ["designcraft-doc", "designcraft-fonts"]], ["L2", ["designcraft-compose", "designcraft-images"]], ["L3", ["designcraft-render", "designcraft-pdf", "designcraft-idml", "designcraft-epub", "designcraft-pptx", "designcraft-textimport", "designcraft-format"]], ["L4", ["designcraft-tools"]], ["L5", ["designcraft-engine"]], ["L6", ["designcraft-ui-egui", "designcraft-mcp", "designcraft-testkit"]]]
+exempt = ["designcraft", "designcraft-cli", "designcraft-web", "xtask"]
+standalone = []
+testkits = ["designcraft-testkit"]
+allowed_edges = [["designcraft-color", "designcraft-geom"], ["designcraft-fonts", "designcraft-doc"]]
+allowed_dev_edges = []
+
+[[external_rules]]
+dependencies = ["craft-ui", "craft-window", "egui", "eframe", "winit", "egui_kittest", "rfd", "bevy*"]
+allowed_from = ["designcraft-ui-egui", "designcraft-mcp", "designcraft-testkit"]

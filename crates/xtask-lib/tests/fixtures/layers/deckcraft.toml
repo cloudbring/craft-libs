@@ -1,0 +1,11 @@
+# Provenance: deckcraft/xtask/src/layers.rs; captured 2026-11-03.
+layers = [["L0", ["deckcraft-geom", "deckcraft-bitstream", "deckcraft-matroska", "deckcraft-ogg", "deckcraft-opus", "deckcraft-color", "deckcraft-metafile"]], ["L1", ["deckcraft-h264", "deckcraft-hevc", "deckcraft-vp9", "deckcraft-av1", "deckcraft-isobmff", "deckcraft-model", "deckcraft-fonts"]], ["L2", ["deckcraft-media", "deckcraft-text", "deckcraft-anim", "deckcraft-format"]], ["L3", ["deckcraft-render", "deckcraft-pptx"]], ["L4", ["deckcraft-pdf"]], ["L5", ["deckcraft-engine"]], ["L6", ["deckcraft-ui-egui", "deckcraft-mcp", "deckcraft-testkit"]]]
+exempt = ["deckcraft", "deckcraft-cli", "deckcraft-web", "xtask"]
+standalone = ["deckcraft-bitstream", "deckcraft-matroska", "deckcraft-ogg", "deckcraft-opus"]
+testkits = ["deckcraft-testkit"]
+allowed_edges = []
+allowed_dev_edges = [["deckcraft-pptx", "deckcraft-engine"]]
+
+[[external_rules]]
+dependencies = ["egui", "eframe", "winit", "egui_kittest", "rfd", "bevy*"]
+allowed_from = ["deckcraft-ui-egui", "deckcraft-mcp", "deckcraft-testkit"]

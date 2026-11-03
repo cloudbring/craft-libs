@@ -70,6 +70,7 @@ craft-view = { path = "crates/view" }
 craft-vp8 = { path = "crates/vp8" }
 craft-vp9 = { path = "crates/vp9" }
 craft-window = { path = "crates/window" }
+craft-xtask = { path = "crates/xtask-lib" }
 krilla = { version = "=0.8.2", default-features = false, features = ["raster-images"] }
 hayro = { version = "=0.7.1", default-features = false }
 hayro-interpret = { version = "=0.7.0", default-features = false, features = ["embed-fonts", "embed-cmaps"] }

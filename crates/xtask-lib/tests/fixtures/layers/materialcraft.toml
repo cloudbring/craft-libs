@@ -1,0 +1,15 @@
+# Provenance: materialcraft/xtask/src/layers.rs; captured 2026-11-03.
+layers = [["L0", ["materialcraft-core", "materialcraft-image", "materialcraft-geom"]], ["L1", ["materialcraft-nodes"]], ["L2", ["materialcraft-eval", "materialcraft-formats"]], ["L3", ["materialcraft-engine", "materialcraft-render"]], ["L4", ["materialcraft-automation"]], ["L5", ["materialcraft-ui-egui"]]]
+exempt = ["materialcraft", "materialcraft-cli", "materialcraft-web", "xtask"]
+standalone = []
+testkits = []
+allowed_edges = []
+allowed_dev_edges = []
+
+[[external_rules]]
+dependencies = ["egui", "egui_*", "egui-*", "eframe", "winit", "rfd"]
+allowed_from = ["materialcraft-ui-egui"]
+
+[[external_rules]]
+dependencies = ["wgpu", "wgpu-*"]
+allowed_from = ["materialcraft-render", "materialcraft-ui-egui"]

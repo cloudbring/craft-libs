@@ -23,7 +23,16 @@ Apps depend on a crate by git:
 craft-<name> = { git = "https://github.com/storytold/craft-libs", rev = "<commit>" }
 ```
 
+## Development-tool layering
+
+`app xtask → craft-xtask → craft-hash`. `craft-xtask` is a dev-tool dependency for apps'
+`xtask` crates only; runtime libraries and application binaries must not depend on it.
+Its process/filesystem tooling is native-only and is not part of the per-crate wasm checks.
+
 ## Libraries
+
+- [`craft-xtask`](crates/xtask-lib/README.md): shared native version, statistics, ICO/ICNS,
+  layer, parity, PDF dependency and SHA-256 build-tool tasks.
 
 - [`craft-ai-core`](crates/ai-core/README.md): the data model and contract for AI in the Craft Apps (connections, models, tools, requests, jobs, consent, history, route spec). Pure, no I/O, wasm-safe. Contract in [docs/ai-shared-layer.md](docs/ai-shared-layer.md).
 - [`craft-archive`](crates/archive/README.md): bounded raw/zlib/gzip DEFLATE decoding with byte accounting, validated ZIP entries and CRC-checked PNG chunks.

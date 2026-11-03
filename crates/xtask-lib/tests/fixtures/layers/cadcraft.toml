@@ -1,0 +1,11 @@
+# Provenance: cadcraft/xtask/src/layers.rs; captured 2026-11-03.
+layers = [["L0", ["cadcraft-geom", "cadcraft-dxf", "cadcraft-dwg", "cadcraft-color"]], ["L1", ["cadcraft-doc"]], ["L2", ["cadcraft-constraints", "cadcraft-fonts", "cadcraft-render"]], ["L3", ["cadcraft-io"]], ["L4", ["cadcraft-engine"]], ["L5", ["cadcraft-ui-egui", "cadcraft-mcp"]], ["L6", ["cadcraft-testkit"]]]
+exempt = ["cadcraft", "cadcraft-cli", "cadcraft-web", "xtask"]
+standalone = ["cadcraft-dxf", "cadcraft-dwg"]
+testkits = ["cadcraft-testkit"]
+allowed_edges = [["cadcraft-color", "cadcraft-geom"], ["cadcraft-render", "cadcraft-fonts"]]
+allowed_dev_edges = []
+
+[[external_rules]]
+dependencies = ["craft-ui", "egui", "eframe", "egui-wgpu", "wgpu", "winit", "egui_kittest", "rfd", "bevy*"]
+allowed_from = ["cadcraft-ui-egui", "cadcraft-mcp", "cadcraft-testkit"]

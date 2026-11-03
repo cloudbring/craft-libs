@@ -1,0 +1,11 @@
+# Provenance: lightcraft/xtask/src/layers.rs; captured 2026-11-03.
+layers = [["L0", ["lightcraft-geom", "lightcraft-color", "lightcraft-raster", "lightcraft-tiff", "lightcraft-sysmem", "lightcraft-fetch", "lightcraft-heif"]], ["L1", ["lightcraft-denoise-core", "lightcraft-denoise", "lightcraft-raw", "lightcraft-codecs", "lightcraft-meta", "lightcraft-develop", "lightcraft-inpaint", "lightcraft-faces", "lightcraft-geocode", "lightcraft-scenes", "lightcraft-slideshow"]], ["L2", ["lightcraft-lensdb", "lightcraft-pipeline"]], ["L3", ["lightcraft-gpu", "lightcraft-catalog", "lightcraft-preview", "lightcraft-export", "lightcraft-merge", "lightcraft-segment"]], ["L4", ["lightcraft-engine"]], ["L5", ["lightcraft-ui-egui", "lightcraft-mcp", "lightcraft-testkit"]]]
+exempt = ["lightcraft", "lightcraft-cli", "lightcraft-web", "xtask"]
+standalone = []
+testkits = ["lightcraft-testkit"]
+allowed_edges = [["lightcraft-color", "lightcraft-geom"], ["lightcraft-raster", "lightcraft-geom"], ["lightcraft-raster", "lightcraft-color"], ["lightcraft-raster", "lightcraft-tiff"], ["lightcraft-denoise", "lightcraft-denoise-core"], ["lightcraft-raw", "lightcraft-meta"], ["lightcraft-codecs", "lightcraft-meta"], ["lightcraft-develop", "lightcraft-meta"], ["lightcraft-scenes", "lightcraft-develop"], ["lightcraft-raw", "lightcraft-codecs"]]
+allowed_dev_edges = []
+
+[[external_rules]]
+dependencies = ["craft-ui", "egui", "eframe", "winit", "egui_kittest", "rfd", "bevy*"]
+allowed_from = ["lightcraft-ui-egui", "lightcraft-mcp", "lightcraft-testkit"]

@@ -1,0 +1,17 @@
+# Provenance: figcraft/xtask/src/layers.rs; captured 2026-11-03.
+layers = [["L0", ["figcraft-geom", "figcraft-color"]], ["L1", ["figcraft-doc"]], ["L2", ["figcraft-layout", "figcraft-text", "figcraft-pathops", "figcraft-collab", "figcraft-plugin"]], ["L3", ["figcraft-render", "figcraft-format"]], ["L4", ["figcraft-svg", "figcraft-pdf", "figcraft-vectordrawable"]], ["L5", ["figcraft-engine"]], ["L6", ["figcraft-ui-egui", "figcraft-mcp", "figcraft-collab-net"]]]
+exempt = []
+standalone = []
+testkits = []
+allowed_edges = [["figcraft-color", "figcraft-geom"], ["figcraft-render", "figcraft-format"], ["figcraft-mcp", "figcraft-collab-net"]]
+allowed_dev_edges = []
+ignore_dev = true
+reject_unregistered = false
+
+[[external_rules]]
+dependencies = ["egui", "eframe", "rfd", "winit"]
+allowed_from = ["figcraft-ui-egui", "figcraft-mcp", "figcraft-collab-net"]
+
+[[external_rules]]
+dependencies = ["tungstenite", "tokio", "tokio-tungstenite", "mio", "socket2"]
+allowed_from = ["figcraft-ui-egui", "figcraft-mcp", "figcraft-collab-net"]

@@ -1,0 +1,15 @@
+# Provenance: texturecraft/xtask/src/layers.rs; captured 2026-11-03.
+layers = [["L0", ["texturecraft-core", "texturecraft-texel", "texturecraft-geom"]], ["L1", ["texturecraft-compose", "texturecraft-bake"]], ["L2", ["texturecraft-paint", "texturecraft-formats"]], ["L3", ["texturecraft-engine", "texturecraft-render"]], ["L4", ["texturecraft-automation"]], ["L5", ["texturecraft-ui-egui"]]]
+exempt = ["texturecraft", "texturecraft-cli", "texturecraft-web", "xtask"]
+standalone = []
+testkits = []
+allowed_edges = []
+allowed_dev_edges = []
+
+[[external_rules]]
+dependencies = ["egui", "egui_*", "egui-*", "eframe", "winit", "rfd"]
+allowed_from = ["texturecraft-ui-egui"]
+
+[[external_rules]]
+dependencies = ["wgpu", "wgpu-*"]
+allowed_from = ["texturecraft-render", "texturecraft-ui-egui"]

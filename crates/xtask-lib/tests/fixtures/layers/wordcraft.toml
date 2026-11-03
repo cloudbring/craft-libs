@@ -1,0 +1,11 @@
+# Provenance: wordcraft/xtask/src/layers.rs; captured 2026-11-03.
+layers = [["L0", ["wordcraft-geom", "wordcraft-control-key"]], ["L1", ["wordcraft-doc", "wordcraft-fonts", "wordcraft-metafile"]], ["L2", ["wordcraft-layout", "wordcraft-docx", "wordcraft-docbin", "wordcraft-formats"]], ["L3", ["wordcraft-render", "wordcraft-pdf"]], ["L4", ["wordcraft-engine"]], ["L5", ["wordcraft-mcp", "wordcraft-zotero"]], ["L6", ["wordcraft-ui-egui", "wordcraft-testkit"]]]
+exempt = ["wordcraft", "wordcraft-cli", "wordcraft-web", "xtask"]
+standalone = ["wordcraft-control-key"]
+testkits = ["wordcraft-testkit"]
+allowed_edges = [["wordcraft-fonts", "wordcraft-doc"]]
+allowed_dev_edges = []
+
+[[external_rules]]
+dependencies = ["egui", "eframe", "winit", "egui_kittest", "rfd", "bevy*"]
+allowed_from = ["wordcraft-ui-egui", "wordcraft-testkit"]
