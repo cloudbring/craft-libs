@@ -270,4 +270,77 @@ mod tests {
         assert!(decoded.stages[0].incomplete);
         Ok(())
     }
+
+    #[test]
+    fn boundaries_for_each_filter() -> Result<(), Box<dyn std::error::Error>> {
+        let payload = b"abcd";
+        let mut zlib = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default());
+        zlib.write_all(payload)?;
+        let zlib = zlib.finish()?;
+        let lzw = Encoder::new(BitOrder::Msb, 8).encode(payload)?;
+        let cases: [(Filter, &[u8]); 7] = [
+            (Filter::Flate, &zlib),
+            (Filter::Lzw { early_change: false }, &lzw),
+            (Filter::FlatePredictor(Predictor::default()), &zlib),
+            (Filter::LzwPredictor { early_change: false, predictor: Predictor::default() }, &lzw),
+            (Filter::AsciiHex, b"61626364>"),
+            (Filter::Ascii85, b"@:E_W~>"),
+            (Filter::RunLength, &[3, b'a', b'b', b'c', b'd', 128]),
+        ];
+        for (filter, encoded) in cases {
+            let mut test = chain(filter, 4);
+            test.limits.max_input = encoded.len() as u64;
+            let result = test.decode(encoded).map_err(|error| format!("{filter:?}: {error:?}"))?;
+            assert_eq!(result.data, payload, "{filter:?}");
+            test.limits.max_output = 3;
+            assert!(matches!(test.decode(encoded), Err(Error::OutputLimit)), "{filter:?}");
+            test.limits.max_output = 4;
+            test.limits.max_input -= 1;
+            assert!(matches!(test.decode(encoded), Err(Error::InputLimit)), "{filter:?}");
+            test.limits.max_input += 1;
+            test.limits.max_ratio = 0;
+            assert!(matches!(test.decode(encoded), Err(Error::RatioLimit)), "{filter:?}");
+            test.limits.max_depth = 0;
+            assert!(matches!(test.decode(encoded), Err(Error::DepthLimit)), "{filter:?}");
+        }
+        let encoded = [253, b'x', 128];
+        let mut test = chain(Filter::RunLength, 4);
+        test.limits.max_ratio = 2;
+        assert!(test.decode(&encoded).is_ok());
+        test.limits.max_ratio = 1;
+        assert!(matches!(test.decode(&encoded), Err(Error::RatioLimit)));
+        Ok(())
+    }
+
+    #[test]
+    fn chain_cumulative_budget_boundary() -> Result<(), Box<dyn std::error::Error>> {
+        let mut test = chain(Filter::AsciiHex, 7);
+        test.filters.push(Filter::AsciiHex);
+        test.limits.max_depth = 2;
+        let decoded = test.decode(b"343134323E>").map_err(|error| format!("{error:?}"))?;
+        assert_eq!(decoded.data, b"AB");
+        assert_eq!(decoded.stages.iter().map(|stage| stage.bytes_out).sum::<u64>(), 7);
+        test.limits.max_output = 6;
+        assert!(matches!(test.decode(b"343134323E>"), Err(Error::OutputLimit)));
+        Ok(())
+    }
+
+    #[test]
+    fn nested_flate_bomb_stops_at_ratio_limit() -> Result<(), Box<dyn std::error::Error>> {
+        fn compress(data: &[u8]) -> std::io::Result<Vec<u8>> {
+            let mut encoder = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::best());
+            encoder.write_all(data)?;
+            encoder.finish()
+        }
+        let inner = compress(&vec![0; 1_000_000])?;
+        let outer = compress(&inner)?;
+        assert!(1_000_000 / inner.len() >= 1000);
+        let mut test = chain(Filter::Flate, 2_000_000);
+        test.limits.max_ratio = 50;
+        assert_eq!(test.decode(&outer).map_err(|error| format!("{error:?}"))?.data, inner);
+        test.filters.push(Filter::Flate);
+        test.limits.max_depth = 2;
+        assert!(matches!(test.decode(&outer), Err(Error::RatioLimit)));
+        Ok(())
+    }
 }
