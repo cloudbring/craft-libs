@@ -21,9 +21,8 @@
 //!   Data persistence across power failures involves two sync points:
 //!   1. **Content Flush (`sync_file`)**: The staging file's payload is forced to non-volatile storage
 //!      (`F_FULLFSYNC` on macOS, `sync_all` on Windows/Linux) *before* the atomic rename.
-//!   2. **Directory Flush (`sync_dir`, Unix only)**: On Unix, flushing the parent directory table is
-//!      attempted *after* the rename on a best-effort basis. If directory sync fails, the error is ignored
-//!      because the rename has already committed and the destination has already been replaced.
+//!   2. **Directory Flush (`sync_dir`)**: A failed flush after publication returns a
+//!      [`PublicationError`]; the destination has already been replaced and must not be rolled back.
 //!   3. **Hardware Durability Limits**: While this enforces strict kernel dispatch order
 //!      (`sync_file < rename < sync_dir`), software flushes cannot guarantee data survival across
 //!      unbuffered drive controller write-caching or physical power cutoffs.
@@ -77,6 +76,27 @@ impl std::fmt::Display for SymlinkRefused {
 }
 
 impl std::error::Error for SymlinkRefused {}
+
+/// Publication succeeded, but the directory sync failed and durability is unconfirmed.
+#[derive(Debug)]
+pub struct PublicationError {
+    /// The destination already published.
+    pub path: PathBuf,
+    /// The directory sync failure.
+    pub source: io::Error,
+}
+
+impl std::fmt::Display for PublicationError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(formatter, "{} was written, but may not survive a power loss: {}", self.path.display(), self.source)
+    }
+}
+
+impl std::error::Error for PublicationError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.source)
+    }
+}
 
 /// A progress sink requested that the staged write be cancelled.
 #[derive(Debug)]
@@ -154,6 +174,10 @@ pub trait AtomicFs {
     fn sync_dir(&self, dir: &Path) -> io::Result<()>;
     /// Give the open temporary file its final permissions.
     fn set_permissions(&self, file: &File, perms: std::fs::Permissions) -> io::Result<()>;
+    /// Set the staged file's modification time before syncing it.
+    fn set_modified(&self, file: &File, modified: std::time::SystemTime) -> io::Result<()> {
+        file.set_times(std::fs::FileTimes::new().set_modified(modified))
+    }
 }
 
 /// The production file system implementation.
@@ -291,15 +315,36 @@ pub struct WriteOptions {
     pub follow_symlinks: bool,
     /// Permit exclusive creation by copying, which exposes partial contents to readers.
     pub allow_non_atomic_fallback: bool,
+    /// Preserve the existing destination's modification time during replacement.
+    pub preserve_metadata: bool,
+    /// Create missing destination parent directories.
+    pub create_parents: bool,
 }
 
 impl Default for WriteOptions {
     fn default() -> Self {
-        Self { new_file_permissions: NewFilePermissions::default(), follow_symlinks: true, allow_non_atomic_fallback: false }
+        Self {
+            new_file_permissions: NewFilePermissions::default(),
+            follow_symlinks: true,
+            allow_non_atomic_fallback: false,
+            preserve_metadata: false,
+            create_parents: false,
+        }
     }
 }
 
 impl WriteOptions {
+    /// Preserve an existing file's mode and modification time; errors abort the replacement.
+    pub const fn with_preserve_metadata(mut self, preserve: bool) -> Self {
+        self.preserve_metadata = preserve;
+        self
+    }
+
+    /// Create missing parent directories before staging.
+    pub const fn with_create_parents(mut self, create: bool) -> Self {
+        self.create_parents = create;
+        self
+    }
     /// Stream through a progress-reporting writer with an injected filesystem and retry policy.
     /// Reports describe bytes staged, not completion of sync or publication.
     pub fn atomic_write_with_progress_custom(
@@ -445,23 +490,23 @@ fn replace_configured(
 ) -> io::Result<()> {
     let target = resolve_links(path, options.follow_symlinks)?;
     let (dir, name) = split(&target, path)?;
+    if options.create_parents {
+        std::fs::create_dir_all(&dir)?;
+    }
     let existing = std::fs::metadata(&target).ok();
     let existed = existing.is_some();
     if existing.as_ref().is_some_and(|m| m.is_file()) {
         check_writable(&target).map_err(|e| read_only_error(e, path))?;
     }
 
-    let tmp = stage(fs, &dir, &name, path, existing.as_ref(), options.new_file_permissions, fill)?;
+    let tmp = stage(fs, &dir, &name, path, existing.as_ref(), options, fill)?;
 
     if let Err(e) = retry_rename(retry, || fs.rename(&tmp, &target)) {
         let _ = fs.remove(&tmp);
         return Err(rename_error(e, path, existed));
     }
 
-    // The new bytes are in place; a failed directory fsync can't be undone and must not report
-    // the save as failed, so it is best effort.
-    let _ = fs.sync_dir(&dir);
-    Ok(())
+    sync_published_dir(fs, &dir, path)
 }
 
 /// A rename replaces a file the user can't write (Unix only needs the folder to be writable), so
@@ -496,7 +541,7 @@ fn stage(
     name: &str,
     path: &Path,
     replaced: Option<&std::fs::Metadata>,
-    new_permissions: NewFilePermissions,
+    options: WriteOptions,
     fill: impl FnOnce(&mut File) -> io::Result<()>,
 ) -> io::Result<PathBuf> {
     let existed = replaced.is_some();
@@ -504,7 +549,7 @@ fn stage(
     let perms = replaced.filter(|_| cfg!(unix)).map(|m| m.permissions());
     // New documents inherit the directory's policy directly: no probe or chmod is needed.
     // Existing destinations still stage privately, including when their final mode is shared.
-    let creation = if existed { NewFilePermissions::Private } else { new_permissions };
+    let creation = if existed { NewFilePermissions::Private } else { options.new_file_permissions };
     for _ in 0..8 {
         let tmp = dir.join(temp_name(name));
         let mut file = match fs.create_new(&tmp, creation) {
@@ -514,6 +559,15 @@ fn stage(
         };
         let written = fill(&mut file)
             .map_err(|e| write_error(e, path, dir, existed))
+            .and_then(|()| {
+                if options.preserve_metadata {
+                    replaced.map_or(Ok(()), |metadata| {
+                        metadata.modified().and_then(|modified| fs.set_modified(&file, modified)).map_err(|e| permissions_error(e, path))
+                    })
+                } else {
+                    Ok(())
+                }
+            })
             .and_then(|()| perms.map_or(Ok(()), |p| fs.set_permissions(&file, p).map_err(|e| permissions_error(e, path))))
             .and_then(|()| fs.sync(&file).map_err(|e| write_error(e, path, dir, existed)));
         drop(file);
@@ -565,11 +619,14 @@ fn create_with_options(
 fn create_configured(fs: &dyn AtomicFs, path: &Path, options: WriteOptions, fill: impl FnOnce(&mut File) -> io::Result<()>) -> io::Result<()> {
     let target = resolve_links(path, options.follow_symlinks)?;
     let (dir, name) = split(&target, path)?;
+    if options.create_parents {
+        std::fs::create_dir_all(&dir)?;
+    }
     if target.exists() {
         return Err(write_error(io::Error::from(io::ErrorKind::AlreadyExists), path, &dir, true));
     }
 
-    let tmp = stage(fs, &dir, &name, path, None, options.new_file_permissions, fill)?;
+    let tmp = stage(fs, &dir, &name, path, None, options, fill)?;
 
     let placed = match fs.hard_link(&tmp, &target) {
         Err(e) if e.kind() != io::ErrorKind::AlreadyExists && options.allow_non_atomic_fallback => {
@@ -589,9 +646,15 @@ fn create_configured(fs: &dyn AtomicFs, path: &Path, options: WriteOptions, fill
         return Err(write_error(e, path, &dir, existed));
     }
 
-    // The new file is in place; a failed directory fsync can't be undone and is best effort.
-    let _ = fs.sync_dir(&dir);
-    Ok(())
+    sync_published_dir(fs, &dir, path)
+}
+
+fn sync_published_dir(fs: &dyn AtomicFs, dir: &Path, path: &Path) -> io::Result<()> {
+    match fs.sync_dir(dir) {
+        #[cfg(not(windows))]
+        Err(source) if source.kind() == io::ErrorKind::Unsupported || (cfg!(unix) && source.raw_os_error() == Some(22)) => Ok(()),
+        result => result.map_err(|source| io::Error::new(source.kind(), PublicationError { path: path.to_path_buf(), source })),
+    }
 }
 
 /// Copy `tmp` into `target`, which must not exist yet, and flush it. A partly written `target` is
@@ -812,6 +875,7 @@ mod tests {
         no_hard_links: bool,
         fail_link: Option<io::ErrorKind>,
         fail_permissions: bool,
+        fail_modified: bool,
         fail_sync_dir: bool,
         fail_normal_create: bool,
         normal_collisions: Cell<u32>,
@@ -891,6 +955,12 @@ mod tests {
                 return Err(io::Error::new(io::ErrorKind::PermissionDenied, "injected: operation not permitted"));
             }
             RealFs.set_permissions(file, perms)
+        }
+        fn set_modified(&self, file: &File, modified: std::time::SystemTime) -> io::Result<()> {
+            if self.fail_modified {
+                return Err(io::Error::new(io::ErrorKind::PermissionDenied, "injected timestamp failure"));
+            }
+            RealFs.set_modified(file, modified)
         }
     }
 
@@ -1368,12 +1438,24 @@ mod tests {
     }
 
     #[test]
-    fn sync_dir_failure_is_best_effort() {
+    fn sync_dir_failure_reports_publication() {
         let d = TempDir::new("best_effort_sync_dir");
         let p = d.0.join("doc.craft");
         let fs = Faulty { fail_sync_dir: true, ..Default::default() };
-        assert!(atomic_write_custom(&fs, NO_RETRY, &p, b"best effort data").is_ok());
+        let error = atomic_write_custom(&fs, NO_RETRY, &p, b"best effort data").err();
+        assert!(error.as_ref().and_then(io::Error::get_ref).is_some_and(|source| source.is::<PublicationError>()));
         assert_eq!(std::fs::read(&p).ok(), Some(b"best effort data".to_vec()));
         assert_no_temp(&d.0);
+    }
+
+    #[test]
+    fn metadata_failure_leaves_original_untouched() {
+        let dir = TempDir::new("modified_failure");
+        let path = dir.0.join("doc.craft");
+        std::fs::write(&path, ORIGINAL).ok();
+        let fs = Faulty { fail_modified: true, ..Default::default() };
+        assert!(WriteOptions::default().with_preserve_metadata(true).atomic_write_custom(&fs, NO_RETRY, &path, b"new").is_err());
+        assert_eq!(std::fs::read(&path).ok().as_deref(), Some(ORIGINAL));
+        assert_no_temp(&dir.0);
     }
 }

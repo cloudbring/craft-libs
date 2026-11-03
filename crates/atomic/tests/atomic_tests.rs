@@ -69,6 +69,31 @@ fn assert_no_temp(dir: &Path) {
 const ORIGINAL: &[u8] = b"original precious document";
 
 #[test]
+fn options_create_parents_and_preserve_modified_time() -> io::Result<()> {
+    let dir = TempDir::new("parents-metadata");
+    let path = dir.0.join("a/b/doc.dat");
+    assert!(craft_atomic::atomic_write(&path, b"old").is_err());
+    craft_atomic::WriteOptions::default().with_create_parents(true).atomic_write(&path, b"old")?;
+    let modified = std::time::SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(1_600_000_000);
+    std::fs::OpenOptions::new().write(true).open(&path)?.set_times(std::fs::FileTimes::new().set_modified(modified))?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o640))?;
+    }
+    craft_atomic::WriteOptions::default().with_preserve_metadata(true).atomic_write(&path, b"new")?;
+    let metadata = std::fs::metadata(&path)?;
+    assert_eq!(metadata.modified()?, modified);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        assert_eq!(metadata.permissions().mode() & 0o777, 0o640);
+    }
+    assert_eq!(std::fs::read(&path)?, b"new");
+    Ok(())
+}
+
+#[test]
 fn atomic_write_with_streaming_writer() {
     let d = TempDir::new("stream");
     let p = d.0.join("doc.dat");

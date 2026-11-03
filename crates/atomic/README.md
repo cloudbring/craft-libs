@@ -11,7 +11,7 @@ Extracted from the storage engine in **PhotoCraft** (refs #2, #14), it guarantee
 1. **Atomicity (All-or-Nothing Replacement)**: `atomic_write` never truncates or overwrites the destination in place. It stages content in a hidden temporary file beside the destination (`.{stem}.{pid}-{n}.craft_tmp`), guaranteeing same-volume rename semantics (`EXDEV`-free). An external reader never sees a partial write. If an error occurs during staging or rename, the destination retains its prior bytes and the staging file is unlinked in user space. An abnormal process exit (e.g. `SIGKILL`, crash, or power loss) bypasses user-space cleanup and leaves the staging file on disk; sweeping orphaned staging files is delegated to consuming application recovery routines. The destination file itself is never corrupted.
 2. **Durability & Ordering Boundaries**:
    - **Content Flush**: Before rename, staging file bytes are flushed to physical storage media (`sync_file`, issuing `F_FULLFSYNC` on macOS/APFS with SMB `fsync` fallback).
-   - **Directory Flush (Unix)**: After rename, syncing the parent directory table (`sync_dir`) is attempted on a best-effort basis. If directory sync fails, the error is ignored because the rename has already committed and the destination has already been replaced.
+   - **Directory Flush**: After publication, a directory sync failure returns an `io::Error` containing `PublicationError`: the destination already contains the new bytes, but durability is unconfirmed. Unsupported directory sync is accepted on non-Windows platforms.
    - **Hardware Durability Limits**: The sequence `sync_file < rename < sync_dir` proves ordering and kernel dispatch. Software tests do not prove survival across physical power interruption or unbuffered drive controller write caches.
 3. **Transient Lock Backoff (Windows)**: Antivirus scanners and search indexers hold newly written files momentarily. `RenameRetry` automatically retries renames encountering `PermissionDenied`, sharing violations (32), or lock violations (33) with exponential backoff capped at 200ms.
 4. **Permission & Symlink Invariants**: On Unix, new documents and exports use normal creation permissions (`0666`, subject to umask/default ACL), including their staging files. Private data must explicitly select `NewFilePermissions::Private` to create staging files with mode `0600`. Replacements always stage privately and restore the existing destination mode after the streaming callback. New files keep callback-selected modes with both hard links and the exclusive-copy fallback. Symlink chains are resolved with a hop limit, writing through the symlink to the ultimate target without replacing the link itself.
@@ -19,6 +19,11 @@ Extracted from the storage engine in **PhotoCraft** (refs #2, #14), it guarantee
 6. **Fault-Injection Testability**: The `AtomicFs` trait enables unit and integration test suites to simulate disk-full, locked files, and permission failures without physical disk I/O.
 
 A replaced file is a new file (a new inode), so its owner and group, extended attributes and ACLs, Finder tags, alternate data streams and hard links are not kept; a crash between the write and the rename can leave a `.<name>.<pid>-<n>.craft_tmp` file beside the destination.
+
+`WriteOptions::with_preserve_metadata(true)` additionally preserves the existing file's
+modification time before publication; Unix mode is preserved on replacement regardless of this
+option. `with_create_parents(true)` creates missing parent directories before staging. Neither
+option preserves extended attributes, ACLs, or creation time.
 
 ## Usage
 
