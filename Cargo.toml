@@ -28,6 +28,7 @@ craft-atomic = { path = "crates/atomic" }
 craft-bvh = { path = "crates/bvh" }
 craft-cache = { path = "crates/cache" }
 craft-cache-derive = { path = "crates/cache-derive" }
+craft-audio-rt = { path = "crates/audio-rt" }
 craft-cms = { path = "crates/cms" }
 craft-crw = { path = "crates/crw" }
 craft-dialogs = { path = "crates/dialogs" }
