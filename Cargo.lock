@@ -811,6 +811,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "craft-blend"
+version = "0.1.0"
+
+[[package]]
 name = "craft-blur"
 version = "0.1.0"
 dependencies = [
