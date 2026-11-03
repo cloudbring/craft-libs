@@ -27,6 +27,7 @@ craft-<name> = { git = "https://github.com/storytold/craft-libs", rev = "<commit
 
 - [`craft-ai-core`](crates/ai-core/README.md): the data model and contract for AI in the Craft Apps (connections, models, tools, requests, jobs, consent, history, route spec). Pure, no I/O, wasm-safe. Contract in [docs/ai-shared-layer.md](docs/ai-shared-layer.md).
 - [`craft-archive`](crates/archive/README.md): bounded raw/zlib/gzip DEFLATE decoding with byte accounting, validated ZIP entries and CRC-checked PNG chunks.
+- [`craft-ooxml`](crates/ooxml/README.md): bounded XML tree, escaping writer, and deterministic OPC ZIP packages with content types and relationships; app part models stay in apps.
 - [`craft-atomic`](crates/atomic/README.md): Crash-safe atomic file writing and replacement with same-directory staging, directory fsync, Apple `F_FULLFSYNC` fallback, transient lock backoff, and fault injection for the Craft suite.
 - [`craft-audio-rt`](crates/audio-rt/README.md): allocation-free SPSC queues, owned snapshot handoff, atomic parameter ramps, panic silencing and UI-side stall detection; device glue stays in apps.
 - [`craft-av1`](crates/av1/README.md): clean-room pure-Rust AV1 decoder from FilmCraft,

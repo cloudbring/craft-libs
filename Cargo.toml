@@ -50,6 +50,7 @@ craft-media = { path = "crates/media" }
 craft-media-testkit = { path = "crates/media-testkit" }
 craft-menu = { path = "crates/menu" }
 craft-opus = { path = "crates/opus" }
+craft-ooxml = { path = "crates/ooxml" }
 craft-pcraft-format = { path = "crates/pcraft-format" }
 craft-pdf = { path = "crates/pdf", version = "=0.1.0" }
 craft-plate-test = { path = "crates/plate-test" }
@@ -80,6 +81,8 @@ rayon = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 proptest = "1"
+quick-xml = "0.41"
+zip = { version = "9", default-features = false, features = ["deflate"] }
 # SHA-256 (RustCrypto). Already used by craft-update, craft-font-store, craft-keymap and
 # craft-crw's tests; craft-hash is the shared wrapper.
 sha2 = "0.10"
