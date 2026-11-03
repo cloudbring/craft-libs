@@ -9,6 +9,16 @@ pub struct ZipLimits {
     pub max_total_bytes: u64,
 }
 
+/// Metadata for a validated central-directory entry.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ZipEntry {
+    pub name: String,
+    pub compressed_size: u64,
+    pub size: u64,
+    pub compression_method: u16,
+    pub encrypted: bool,
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum ZipError {
     #[error("invalid ZIP: {0}")]
@@ -38,7 +48,7 @@ pub struct ZipGuard<R: Read + Seek> {
 
 impl<R: Read + Seek> ZipGuard<R> {
     /// Validates all central-directory names and declared sizes before exposing entries.
-    pub fn new(mut archive: zip::ZipArchive<R>, limits: ZipLimits) -> Result<Self, ZipError> {
+    pub fn new(archive: zip::ZipArchive<R>, limits: ZipLimits) -> Result<Self, ZipError> {
         if archive.has_duplicate_names() {
             return Err(ZipError::Duplicate);
         }
@@ -47,7 +57,7 @@ impl<R: Read + Seek> ZipGuard<R> {
         }
         let mut total = 0u64;
         for index in 0..archive.len() {
-            let entry = archive.by_index(index)?;
+            let entry = archive.by_index_data(index)?;
             let name = entry.name()?;
             if !safe_name(&name) {
                 return Err(ZipError::UnsafePath(name.to_string()));
@@ -78,16 +88,39 @@ impl<R: Read + Seek> ZipGuard<R> {
 
     /// Returns the validated name of an entry in central-directory order.
     pub fn entry_name(&mut self, index: usize) -> Result<String, ZipError> {
-        Ok(self.archive.by_index(index)?.name()?.into_owned())
+        Ok(self.archive.by_index_data(index)?.name()?.into_owned())
+    }
+
+    /// Returns validated metadata for one entry without reading its contents.
+    pub fn entry(&mut self, index: usize) -> Result<ZipEntry, ZipError> {
+        let entry = self.archive.by_index_data(index)?;
+        #[allow(deprecated)]
+        let compression_method = entry.compression().to_u16();
+        Ok(ZipEntry {
+            name: entry.name()?.into_owned(),
+            compressed_size: entry.compressed_size(),
+            size: entry.size(),
+            compression_method,
+            encrypted: entry.encrypted(),
+        })
     }
 
     /// Reads an entry to completion, including its CRC check, without exceeding caps.
     pub fn read_entry(&mut self, index: usize) -> Result<Vec<u8>, ZipError> {
+        self.read_entry_bounded(index, self.limits.max_entry_bytes)
+    }
+
+    /// Reads an entry using a cap no larger than this guard's archive-wide cap.
+    pub fn read_entry_bounded(&mut self, index: usize, max_entry_bytes: u64) -> Result<Vec<u8>, ZipError> {
         let mut entry = self.archive.by_index(index)?;
+        let max_entry_bytes = max_entry_bytes.min(self.limits.max_entry_bytes);
+        if entry.size() > max_entry_bytes {
+            return Err(ZipError::EntryLimit);
+        }
         let mut output = Vec::new();
         let mut buffer = [0; 8192];
         loop {
-            let remaining_entry = self.limits.max_entry_bytes - output.len() as u64;
+            let remaining_entry = max_entry_bytes - output.len() as u64;
             let remaining_total = self.limits.max_total_bytes - self.total_read;
             let chunk = buffer.len().min(usize::try_from(remaining_entry.min(remaining_total).saturating_add(1)).unwrap_or(usize::MAX));
             let count = entry.read(&mut buffer[..chunk])?;

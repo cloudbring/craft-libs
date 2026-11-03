@@ -11,6 +11,7 @@ repository.workspace = true
 workspace = true
 
 [dependencies]
+craft-archive = { workspace = true }
 craft-ecproj-format = { workspace = true }
 craft-pcraft-format = { workspace = true }
 craft-vectorcraft-format = { workspace = true }
