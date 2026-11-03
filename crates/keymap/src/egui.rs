@@ -1,6 +1,11 @@
 //! Conversions between the crate's keys and egui's, matching egui key presses to chords, and a
 //! [`Dispatcher`] that turns a frame's key events into the commands they run. [`platform`] gives
 //! the platform to build a keymap for, the browser's operating system included on the web.
+//!
+//! Pinned egui 0.37 has no distinct keypad keys (its `Num0`–`Num9` are shared with the top
+//! row). Text events supply keypad candidates only when the same text has no Key-based
+//! binding in scope. Paired key events and known printable keys (including US `Shift+8` for
+//! `*`) take priority, even if a hit is declined. Text never proves a physical keypad origin.
 
 use ::egui::os::OperatingSystem;
 use ::egui::{Context, Event, InputState, Key as EguiKey, KeyboardShortcut, Modifiers};
@@ -30,8 +35,6 @@ impl From<OperatingSystem> for Platform {
     }
 }
 
-// Both matches are generated from one list so that a key added to `Key` without an egui
-// counterpart fails to compile.
 macro_rules! egui_keys {
     ($($ours:ident = $theirs:ident),* ; $($same:ident),* $(,)?) => {
         impl Key {
@@ -45,10 +48,15 @@ macro_rules! egui_keys {
                 }
             }
 
-            pub fn to_egui(self) -> EguiKey {
+            /// `None` for keypad keys: egui cannot represent their distinct identity.
+            pub fn to_egui(self) -> Option<EguiKey> {
                 match self {
-                    $(Key::$ours => EguiKey::$theirs,)*
-                    $(Key::$same => EguiKey::$same,)*
+                    $(Key::$ours => Some(EguiKey::$theirs),)*
+                    $(Key::$same => Some(EguiKey::$same),)*
+                    Key::Keypad0 | Key::Keypad1 | Key::Keypad2 | Key::Keypad3 | Key::Keypad4
+                    | Key::Keypad5 | Key::Keypad6 | Key::Keypad7 | Key::Keypad8 | Key::Keypad9
+                    | Key::KeypadMultiply | Key::KeypadAdd | Key::KeypadSubtract | Key::KeypadDivide
+                    | Key::KeypadDecimal | Key::KeypadEnter => None,
                 }
             }
         }
@@ -84,9 +92,10 @@ impl Chord {
     /// The egui shortcut for this chord, for egui's own shortcut text and `consume_shortcut`.
     /// cmd becomes egui's `command` and ctrl its `ctrl`, which egui folds the same way off
     /// macOS.
-    pub fn to_egui_shortcut(&self) -> KeyboardShortcut {
+    /// Returns `None` when egui cannot represent the key (the keypad family).
+    pub fn to_egui_shortcut(&self) -> Option<KeyboardShortcut> {
         let m = self.mods;
-        KeyboardShortcut::new(Modifiers { alt: m.alt, ctrl: m.ctrl, shift: m.shift, mac_cmd: false, command: m.cmd }, self.key.to_egui())
+        Some(KeyboardShortcut::new(Modifiers { alt: m.alt, ctrl: m.ctrl, shift: m.shift, mac_cmd: false, command: m.cmd }, self.key.to_egui()?))
     }
 }
 
@@ -121,6 +130,32 @@ pub fn matches(binding: &Chord, key: EguiKey, mods: &Modifiers, platform: Platfo
 }
 
 pub use crate::editor::DOUBLE_PRESS;
+
+fn claims(keymap: &Keymap, chord: &Chord, active: &Active) -> bool {
+    [false, true].into_iter().any(|double| !matches!(keymap.lookup(chord, double, active), Lookup::None))
+}
+
+fn text_binding_claims(text: &str, mods: Mods, layout: &Layout, keymap: &Keymap, active: &Active) -> bool {
+    let mut chars = text.chars();
+    let Some(character) = chars.next() else { return false };
+    if chars.next().is_some() {
+        return false;
+    }
+    let key = match character {
+        '\n' | '\r' => Some(Key::Enter),
+        _ => Key::from_char(character),
+    };
+    if key.is_some_and(|key| layout.candidates(&KeyInput::new(mods).with_typed(key)).iter().any(|chord| claims(keymap, chord, active))) {
+        return true;
+    }
+    let shifted_base = match character {
+        '*' => Some(Key::Num8),
+        '+' => Some(Key::Equals),
+        _ => None,
+    };
+    shifted_base.is_some_and(|key| claims(keymap, &Chord::new(Mods { shift: true, ..mods }, key), active))
+        || Key::ALL.iter().any(|&key| !key.is_keypad() && layout.char_at(key) == Some(character) && claims(keymap, &Chord::new(mods, key), active))
+}
 
 /// A command a key press runs.
 #[derive(Clone, Debug, PartialEq)]
@@ -287,8 +322,53 @@ impl Dispatcher {
         // press decides: its event goes with it when it runs a command and stays otherwise.
         let causes = clipboard_event_follows(&events, &self.layout, platform, input);
         let mut caused_taken: Vec<Option<bool>> = vec![None; events.len()];
+        let mut text_press = vec![None; events.len()];
+        let mut text_claimed = vec![false; events.len()];
+        let mut text_mods = vec![frame_mods; events.len()];
+        for (index, text) in text_of.iter().enumerate() {
+            if let Some(text) = *text {
+                text_press[text] = Some(index);
+                let key = key_input(&events[index], platform, input);
+                text_mods[text] = key.mods;
+                text_claimed[text] = self.layout.candidates(&key).iter().any(|chord| claims(keymap, chord, active))
+                    || matches!(events[index], Event::Key { repeat: true, .. });
+            }
+        }
+        let mut text_fallback = vec![None; events.len()];
+        if !active.typing {
+            for (index, event) in events.iter().enumerate() {
+                if let Event::Text(text) = event
+                    && !text_claimed[index]
+                    && !text_binding_claims(text, text_mods[index], &self.layout, keymap, active)
+                    && let Some(trigger) = Trigger::from_text(text)
+                {
+                    let chord = Chord::new(text_mods[index], trigger.chord.key);
+                    if claims(keymap, &chord, active) {
+                        text_fallback[index] = Some(KeyInput::new(chord.mods).with_typed(chord.key));
+                    }
+                }
+            }
+        }
         for (i, event) in events.into_iter().enumerate() {
+            if drop[i] {
+                continue;
+            }
+            if text_of[i].is_some_and(|text| text_fallback[text].is_some()) {
+                kept.push((i, event));
+                continue;
+            }
             match &event {
+                Event::Text(_) => {
+                    if let Some(key) = text_fallback[i]
+                        && let Some(hit) = self.press(&key, false, now, keymap, active).filter(&mut accept)
+                    {
+                        hits.push(hit);
+                        if let Some(press) = text_press[i] {
+                            drop[press] = true;
+                        }
+                        continue;
+                    }
+                }
                 Event::Key { pressed: true, repeat, .. } if !*repeat || self.repeat => {
                     let input = key_input(&event, platform, input);
                     let held = input.mods;
@@ -467,7 +547,7 @@ fn clipboard_event_follows(events: &[Event], layout: &Layout, platform: Platform
 /// agent while a text field has focus, send the Text after the press, before the next one.
 /// With `text_first`, eframe's web build with no text field focused, the Text comes right before
 /// its press, and only for a press without Ctrl or Cmd.
-fn text_of_press(events: &[Event], text_first: bool) -> Vec<Option<usize>> {
+pub(crate) fn text_of_press(events: &[Event], text_first: bool) -> Vec<Option<usize>> {
     let is_text = |e: Option<&Event>| matches!(e, Some(Event::Text(t)) if !t.is_empty());
     let mut out = vec![None; events.len()];
     if text_first {
@@ -543,6 +623,27 @@ pub(crate) fn clipboard_chord(event: &Event, held: Mods) -> (Key, Mods, Clip) {
 mod tests {
     use super::*;
     use crate::{Bindable, Binding, Scope, Scopes};
+
+    #[test]
+    fn web_keypad_text_before_key_consumes_both_only_when_accepted() {
+        let keymap = Keymap::new(
+            vec![Bindable::new("keypad", "Keypad", Scope::app()).with_default(Binding::parse("Keypad5").unwrap())],
+            Scopes::new(),
+            Platform::Windows,
+        );
+        let events = vec![
+            Event::Text("5".into()),
+            Event::Key { key: EguiKey::Num5, physical_key: None, pressed: true, repeat: false, modifiers: Modifiers::NONE },
+        ];
+        for accept in [true, false] {
+            let mut input = InputState::default();
+            input.events = events.clone();
+            let mut dispatcher = Dispatcher { text_first: true, ..Dispatcher::new() };
+            let hits = dispatcher.dispatch_filtered(&mut input, &keymap, &Active::NONE, |_| accept);
+            assert_eq!(hits.len(), usize::from(accept));
+            assert_eq!(input.events, if accept { vec![] } else { events.clone() });
+        }
+    }
 
     #[test]
     fn web_text_before_its_press_goes_with_that_press() {

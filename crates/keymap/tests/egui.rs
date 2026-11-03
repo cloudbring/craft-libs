@@ -20,13 +20,13 @@ fn a_browser_on_a_mac_gets_the_mac_keymap() {
 #[test]
 fn every_key_converts_both_ways() {
     for &key in Key::ALL {
-        assert_eq!(Key::from_egui(key.to_egui()), Some(key), "{key}");
+        assert_eq!(key.to_egui().and_then(Key::from_egui), (!key.is_keypad()).then_some(key), "{key}");
     }
     for k in [EguiKey::Copy, EguiKey::Cut, EguiKey::Paste, EguiKey::BrowserBack, EguiKey::ShiftLeft] {
         assert_eq!(Key::from_egui(k), None);
     }
     assert_eq!(Key::from_egui(EguiKey::IntlBackslash), Some(Key::IntlBackslash));
-    assert_eq!(Key::IntlBackslash.to_egui(), EguiKey::IntlBackslash);
+    assert_eq!(Key::IntlBackslash.to_egui(), Some(EguiKey::IntlBackslash));
 }
 
 #[test]
@@ -40,7 +40,7 @@ fn modifiers_and_shortcuts_follow_the_platform() {
     assert!(matches(&chord("Cmd+S"), EguiKey::S, &ctrl, Platform::Windows));
     assert!(!matches(&chord("Cmd+S"), EguiKey::S, &Modifiers::CTRL, Platform::Mac));
 
-    let shortcut = chord("Cmd+Shift+Z").to_egui_shortcut();
+    let shortcut = chord("Cmd+Shift+Z").to_egui_shortcut().unwrap();
     assert_eq!(shortcut.logical_key, EguiKey::Z);
     assert!(Modifiers { mac_cmd: true, command: true, shift: true, ..Modifiers::NONE }.matches_exact(shortcut.modifiers));
 }
@@ -76,6 +76,147 @@ fn shifted_symbols_match_their_bindings() {
 }
 
 const CTRL: Modifiers = Modifiers { ctrl: true, command: true, ..Modifiers::NONE };
+
+#[test]
+fn keypad_text_dispatch_table_prioritizes_key_bindings() {
+    for (text, keypad, ordinary, modifiers) in [
+        ("*", "Num*", "Shift+8", Modifiers::SHIFT),
+        ("+", "Num+", "+", Modifiers::NONE),
+        ("-", "Num-", "-", Modifiers::NONE),
+        ("/", "Num/", "/", Modifiers::NONE),
+        (".", "Num.", ".", Modifiers::NONE),
+        ("\n", "NumEnter", "Enter", Modifiers::NONE),
+        ("0", "Keypad0", "0", Modifiers::NONE),
+        ("1", "Keypad1", "1", Modifiers::NONE),
+        ("2", "Keypad2", "2", Modifiers::NONE),
+        ("3", "Keypad3", "3", Modifiers::NONE),
+        ("4", "Keypad4", "4", Modifiers::NONE),
+        ("5", "Keypad5", "5", Modifiers::NONE),
+        ("6", "Keypad6", "6", Modifiers::NONE),
+        ("7", "Keypad7", "7", Modifiers::NONE),
+        ("8", "Keypad8", "8", Modifiers::NONE),
+        ("9", "Keypad9", "9", Modifiers::NONE),
+    ] {
+        let keypad_binding = Bindable::new("keypad", "Keypad", Scope::app()).with_default(Binding::parse(keypad).unwrap());
+        let top_row_binding = Bindable::new("top", "Top row", Scope::app()).with_default(Binding::parse(ordinary).unwrap());
+        let keypad_only = Keymap::new(vec![keypad_binding.clone()], Scopes::new(), Platform::Windows);
+        let both = Keymap::new(vec![keypad_binding, top_row_binding], Scopes::new(), Platform::Windows);
+        let mut input = InputState::default();
+        input.events = vec![Event::Text(text.into())];
+        let hits = Dispatcher::new().dispatch(&mut input, &keypad_only, &Active::NONE);
+        assert_eq!(hits.len(), 1, "{keypad}");
+        assert_eq!(hits[0].trigger, Trigger::parse(keypad).unwrap());
+        assert!(input.events.is_empty());
+        input.events = vec![Event::Text(text.into())];
+        assert!(Dispatcher::new().dispatch(&mut input, &both, &Active::NONE).is_empty(), "{ordinary} claims {text:?}");
+        assert_eq!(input.events.len(), 1);
+        let press = Event::Key { key: chord(ordinary).key.to_egui().unwrap(), physical_key: None, pressed: true, repeat: false, modifiers };
+        input.events = vec![press, Event::Text(text.into())];
+        let hits = Dispatcher::new().dispatch(&mut input, &both, &Active::NONE);
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].command, CommandRef::new("top"));
+        assert!(input.events.is_empty());
+        assert!(chord(keypad).to_egui_shortcut().is_none());
+    }
+}
+
+#[test]
+fn keypad_fallback_respects_scope_typing_declines_and_double_presses() {
+    let km = Keymap::new(
+        vec![
+            Bindable::new("marker", "Marker", Scope::app()).with_default(Binding::parse("Num*").unwrap()),
+            Bindable::new("twice", "Twice", Scope::app()).with_default(Binding::parse("Num* Num*").unwrap()),
+            Bindable::new("text", "Text", Scope::new("editor").unwrap()).with_default(Binding::parse("Shift+8").unwrap()),
+        ],
+        Scopes::new().with_context("editor"),
+        Platform::Windows,
+    );
+    assert!(km.conflicts().is_empty());
+    let mut input = InputState::default();
+    let mut dispatcher = Dispatcher::new();
+    input.events = vec![Event::Text("*".into())];
+    assert_eq!(dispatcher.dispatch(&mut input, &km, &Active::NONE)[0].command, CommandRef::new("marker"));
+    input.time += 0.1;
+    input.events = vec![Event::Text("*".into())];
+    assert_eq!(dispatcher.dispatch(&mut input, &km, &Active::NONE)[0].command, CommandRef::new("twice"));
+    for active in [Active { contexts: &["editor"], ..Active::NONE }, Active { typing: true, ..Active::NONE }] {
+        input.events = vec![Event::Text("*".into())];
+        assert!(Dispatcher::new().dispatch(&mut input, &km, &active).is_empty());
+        assert_eq!(input.events.len(), 1);
+    }
+    input.events = vec![Event::Text("*".into())];
+    assert!(Dispatcher::new().dispatch_filtered(&mut input, &km, &Active::NONE, |_| false).is_empty());
+    assert_eq!(input.events.len(), 1);
+    input.events = vec![
+        Event::Key { key: EguiKey::Num8, physical_key: None, pressed: true, repeat: false, modifiers: Modifiers::SHIFT },
+        Event::Text("*".into()),
+    ];
+    let active = Active { contexts: &["editor"], ..Active::NONE };
+    assert!(Dispatcher::new().dispatch_filtered(&mut input, &km, &active, |_| false).is_empty());
+    assert_eq!(input.events.len(), 2);
+}
+
+#[test]
+fn modified_keypad_text_uses_platform_modifiers() {
+    for (platform, modifiers) in [(Platform::Mac, Modifiers::MAC_CMD), (Platform::Windows, CTRL), (Platform::Linux, CTRL)] {
+        let km =
+            Keymap::new(vec![Bindable::new("add", "Add", Scope::app()).with_default(Binding::parse("Cmd+Num+").unwrap())], Scopes::new(), platform);
+        let mut input = InputState::default();
+        input.modifiers = modifiers;
+        input.events = vec![Event::Text("+".into())];
+        assert_eq!(Dispatcher::new().dispatch(&mut input, &km, &Active::NONE).len(), 1);
+    }
+}
+
+#[test]
+fn paired_keypad_fallback_keeps_double_press_state_and_event_modifiers() {
+    let km = Keymap::new(
+        vec![
+            Bindable::new("single", "Single", Scope::app()).with_default(Binding::parse("Cmd+Keypad5").unwrap()),
+            Bindable::new("double", "Double", Scope::app()).with_default(Binding::parse("Cmd+Keypad5 Cmd+Keypad5").unwrap()),
+        ],
+        Scopes::new(),
+        Platform::Windows,
+    );
+    let events = vec![Event::Key { key: EguiKey::Num5, physical_key: None, pressed: true, repeat: false, modifiers: CTRL }, Event::Text("5".into())];
+    let mut input = InputState::default();
+    let mut dispatcher = Dispatcher::new();
+    for (time, command) in [(10.0, "single"), (10.1, "double"), (10.2, "single")] {
+        input.time = time;
+        input.events = events.clone();
+        let hits = dispatcher.dispatch(&mut input, &km, &Active::NONE);
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].command, CommandRef::new(command));
+        assert!(input.events.is_empty());
+    }
+    input.events = events.clone();
+    assert!(dispatcher.dispatch_filtered(&mut input, &km, &Active::NONE, |_| false).is_empty());
+    assert_eq!(input.events, events);
+    input.events = vec![Event::Key { key: EguiKey::Num5, physical_key: None, pressed: true, repeat: true, modifiers: CTRL }, Event::Text("5".into())];
+    assert!(dispatcher.dispatch(&mut input, &km, &Active::NONE).is_empty());
+    assert_eq!(input.events.len(), 2);
+}
+
+#[test]
+fn shifted_and_learned_printable_bindings_block_text_fallback() {
+    for (text, keypad, ordinary, layout) in
+        [("+", "Num+", "Shift+=", Layout::new()), ("*", "Num*", "IntlBackslash", Layout::new().with_char(Key::IntlBackslash, '*'))]
+    {
+        let km = Keymap::new(
+            vec![
+                Bindable::new("keypad", "Keypad", Scope::app()).with_default(Binding::parse(keypad).unwrap()),
+                Bindable::new("ordinary", "Ordinary", Scope::app()).with_default(Binding::parse(ordinary).unwrap()),
+            ],
+            Scopes::new(),
+            Platform::Windows,
+        );
+        let mut input = InputState::default();
+        input.events = vec![Event::Text(text.into())];
+        assert!(Dispatcher::new().with_layout(layout).dispatch(&mut input, &km, &Active::NONE).is_empty());
+        assert_eq!(input.events.len(), 1);
+        assert!(km.conflicts().is_empty());
+    }
+}
 
 fn dispatch_keymap() -> Keymap {
     let app = |id: &str, keys: &[&str]| keys.iter().fold(Bindable::new(id, id, Scope::app()), |e, k| e.with_default(Binding::parse(k).unwrap()));

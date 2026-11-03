@@ -153,7 +153,7 @@ impl Draw<'_, '_> {
             self.text_field(&edit);
             self.tag(|| "shortcuts.import.name".into(), edit.rect, &name_label);
             let import = if self.env.sets.is_some() { self.ui("Import as New Set") } else { self.ui("Import") };
-            let valid = self.env.sets.is_none() || crate::profiles::set_name(&name).is_some();
+            let valid = self.env.sets.is_none() || self.valid_set_name(&name);
             if self.button(ui, valid, &import, "shortcuts.import.ok") {
                 act = Some(Act::Import);
             }

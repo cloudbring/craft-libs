@@ -189,10 +189,10 @@ fn foreign_windows_text() {
     assert_eq!(ok("Alt - F4").0, Trigger::single(chord("Alt+F4")));
     assert_eq!(ok("Ctrl Page Down").0, Trigger::single(chord("Cmd+PageDown")));
     assert_eq!(ok("Shift+Up Arrow").0, Trigger::single(chord("Shift+Up")));
-    assert_eq!(ok("Num +"), (Trigger::single(chord("+")), vec![ReadNote::Numpad]));
-    assert_eq!(ok("Ctrl+Num /"), (Trigger::single(chord("Cmd+/")), vec![ReadNote::Numpad]));
+    assert_eq!(ok("Num +"), (Trigger::single(chord("KeypadAdd")), vec![]));
+    assert_eq!(ok("Ctrl+Num /"), (Trigger::single(chord("Cmd+KeypadDivide")), vec![]));
     assert_eq!(ok("Numpad 5"), (Trigger::single(chord("5")), vec![ReadNote::Numpad]));
-    assert_eq!(ok("Num Enter"), (Trigger::single(chord("Enter")), vec![ReadNote::Numpad]));
+    assert_eq!(ok("Num Enter"), (Trigger::single(chord("KeypadEnter")), vec![]));
     assert_eq!(read("Win+E"), Err(ForeignError::UnsupportedModifier("Win".into())));
     assert_eq!(read("Meta+E"), Err(ForeignError::UnsupportedModifier("Meta".into())));
     assert_eq!(read(""), Err(ForeignError::Empty));
@@ -216,4 +216,56 @@ fn foreign_mac_text() {
     assert_eq!(ok("Cmd+,"), Trigger::single(chord("Cmd+,")));
     // In a Windows set the same ⌃ is the command modifier.
     assert_eq!(read_foreign("⌃S", Flavor::Windows).map(|r| r.0), Ok(Trigger::single(chord("Cmd+S"))));
+}
+#[test]
+fn keypad_keys_round_trip_without_changing_top_row_digits() {
+    use craft_keymap::{Chord, Key, Mods, Platform, Trigger};
+    let keys: Vec<_> = Key::ALL.iter().copied().filter(|key| key.is_keypad()).collect();
+    assert_eq!(keys.len(), 16);
+    for key in keys {
+        assert_eq!(serde_json::from_str::<Key>(&serde_json::to_string(&key).unwrap()).unwrap(), key);
+        for mods in [Mods::NONE, Mods::CMD, Mods::SHIFT, Mods::CTRL] {
+            let chord = Chord::new(mods, key);
+            assert_eq!(Chord::parse(&chord.to_string()).unwrap(), chord);
+            assert_eq!(serde_json::from_str::<Chord>(&serde_json::to_string(&chord).unwrap()).unwrap(), chord);
+            for platform in [Platform::Mac, Platform::Windows, Platform::Linux] {
+                assert_eq!(Chord::parse(&chord.display(platform)).unwrap().effective(platform), chord.effective(platform));
+            }
+            for trigger in [Trigger::single(chord), Trigger::double(chord)] {
+                assert_eq!(Trigger::parse(&trigger.to_string()).unwrap(), trigger);
+                assert_eq!(serde_json::from_str::<Trigger>(&serde_json::to_string(&trigger).unwrap()).unwrap(), trigger);
+            }
+        }
+    }
+    for (alias, key) in [
+        ("Num*", Key::KeypadMultiply),
+        ("Num+", Key::KeypadAdd),
+        ("Num-", Key::KeypadSubtract),
+        ("Num/", Key::KeypadDivide),
+        ("Num.", Key::KeypadDecimal),
+        ("NumEnter", Key::KeypadEnter),
+    ] {
+        assert_eq!(Chord::parse(alias).unwrap().key, key);
+        assert_eq!(read_foreign(alias, Flavor::Windows).unwrap(), (Trigger::single(Chord::plain(key)), vec![]));
+        assert_eq!(Chord::parse(&format!("Cmd+{alias}")).unwrap(), Chord::new(Mods::CMD, key));
+        assert_eq!(Trigger::parse(&format!("{alias} {alias}")).unwrap(), Trigger::double(Chord::plain(key)));
+    }
+    for digit in 0..10 {
+        assert_eq!(Chord::parse(&format!("Num{digit}")).unwrap(), Chord::parse(&digit.to_string()).unwrap());
+        assert_ne!(Chord::parse(&format!("Keypad{digit}")).unwrap(), Chord::parse(&digit.to_string()).unwrap());
+    }
+}
+
+#[test]
+fn text_candidates_are_single_keypad_keys_only() {
+    use craft_keymap::Trigger;
+    for (text, name) in [("*", "Num*"), ("+", "Num+"), ("-", "Num-"), ("/", "Num/"), (".", "Num."), ("\n", "NumEnter"), ("\r", "NumEnter")] {
+        assert_eq!(Trigger::from_text(text), Some(Trigger::parse(name).unwrap()));
+    }
+    for digit in 0..10 {
+        assert_eq!(Trigger::from_text(&digit.to_string()), Some(Trigger::parse(&format!("Keypad{digit}")).unwrap()));
+    }
+    for text in ["", "**", "123", "a", "é", "\r\n"] {
+        assert_eq!(Trigger::from_text(text), None);
+    }
 }

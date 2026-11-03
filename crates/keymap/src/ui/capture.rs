@@ -3,8 +3,8 @@
 
 use ::egui::{Event, EventFilter, Id, InputState, Ui};
 
-use crate::chord::{Chord, Key, Mods, Platform};
-use crate::egui::{Clip, clipboard_chord, clipboard_kind};
+use crate::chord::{Chord, Key, Mods, Platform, Trigger};
+use crate::egui::{Clip, clipboard_chord, clipboard_kind, text_of_press};
 
 /// The keys a recording widget keeps from egui's focus navigation, so Tab, arrows and Escape are
 /// recorded instead of moving focus.
@@ -31,7 +31,9 @@ pub(crate) fn take(input: &mut InputState, platform: Platform) -> Vec<Chord> {
     let mut chords = Vec::new();
     let mut kept = Vec::with_capacity(input.events.len());
     let mut clipboard_press: Option<Clip> = None;
-    for event in std::mem::take(&mut input.events) {
+    let events = std::mem::take(&mut input.events);
+    let paired = text_of_press(&events, cfg!(target_arch = "wasm32"));
+    for (index, event) in events.into_iter().enumerate() {
         match &event {
             Event::Key { key, pressed, repeat, modifiers, .. } => {
                 let Some(key) = Key::from_egui(*key) else { continue };
@@ -51,7 +53,14 @@ pub(crate) fn take(input: &mut InputState, platform: Platform) -> Vec<Chord> {
                     chords.push(Chord::new(held, key));
                 }
             }
-            Event::Text(_) | Event::Ime(_) => {}
+            Event::Text(text) => {
+                if !paired.contains(&Some(index))
+                    && let Some(trigger) = Trigger::from_text(text)
+                {
+                    chords.push(Chord::new(frame_mods, trigger.chord.key));
+                }
+            }
+            Event::Ime(_) => {}
             _ => kept.push(event),
         }
     }
@@ -78,6 +87,23 @@ mod tests {
 
     fn press(key: EguiKey, modifiers: Modifiers) -> Event {
         Event::Key { key, physical_key: None, pressed: true, repeat: false, modifiers }
+    }
+
+    #[test]
+    fn records_keypad_text_only_without_a_corresponding_key() {
+        for (text, name) in [
+            ("*", "KeypadMultiply"),
+            ("+", "KeypadAdd"),
+            ("-", "KeypadSubtract"),
+            ("/", "KeypadDivide"),
+            (".", "KeypadDecimal"),
+            ("\n", "KeypadEnter"),
+            ("5", "Keypad5"),
+        ] {
+            assert_eq!(run(vec![Event::Text(text.into())]), (vec![name.to_string()], 0));
+        }
+        assert_eq!(run(vec![press(EguiKey::Num8, Modifiers::SHIFT), Event::Text("*".into())]), (vec!["Shift+8".into()], 0));
+        assert_eq!(run(vec![Event::Text("12".into())]), (vec![], 0));
     }
 
     #[test]

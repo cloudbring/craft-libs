@@ -2,6 +2,9 @@
 //!
 //! Canonical text is `Cmd+Ctrl+Alt+Shift+Key`, written by [`Chord`]'s `Display` and read back by
 //! [`Chord::parse`]. A double press is the chord twice, separated by a space: `A A`.
+//! Keypad keys use `Keypad0`–`Keypad9`, `KeypadMultiply`, `KeypadAdd`, `KeypadSubtract`,
+//! `KeypadDivide`, `KeypadDecimal`, and `KeypadEnter`. `Num*`, `Num+`, `Num-`, `Num/`,
+//! `Num.`, and `NumEnter` are aliases. `Num0`–`Num9` still mean top-row digits (`0`–`9`).
 
 use std::fmt;
 
@@ -46,7 +49,7 @@ macro_rules! keys {
     ($($variant:ident => $name:literal),* $(,)?) => {
         /// A key on the keyboard, independent of any UI toolkit.
         ///
-        /// Digits are the main row; numeric keypad keys map to the same keys.
+        /// `Num0`–`Num9` are the main row; `Keypad*` variants are distinct keypad keys.
         #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
         #[non_exhaustive]
         pub enum Key {
@@ -80,6 +83,11 @@ keys! {
     S => "S", T => "T", U => "U", V => "V", W => "W", X => "X", Y => "Y", Z => "Z",
     Num0 => "0", Num1 => "1", Num2 => "2", Num3 => "3", Num4 => "4",
     Num5 => "5", Num6 => "6", Num7 => "7", Num8 => "8", Num9 => "9",
+    Keypad0 => "Keypad0", Keypad1 => "Keypad1", Keypad2 => "Keypad2", Keypad3 => "Keypad3",
+    Keypad4 => "Keypad4", Keypad5 => "Keypad5", Keypad6 => "Keypad6", Keypad7 => "Keypad7",
+    Keypad8 => "Keypad8", Keypad9 => "Keypad9", KeypadMultiply => "KeypadMultiply",
+    KeypadAdd => "KeypadAdd", KeypadSubtract => "KeypadSubtract", KeypadDivide => "KeypadDivide",
+    KeypadDecimal => "KeypadDecimal", KeypadEnter => "KeypadEnter",
     F1 => "F1", F2 => "F2", F3 => "F3", F4 => "F4", F5 => "F5", F6 => "F6", F7 => "F7",
     F8 => "F8", F9 => "F9", F10 => "F10", F11 => "F11", F12 => "F12", F13 => "F13",
     F14 => "F14", F15 => "F15", F16 => "F16", F17 => "F17", F18 => "F18", F19 => "F19",
@@ -99,6 +107,12 @@ keys! {
 
 /// Key aliases beyond the canonical and egui variant names. Matched without regard to ASCII case.
 const KEY_ALIASES: &[(&str, Key)] = &[
+    ("Num*", Key::KeypadMultiply),
+    ("Num+", Key::KeypadAdd),
+    ("Num-", Key::KeypadSubtract),
+    ("Num/", Key::KeypadDivide),
+    ("Num.", Key::KeypadDecimal),
+    ("NumEnter", Key::KeypadEnter),
     ("esc", Key::Escape),
     ("⎋", Key::Escape),
     ("return", Key::Enter),
@@ -131,6 +145,29 @@ const KEY_ALIASES: &[(&str, Key)] = &[
 ];
 
 impl Key {
+    /// Whether this is a distinct numeric keypad key.
+    pub const fn is_keypad(self) -> bool {
+        matches!(
+            self,
+            Key::Keypad0
+                | Key::Keypad1
+                | Key::Keypad2
+                | Key::Keypad3
+                | Key::Keypad4
+                | Key::Keypad5
+                | Key::Keypad6
+                | Key::Keypad7
+                | Key::Keypad8
+                | Key::Keypad9
+                | Key::KeypadMultiply
+                | Key::KeypadAdd
+                | Key::KeypadSubtract
+                | Key::KeypadDivide
+                | Key::KeypadDecimal
+                | Key::KeypadEnter
+        )
+    }
+
     /// Reads a key name: canonical (`K`, `PageUp`, `;`), egui variant names (`ArrowUp`, `Num5`,
     /// `Semicolon`) and the aliases `esc`, `return`, `del`, `pgup`, `pgdn`, `spacebar`, `ins`,
     /// the Mac key glyphs and the minus sign `−`. Case does not matter.
@@ -456,6 +493,9 @@ impl Chord {
         let mut mods = Mods::NONE;
         // Each pass consumes at least one byte, so the loop ends within MAX_CHORD_TEXT passes.
         loop {
+            if let Some(key) = Key::parse(rest.trim()) {
+                return Ok(Chord { mods, key });
+            }
             if let Some((m, after)) = strip_glyph(rest) {
                 add_modifier(&mut mods, m, rest.get(..rest.len() - after.len()).unwrap_or_default())?;
                 // `⌘+K` and `⌘K` are the same; in `⌘+` the `+` is the key.
@@ -600,6 +640,32 @@ pub struct Trigger {
 }
 
 impl Trigger {
+    /// A keypad candidate for a single text event, without modifiers. Text cannot identify
+    /// physical keys: dispatchers must give in-scope Key-based bindings priority and avoid
+    /// dispatching text being entered into a text field. Multi-character text is not a press.
+    pub fn from_text(text: &str) -> Option<Trigger> {
+        let key = match text {
+            "0" => Key::Keypad0,
+            "1" => Key::Keypad1,
+            "2" => Key::Keypad2,
+            "3" => Key::Keypad3,
+            "4" => Key::Keypad4,
+            "5" => Key::Keypad5,
+            "6" => Key::Keypad6,
+            "7" => Key::Keypad7,
+            "8" => Key::Keypad8,
+            "9" => Key::Keypad9,
+            "*" => Key::KeypadMultiply,
+            "+" => Key::KeypadAdd,
+            "-" => Key::KeypadSubtract,
+            "/" => Key::KeypadDivide,
+            "." => Key::KeypadDecimal,
+            "\n" | "\r" => Key::KeypadEnter,
+            _ => return None,
+        };
+        Some(Trigger::single(Chord::plain(key)))
+    }
+
     pub const fn single(chord: Chord) -> Trigger {
         Trigger { chord, double: false }
     }
