@@ -397,4 +397,25 @@ mod tests {
         assert!(matches!(chain(Filter::Ccitt(CcittParams::default()), 4).decode(&jpeg), Err(Error::Unsupported("CCITTFaxDecode"))));
         Ok(())
     }
+
+    #[test]
+    #[ignore = "50 MiB performance benchmark; run explicitly in release mode"]
+    fn bench_flate_50_mib() -> Result<(), Box<dyn std::error::Error>> {
+        use std::time::Instant;
+
+        const SIZE: usize = 50 * 1024 * 1024;
+        let input = vec![b'a'; SIZE];
+        let mut encoder = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default());
+        encoder.write_all(&input)?;
+        let encoded = encoder.finish()?;
+        let mut test = chain(Filter::Flate, SIZE as u64);
+        test.limits.max_input = encoded.len() as u64;
+        test.limits.max_ratio = 2000;
+        let start = Instant::now();
+        let decoded = test.decode(std::hint::black_box(&encoded)).map_err(|error| format!("{error:?}"))?;
+        let elapsed = start.elapsed();
+        assert_eq!(decoded.data, input);
+        eprintln!("50 MiB Flate decoded in {elapsed:?}");
+        Ok(())
+    }
 }
