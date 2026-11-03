@@ -30,7 +30,7 @@
 //!
 //! Every scan is decoded into a whole-image buffer of quantized coefficients (Annex F for the
 //! sequential scans, Annex G for the progressive ones; the arithmetic decoder of Annex D with the
-//! conditioning of `DAC`), then dequantized, inverse transformed in floating point (A.3.3),
+//! conditioning of `DAC`), then dequantized, inverse transformed in fixed point (A.3.3),
 //! upsampled and color converted. 12-bit images come out as 16-bit samples (scaled, not
 //! truncated). Restart intervals, 1, 3 and 4 components and any sampling factors are supported.
 //! Metadata (ICC profiles, EXIF, XMP, Photoshop resources, resolution) is left to the caller,
@@ -1215,31 +1215,100 @@ fn decode_coefficients(b: &[u8], limits: &Limits) -> Result<(Frame, Tables, bool
 // ---------------------------------------------------------------------------------------------
 // Reconstruction
 
-/// `T[x][u] = C(u)/2 · cos((2x+1)uπ/16)`: one dimension of the inverse DCT (A.3.3).
-fn idct_basis() -> [[f32; 8]; 8] {
-    let mut t = [[0f32; 8]; 8];
-    for (x, row) in t.iter_mut().enumerate() {
-        for (u, v) in row.iter_mut().enumerate() {
-            let c = if u == 0 { std::f32::consts::FRAC_1_SQRT_2 } else { 1.0 };
-            *v = c / 2.0 * (((2 * x + 1) * u) as f32 * std::f32::consts::PI / 16.0).cos();
+const IDCT_FRACTION_BITS: u32 = 8;
+
+/// Multiply by a Q56 constant, rounding to nearest with ties toward positive infinity.
+/// Small signals use its Q32 approximation and an i64 product; large signals use full i128.
+#[inline]
+fn idct_multiply<const WIDE: bool>(value: i64, factor: i64) -> i64 {
+    if !WIDE {
+        let factor = (factor + (1 << 23)) >> 24;
+        (value * factor + (1 << 31)) >> 32
+    } else {
+        ((i128::from(value) * i128::from(factor) + (1i128 << 55)) >> 56) as i64
+    }
+}
+
+/// `(cos·first - sin·second, sin·first + cos·second)` in three multiplications.
+/// `factors` holds Q56 `(cos, cos + sin, sin - cos)`, including the rotation's gain.
+#[inline]
+fn idct_rotate<const WIDE: bool>(first: i64, second: i64, factors: [i64; 3]) -> (i64, i64) {
+    let shared = idct_multiply::<WIDE>(first + second, factors[0]);
+    (shared - idct_multiply::<WIDE>(second, factors[1]), shared + idct_multiply::<WIDE>(first, factors[2]))
+}
+
+/// Transposed LLM (1989), figure 1: three plane rotations and two sqrt(2) scalings,
+/// 11 multiplies and 29 adds per line. The output is sqrt(8) times the T.81 1-D IDCT.
+/// Q8 fractions survive both passes and feed the existing upsampling/color conversion.
+#[inline]
+fn idct_line<const WIDE: bool>(input: [i64; 8]) -> [i64; 8] {
+    if input[1..].iter().all(|&value| value == 0) {
+        return [input[0]; 8];
+    }
+    let [dc, first, second, third, fourth, fifth, sixth, seventh] = input;
+    let (even_inner, even_outer) = idct_rotate::<WIDE>(second, sixth, [38_997_288_879_244_454, 133_145_072_587_297_891, 55_150_494_828_808_983]);
+    let even_sum = dc + fourth;
+    let even_difference = dc - fourth;
+    let even = [even_sum + even_outer, even_difference + even_inner, even_difference - even_inner, even_sum - even_outer];
+
+    let odd_difference = first - seventh;
+    let odd_sum = first + seventh;
+    let third_scaled = idct_multiply::<WIDE>(third, 101_904_826_760_412_361);
+    let fifth_scaled = idct_multiply::<WIDE>(fifth, 101_904_826_760_412_361);
+    let (odd_inner, odd_outer) = idct_rotate::<WIDE>(
+        odd_difference + fifth_scaled,
+        odd_sum + third_scaled,
+        [59_913_699_778_170_136, 99_946_754_088_653_659, -19_880_645_467_686_613],
+    );
+    let (odd_middle_inner, odd_middle_outer) = idct_rotate::<WIDE>(
+        odd_sum - third_scaled,
+        odd_difference - fifth_scaled,
+        [70_673_027_573_671_297, 84_730_766_798_238_103, -56_615_288_349_104_492],
+    );
+    [
+        even[0] + odd_outer,
+        even[1] + odd_middle_outer,
+        even[2] + odd_middle_inner,
+        even[3] + odd_inner,
+        even[3] - odd_inner,
+        even[2] - odd_middle_inner,
+        even[1] - odd_middle_outer,
+        even[0] - odd_outer,
+    ]
+}
+
+fn idct_block(block: &[i32; 64], quant: &[u16; 64]) -> [i64; 64] {
+    let mut rows = [0i64; 64];
+    for (index, &coefficient) in block.iter().enumerate() {
+        rows[ZIGZAG[index]] = (i64::from(coefficient) * i64::from(quant[index])) << IDCT_FRACTION_BITS;
+    }
+    if rows.iter().all(|value| value.abs() <= (1 << 22) - 2) { idct_passes::<false>(rows) } else { idct_passes::<true>(rows) }
+}
+
+fn idct_passes<const WIDE: bool>(mut rows: [i64; 64]) -> [i64; 64] {
+    for row in rows.as_chunks_mut::<8>().0 {
+        *row = idct_line::<WIDE>(*row);
+    }
+    let mut samples = [0i64; 64];
+    for column in 0..8 {
+        let line = idct_line::<WIDE>(std::array::from_fn(|row| rows[row * 8 + column]));
+        for (row, value) in line.into_iter().enumerate() {
+            samples[row * 8 + column] = value;
         }
     }
-    t
+    samples
 }
 
 /// The component's samples (padded to whole blocks, row stride `bw * 8`), level-shifted and
 /// clamped to `0..=max`.
-fn reconstruct(comp: &Component, q: &[u16; 64], basis: &[[f32; 8]; 8], max: f32) -> Vec<f32> {
+fn reconstruct(comp: &Component, q: &[u16; 64], max: f32) -> Vec<f32> {
     let stride = comp.bw * 8;
     let mut plane = vec![0f32; stride * comp.bh * 8];
     let shift = (max + 1.0) / 2.0;
     for (n, blk) in comp.coefs.iter().enumerate() {
         let (bx, by) = (n % comp.bw, n / comp.bw);
         if blk[1..].iter().all(|&c| c == 0) {
-            // Only DC: every sample is T[y][0] · T[x][0] · F[0][0], the same products the full
-            // transform below sums (its other terms are zero), so the result is identical.
-            let t = basis[0][0];
-            let v = (t * (t * (blk[0] as f32 * f32::from(q[0]))) + shift).clamp(0.0, max);
+            let v = ((i64::from(blk[0]) * i64::from(q[0])) as f32 / 8.0 + shift).clamp(0.0, max);
             for y in 0..8 {
                 let row = (by * 8 + y) * stride + bx * 8;
                 if let Some(out) = plane.get_mut(row..row + 8) {
@@ -1248,23 +1317,12 @@ fn reconstruct(comp: &Component, q: &[u16; 64], basis: &[[f32; 8]; 8], max: f32)
             }
             continue;
         }
-        let mut f = [0f32; 64];
-        for (k, &c) in blk.iter().enumerate() {
-            f[ZIGZAG[k]] = c as f32 * f32::from(q[k]);
-        }
-        // Rows: r[v][x] = Σu T[x][u] F[v][u]; then columns: s[y][x] = Σv T[y][v] r[v][x].
-        let mut r = [0f32; 64];
-        for v in 0..8 {
-            for x in 0..8 {
-                r[v * 8 + x] = (0..8).map(|u| basis[x][u] * f[v * 8 + u]).sum();
-            }
-        }
-        for (y, ty) in basis.iter().enumerate() {
+        let samples = idct_block(blk, q);
+        for (y, samples) in samples.as_chunks::<8>().0.iter().enumerate() {
             let row = (by * 8 + y) * stride + bx * 8;
             if let Some(out) = plane.get_mut(row..row + 8) {
-                for (x, o) in out.iter_mut().enumerate() {
-                    let s: f32 = ty.iter().enumerate().map(|(v, t)| t * r[v * 8 + x]).sum();
-                    *o = (s + shift).clamp(0.0, max);
+                for (output, &sample) in out.iter_mut().zip(samples) {
+                    *output = (sample as f32 / ((1 << IDCT_FRACTION_BITS) * 8) as f32 + shift).clamp(0.0, max);
                 }
             }
         }
@@ -1287,15 +1345,23 @@ fn upsample_map(out: usize, samples: usize, factor: usize, fmax: usize) -> Vec<(
 
 /// Turn the coefficients into interleaved output samples.
 fn render(frame: Frame, tables: &Tables, adobe_transform: Option<u8>) -> Result<(u8, Samples), Error> {
+    render_with_idct(frame, tables, adobe_transform, reconstruct)
+}
+
+fn render_with_idct(
+    frame: Frame,
+    tables: &Tables,
+    adobe_transform: Option<u8>,
+    inverse: impl Fn(&Component, &[u16; 64], f32) -> Vec<f32>,
+) -> Result<(u8, Samples), Error> {
     let max = if frame.precision > 8 { 4095.0 } else { 255.0 };
-    let basis = idct_basis();
     let (w, h) = (frame.width, frame.height);
     let mut planes = Vec::with_capacity(frame.comps.len());
     for comp in &frame.comps {
         // A component no scan reached has only zero coefficients; any defined table will do.
         let q = comp.quant.or_else(|| tables.quant.get(comp.tq).copied().flatten());
         let q = q.ok_or_else(|| err("component uses an undefined quantization table"))?;
-        let plane = reconstruct(comp, &q, &basis, max);
+        let plane = inverse(comp, &q, max);
         let xs = upsample_map(w, comp.cw, comp.h, frame.hmax);
         let ys = upsample_map(h, comp.ch, comp.v, frame.vmax);
         planes.push((plane, comp.bw * 8, xs, ys));
@@ -1376,3 +1442,6 @@ pub fn decode(bytes: &[u8], limits: &Limits, adobe_transform: Option<u8>) -> Res
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod idct_tests;
