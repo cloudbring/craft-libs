@@ -20,11 +20,13 @@ struct Unit {
     original: char,
     position: usize,
     bonus: i64,
+    word: usize,
 }
 
 fn units(text: &str, normalization: Normalization) -> Vec<Unit> {
     let mut result = Vec::new();
     let mut previous: Option<char> = None;
+    let mut word = 0usize;
     for (position, original) in text.chars().enumerate() {
         let bonus = if position == 0 {
             16
@@ -37,14 +39,13 @@ fn units(text: &str, normalization: Normalization) -> Vec<Unit> {
         } else {
             0
         };
+        if position > 0 && bonus > 0 && original.is_alphanumeric() {
+            word += 1;
+        }
         let decomposed = if normalization == Normalization::NfkdFolded { nfkd::fold(original) } else { None };
         let mut first = true;
-        let characters: Box<dyn Iterator<Item = char>> = match decomposed {
-            Some(value) => Box::new(value.chars()),
-            None => Box::new(std::iter::once(original)),
-        };
-        for character in characters.flat_map(char::to_lowercase) {
-            result.push(Unit { lower: character, original, position, bonus: if first { bonus } else { 0 } });
+        for character in decomposed.into_iter().flat_map(str::chars).chain(decomposed.is_none().then_some(original)).flat_map(char::to_lowercase) {
+            result.push(Unit { lower: character, original, position, bonus: if first { bonus } else { 0 }, word });
             first = false;
         }
         previous = Some(original);
@@ -69,6 +70,17 @@ pub struct Matcher {
 }
 
 impl Matcher {
+    fn contiguous_match(&self, window: &[Unit], count: usize) -> Match {
+        let count = i64::try_from(count).unwrap_or(i64::MAX);
+        let baseline = count.saturating_mul(count).saturating_mul(1_000_000_000);
+        let boundary = if window[0].bonus > 0 { 10_000_000 } else { 0 };
+        let word = 1_000_i64.saturating_sub(i64::try_from(window[0].word).unwrap_or(i64::MAX).min(1_000)) * 1_001;
+        let length = 1_000_i64.saturating_sub(i64::try_from(self.length).unwrap_or(i64::MAX).min(1_000));
+        let mut positions: Vec<_> = window.iter().map(|unit| unit.position).collect();
+        positions.dedup();
+        Match { score: baseline.saturating_add(100_000_000 + boundary + word + length), positions }
+    }
+
     pub fn new(text: impl Into<String>, normalization: Normalization) -> Self {
         let text = text.into();
         Self { normalized: units(&text, normalization), length: text.chars().count(), text, normalization }
@@ -80,6 +92,25 @@ impl Matcher {
 
     /// Finds the highest-scoring subsequence, or `None` if it cannot match.
     pub fn match_query(&self, query: &str) -> Option<Match> {
+        if query.is_ascii() && self.normalization == Normalization::CaseInsensitive {
+            let mut haystack = self.normalized.iter();
+            for byte in query.bytes() {
+                let lower = char::from(byte.to_ascii_lowercase());
+                if !haystack.any(|unit| unit.lower == lower) {
+                    return None;
+                }
+            }
+            if !query.is_empty() && query.len() <= self.normalized.len() {
+                let contiguous = self
+                    .normalized
+                    .windows(query.len())
+                    .filter(|window| window.iter().zip(query.bytes()).all(|(unit, byte)| unit.lower == char::from(byte.to_ascii_lowercase())))
+                    .max_by_key(|window| (window[0].bonus > 0, std::cmp::Reverse(window[0].word)));
+                if let Some(window) = contiguous {
+                    return Some(self.contiguous_match(window, query.len()));
+                }
+            }
+        }
         let needle = units(query, self.normalization);
         if needle.is_empty() {
             return Some(Match { score: 0, positions: Vec::new() });
@@ -87,6 +118,17 @@ impl Matcher {
         let width = self.normalized.len();
         if needle.len() > width {
             return None;
+        }
+        let count = i64::try_from(needle.len()).unwrap_or(i64::MAX);
+        let baseline = count.saturating_mul(count).saturating_mul(1_000_000_000);
+        let contiguous = self
+            .normalized
+            .windows(needle.len())
+            .enumerate()
+            .filter(|(_, window)| window.iter().zip(&needle).all(|(candidate, query)| candidate.lower == query.lower))
+            .max_by_key(|(_, window)| (window[0].bonus > 0, std::cmp::Reverse(window[0].word)));
+        if let Some((_, window)) = contiguous {
+            return Some(self.contiguous_match(window, needle.len()));
         }
         let mut previous = vec![None; width];
         let mut parents = vec![vec![None; width]; needle.len()];
@@ -140,10 +182,7 @@ impl Matcher {
         }
         positions.reverse();
         positions.dedup();
-        let count = i64::try_from(needle.len()).unwrap_or(i64::MAX);
-        let baseline = count.saturating_mul(count).saturating_mul(64);
-        let exact = if needle.len() == width { count.saturating_mul(64) } else { 0 };
-        Some(Match { score: score.saturating_add(baseline).saturating_add(exact), positions })
+        Some(Match { score: baseline.saturating_add(score.clamp(0, 99_999)), positions })
     }
 }
 
