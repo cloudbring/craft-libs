@@ -171,3 +171,50 @@ fn rejects_unsafe_parts_and_duplicate_relationships() -> Result<(), Box<dyn std:
     assert!(writer.finish().is_err());
     Ok(())
 }
+
+#[test]
+fn relationship_sidecars_keep_the_part_name_case() -> Result<(), Box<dyn std::error::Error>> {
+    let mut writer = PackageWriter::new();
+    writer.add_part("ppt/charts/chartEx1.xml", "application/chartex+xml", b"<c/>".to_vec())?;
+    writer.add_part("customXml/item1.xml", "application/xml", b"<i/>".to_vec())?;
+    writer.add_part("ppt/media/image1.png", "image/png", vec![0])?;
+    writer.add_relationship("ppt/charts/chartEx1.xml", "rId1", "image", "../media/image1.png", TargetMode::Internal)?;
+    writer.add_relationship("customXml/item1.xml", "rId1", "link", "https://example.org/", TargetMode::External)?;
+    let bytes = writer.finish()?;
+    let mut names: Vec<String> = {
+        let archive = zip::ZipArchive::new(std::io::Cursor::new(&bytes))?;
+        (0..archive.len()).map(|i| archive.name_for_index(i).unwrap().unwrap().into_owned()).collect()
+    };
+    names.sort();
+    assert!(names.contains(&"ppt/charts/_rels/chartEx1.xml.rels".to_string()), "{names:?}");
+    assert!(names.contains(&"customXml/_rels/item1.xml.rels".to_string()), "{names:?}");
+    assert!(!names.iter().any(|n| n.contains("chartex1") || n.starts_with("customxml")), "{names:?}");
+    let package = Package::open(&bytes, &OpcLimits::default())?;
+    assert_eq!(package.rels_of("ppt/charts/chartEx1.xml").and_then(|r| r.by_id("rId1")).map(|r| r.target.as_str()), Some("ppt/media/image1.png"));
+    Ok(())
+}
+
+#[test]
+fn lenient_open_skips_escaping_relationship_targets() -> Result<(), Box<dyn std::error::Error>> {
+    use std::io::Write;
+    use zip::write::SimpleFileOptions;
+    let mut zip = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+    let opts = SimpleFileOptions::default();
+    zip.start_file("[Content_Types].xml", opts)?;
+    zip.write_all(br#"<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/></Types>"#)?;
+    zip.start_file("a/doc.xml", opts)?;
+    zip.write_all(b"<d/>")?;
+    zip.start_file("a/other.xml", opts)?;
+    zip.write_all(b"<o/>")?;
+    zip.start_file("a/_rels/doc.xml.rels", opts)?;
+    zip.write_all(br#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="t" Target="other.xml"/><Relationship Id="rId2" Type="t" Target="../../../../../etc/passwd"/></Relationships>"#)?;
+    let bytes = zip.finish()?.into_inner();
+    assert!(Package::open(&bytes, &OpcLimits::default()).is_err());
+    let lenient = OpcLimits { xml: Limits { read_mode: dom::ReadMode::Lenient, ..Limits::default() }, ..OpcLimits::default() };
+    let package = Package::open(&bytes, &lenient)?;
+    assert_eq!(package.warnings().len(), 1, "{:?}", package.warnings());
+    let rels = package.rels_of("a/doc.xml").unwrap();
+    assert_eq!(rels.by_id("rId1").map(|r| r.target.as_str()), Some("a/other.xml"));
+    assert!(rels.by_id("rId2").is_none());
+    Ok(())
+}

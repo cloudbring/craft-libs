@@ -221,6 +221,7 @@ pub struct Package {
     parts: BTreeMap<String, Vec<u8>>,
     pub content_types: ContentTypes,
     relationships: BTreeMap<String, Relationships>,
+    warnings: Vec<String>,
 }
 
 impl Package {
@@ -267,6 +268,7 @@ impl Package {
             }
         }
         let mut relationships = BTreeMap::new();
+        let mut warnings = Vec::new();
         for (name, data) in &parts {
             if let Some(source) = source_of_rels(name) {
                 let root = dom::parse(data, &limits.xml)?;
@@ -286,13 +288,31 @@ impl Package {
                     } else {
                         TargetMode::Internal
                     };
-                    let target = if mode == TargetMode::External { raw.to_string() } else { resolve_target(&source, raw)? };
+                    let target = if mode == TargetMode::External {
+                        raw.to_string()
+                    } else {
+                        match resolve_target(&source, raw) {
+                            Ok(target) => target,
+                            // Lenient reads skip a bad relationship instead of failing the whole
+                            // package; the target is never followed in either mode.
+                            Err(error) if limits.xml.read_mode == dom::ReadMode::Lenient => {
+                                warnings.push(format!("{name}: relationship {id} skipped: {error}"));
+                                continue;
+                            }
+                            Err(error) => return Err(error),
+                        }
+                    };
                     rels.0.push(Relationship { id: id.into(), kind: kind.into(), target, mode });
                 }
                 relationships.insert(source, rels);
             }
         }
-        Ok(Self { parts, content_types, relationships })
+        Ok(Self { parts, content_types, relationships, warnings })
+    }
+
+    /// Relationships skipped under [`dom::ReadMode::Lenient`], one line each; empty when strict.
+    pub fn warnings(&self) -> &[String] {
+        &self.warnings
     }
 
     pub fn part(&self, name: &str) -> Option<&[u8]> {
@@ -515,7 +535,10 @@ impl PackageWriter {
                 xml.empty();
             }
             xml.end();
-            let name = rels_path(source);
+            // `self.rels` is keyed case-insensitively; the sidecar is named after the part as
+            // it was added, so `chartEx1.xml` gets `_rels/chartEx1.xml.rels`.
+            let original = if source.is_empty() { "" } else { self.parts[source].0.as_str() };
+            let name = rels_path(original);
             files.push((name, xml.finish()));
         }
         Ok(files)
@@ -561,11 +584,9 @@ impl PackageWriter {
         let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
         for name in names {
             let data = files.remove(&name).ok_or_else(|| OpcError::Invalid(format!("missing part: {name}")))?;
-            let output_name = if matches!(self.policy.part_order, PartOrder::Sorted) {
-                name.as_str()
-            } else {
-                original_names.get(&name).map_or(name.as_str(), String::as_str)
-            };
+            // Ordering uses the canonical (lowercase) key; the entry is always written under the
+            // name the part was added with (`chartEx1.xml`, `customXml/…`).
+            let output_name = original_names.get(&name).map_or(name.as_str(), String::as_str);
             let method = self.policy.method.for_name(output_name);
             let (compression, level) = match method {
                 Method::Store => (zip::CompressionMethod::Stored, None),
