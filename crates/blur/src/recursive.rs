@@ -2,7 +2,8 @@ use crate::Error;
 
 /// Young–van Vliet coefficients with Triggs–Sdika initialization, ported without arithmetic
 /// changes from lightcraft 39aa4d25, crates/raster/src/blur.rs::Gaussian::new.
-/// Raw YvV does not meet the public shape bound at sigma 2.5 or 4; Gaussian guards that range.
+/// Raw YvV does not meet the Recursive shape bound at sigma 2.5 or 4; RecursiveRaw
+/// explicitly exposes that range without the sampled guard.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Recursive {
     pub(crate) sigma: f32,

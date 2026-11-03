@@ -50,6 +50,7 @@ sampled/running-sum accumulation are `f64`.
 | --- | --- | --- |
 | `Exact` | Symmetric sampled Gaussian, support `ceil(3 sigma)` on each side; calibrated sampling width by 48 bisections | Discrete variance error below 0.5% for the tested sigma range 0.5–64; no integer-width quantization. “Exact” means this finite calibrated sampled kernel, not an infinite continuous Gaussian or FFT. |
 | `Recursive` | Third-order Young–van Vliet poles, five Newton refinements to match the analytic second moment, Triggs–Sdika initialization, eight independent interleaved `f64` chains per channel | Variance error below 0.5% on 0.5–64; maximum absolute impulse shape error **at most 0.01 for sigma >= 2.5** in that tested range. Uses sampled Exact below 8 and above 65,536. |
+| `RecursiveRaw` | The same YvV coefficients, boundaries, precision and execution path, with the upstream kernel-selection threshold | Uses sampled Exact below 2.5 and above 65,536. Clamp output matches LightCraft V3 bit-for-bit through 65,536; no 0.01 impulse-shape guarantee in the 2.5–8 band. |
 | `BoxApprox { passes: 3 }` | Kovesi neighboring odd widths; three running-sum boxes on each axis | Actual relative variance error **at most `1/(3 sigma)`**, checked at construction. Unsupported pass counts are errors, not ignored options. |
 
 ### Two necessary contract corrections
@@ -63,6 +64,18 @@ requested bound or modifying the borrowed recurrence. Above 65,536 it also uses
 Exact, avoiding the numerically ill-conditioned high-sigma third-order recurrence.
 No shape/variance certification is claimed for the raw recurrence beyond the
 tested range; consumers requiring an unconditional sampled result should use Exact.
+
+Use `Gaussian::new(sigma, Quality::RecursiveRaw)` when preserving LightCraft V3
+output is the contract. The former public-API mismatch at 2.5 <= sigma < 8 was
+entirely kernel selection: `Recursive` chose sampled Exact while V3 chose YvV.
+The q(sigma) calibration, Newton refinements, Triggs–Sdika boundaries and f64
+scratch arithmetic already match verbatim. `RecursiveRaw` exposes that existing
+recurrence without changing `Recursive`'s shape guarantee or existing timings.
+The independent verbatim test fixture also matches the compatibility kernel in
+LightCraft commit `26940d64`, `crates/raster/src/blur.rs::RecursiveCompatibility`.
+Random-plane differential tests cover the requested sigmas 2.5, 3, 4, 5, 6, 7
+and 7.99, sampled/recursive boundaries, both q branches, and sigma 65,536, for
+one through four channels using both whole-plane and split-axis APIs.
 
 The proposed box **variance** bound is likewise not universally possible for
 subpixel sigma: at 0.5, Kovesi chooses `[1, 1, 1]`, giving variance zero,

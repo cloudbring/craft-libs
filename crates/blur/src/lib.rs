@@ -27,6 +27,10 @@ pub enum Quality {
     /// sigma 2.5 also covers the 2.5–8 guard band for the 0.01 impulse-shape bound.
     /// Above 65,536 the variance-calibrated sampled kernel is used as well.
     Recursive,
+    /// Unguarded YvV with Triggs–Sdika boundaries, matching LightCraft's V3 kernel for
+    /// Clamp edges through sigma 65,536. Uses sampled Exact below 2.5 and above 65,536.
+    /// Unlike Recursive, the 2.5–8 band does not promise a 0.01 impulse-shape bound.
+    RecursiveRaw,
     /// Kovesi odd-width boxes. Only three passes are supported. Construction rejects widths
     /// whose relative variance error exceeds `1 / (3 * sigma)` (notably some subpixel sigmas).
     BoxApprox { passes: usize },
@@ -176,7 +180,8 @@ impl Gaussian {
         let passes = match quality {
             Quality::Exact => Separable::Kernel(gaussian_kernel(sigma)?),
             Quality::Recursive if sigma < 8.0 || sigma > 65_536.0 => Separable::Kernel(gaussian_kernel(sigma)?),
-            Quality::Recursive => Separable::Recursive(Recursive::new(sigma)?),
+            Quality::RecursiveRaw if sigma < 2.5 || sigma > 65_536.0 => Separable::Kernel(gaussian_kernel(sigma)?),
+            Quality::Recursive | Quality::RecursiveRaw => Separable::Recursive(Recursive::new(sigma)?),
             Quality::BoxApprox { passes: 3 } => {
                 let widths = box_widths(sigma)?;
                 let variance: f64 = widths.iter().map(|width| ((*width as f64).powi(2) - 1.0) / 12.0).sum();
