@@ -11,6 +11,14 @@ boolean decoder. The clean-room statement and specification extraction record be
 carry over from FilmCraft; FilmCraft's `ATTRIBUTION.md` and `NOTICE` have no separate
 VP9 decoder attribution or third-party notice to transfer.
 
+The store-wide padded-frame memory budget and `Decoder::set_memory_budget` are ported
+from DeckCraft's former `crates/vp9/src/decoder.rs` at `a77db266`, as identified in
+`cloudbring/deckcraft`'s `docs/vp9-fork-divergence.md` at `d1dc0cfb` (#48).
+The budget calculation is local to `craft-vp9`; it does not depend on DeckCraft's
+`deckcraft-video-budget`. Unlike the former fork's default cap, the default is
+unlimited to preserve FilmCraft's prior decoding behavior and conformance coverage;
+the existing per-frame luma and dimension limits remain in place.
+
 Conformance fixtures are generated locally using ffmpeg/libvpx-vp9 under
 `target/fixtures/vp9`; the hostile-input test uses that same path by default
 (or `CRAFT_MEDIA_FIXTURES_DIR/vp9`). They are never committed. Set
@@ -66,6 +74,7 @@ for (pts, chunk) in chunks {  // one IVF / WebM block / MP4 sample each (frame o
 }
 let rest = dec.flush(); // pictures still in flight (frame threads)
 // dec.set_draft(true): draft mode (playback at reduced resolution only), dec.threads()
+// dec.set_memory_budget(bytes): optional cap for the padded reference and in-flight frame store
 dec.reset(); // forget references / contexts (seek), keeps the thread pool
 let stats = dec.stats(); // what the stream exercised (frame kinds, tiles, compound, scaling...)
 

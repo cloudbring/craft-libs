@@ -19,6 +19,19 @@ use std::sync::{Arc, Condvar, Mutex, MutexGuard, RwLock};
 /// 8192x4352 (35 651 584 samples).
 const MAX_LUMA_SAMPLES: u64 = 1 << 26;
 
+fn store_fits(width: u32, height: u32, color: &crate::header::ColorConfig, pictures: usize, budget: u64) -> bool {
+    let padded_width = u64::from(width).div_ceil(64) * 64;
+    let padded_height = u64::from(height).div_ceil(64) * 64;
+    let luma = padded_width.checked_mul(padded_height);
+    let chroma = (padded_width >> u32::from(color.subsampling_x))
+        .checked_mul(padded_height >> u32::from(color.subsampling_y))
+        .and_then(|samples| samples.checked_mul(2));
+    luma.and_then(|samples| chroma.and_then(|chroma| samples.checked_add(chroma)))
+        .and_then(|samples| samples.checked_mul(2))
+        .and_then(|bytes| u64::try_from(pictures).ok().and_then(|count| bytes.checked_mul(count)))
+        .is_some_and(|bytes| bytes <= budget)
+}
+
 /// Counters describing what the decoder has seen (useful to check test coverage).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct DecodeStats {
@@ -73,6 +86,7 @@ pub struct Decoder {
     threads: usize,
     bufs: Arc<Pools>,
     draft: bool,
+    memory_budget: u64,
     pending: VecDeque<Pending>,
     #[cfg(all(feature = "threads", not(target_arch = "wasm32")))]
     jobs: VecDeque<std::thread::JoinHandle<()>>,
@@ -130,6 +144,7 @@ impl Decoder {
             threads: threads.max(1),
             bufs: Arc::default(),
             draft: false,
+            memory_budget: u64::MAX,
             pending: VecDeque::new(),
             #[cfg(all(feature = "threads", not(target_arch = "wasm32")))]
             jobs: VecDeque::new(),
@@ -154,6 +169,12 @@ impl Decoder {
     /// mode info, segmentation map nor probabilities that later frames read.
     pub fn set_draft(&mut self, on: bool) {
         self.draft = on;
+    }
+
+    /// Cap the bytes of decoded pictures (references, current and in flight) this decoder may hold.
+    /// The default is unlimited; the per-frame size limit still applies.
+    pub fn set_memory_budget(&mut self, bytes: u64) {
+        self.memory_budget = bytes;
     }
 
     /// Decode one chunk (a frame or a superframe, as stored in one IVF / WebM / MP4 sample).
@@ -265,6 +286,12 @@ impl Decoder {
         ensure!(
             u64::from(h.width).checked_mul(u64::from(h.height)).is_some_and(|n| n <= MAX_LUMA_SAMPLES),
             "frame size {}x{} exceeds the decoder memory limit",
+            h.width,
+            h.height
+        );
+        ensure!(
+            store_fits(h.width, h.height, &h.color, 8usize.saturating_add(self.threads).saturating_add(3), self.memory_budget),
+            "frame size {}x{} exceeds the decoder memory budget",
             h.width,
             h.height
         );
@@ -569,6 +596,31 @@ impl Decoder {
             return pool.install(|| (0..n).into_par_iter().map(f).collect());
         }
         (0..n).map(f).collect()
+    }
+}
+
+#[cfg(test)]
+mod budget_tests {
+    use super::store_fits;
+    use crate::header::ColorConfig;
+
+    #[test]
+    fn padded_planes_exact_boundary_and_in_flight_frames() {
+        let color = ColorConfig::default();
+        let one = (64 * 64 + 2 * 32 * 32) * 2;
+        assert!(store_fits(10, 10, &color, 11, 11 * one));
+        assert!(!store_fits(10, 10, &color, 11, 11 * one - 1));
+        assert!(!store_fits(10, 10, &color, 12, 11 * one));
+        let full_chroma = ColorConfig { subsampling_x: false, subsampling_y: false, ..color };
+        assert!(!store_fits(10, 10, &full_chroma, 11, 11 * one));
+    }
+
+    #[test]
+    fn large_store_and_overflow_do_not_fit() {
+        let color = ColorConfig::default();
+        assert!(store_fits(3840, 2160, &color, 8 + 1 + 8 + 2, u64::MAX));
+        assert!(!store_fits(16384, 16384, &color, 8 + 1 + 1 + 2, 1 << 30));
+        assert!(!store_fits(u32::MAX, u32::MAX, &color, usize::MAX, u64::MAX));
     }
 }
 
