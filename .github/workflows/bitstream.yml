@@ -1,0 +1,38 @@
+name: Shared bitstream
+
+on:
+  push:
+    branches: [main]
+    paths: ["crates/bitstream/**", "crates/media/**", "Cargo.toml", "Cargo.lock", ".github/workflows/bitstream.yml"]
+  pull_request:
+    paths: ["crates/bitstream/**", "crates/media/**", "Cargo.toml", "Cargo.lock", ".github/workflows/bitstream.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: shared-bitstream-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    timeout-minutes: 15
+    name: Bitstream lint, tests, docs, WASM
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          components: rustfmt, clippy
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          key: craft-bitstream
+      - run: cargo fmt -p craft-bitstream --check
+      - run: cargo clippy -p craft-bitstream --all-targets --locked -- -D warnings
+      - run: cargo test -p craft-bitstream --locked
+      - run: cargo doc -p craft-bitstream --no-deps --locked
+      - run: cargo check -p craft-bitstream --locked --target wasm32-unknown-unknown

@@ -768,6 +768,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "craft-bitstream"
+version = "0.1.0"
+dependencies = [
+ "craft-media",
+]
+
+[[package]]
 name = "craft-cms"
 version = "0.1.0"
 dependencies = [
@@ -887,6 +894,16 @@ name = "craft-fonts-build-consumer"
 version = "0.1.0"
 dependencies = [
  "craft-fonts-build",
+]
+
+[[package]]
+name = "craft-h264"
+version = "0.1.0"
+dependencies = [
+ "craft-bitstream",
+ "craft-media-testkit",
+ "rayon",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
