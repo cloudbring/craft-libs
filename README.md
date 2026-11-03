@@ -67,6 +67,9 @@ craft-<name> = { git = "https://github.com/storytold/craft-libs", rev = "<commit
 - [`craft-fonts-build`](crates/fonts-build/README.md): embeds the optional craft-fonts faces
   from an app's `build.rs` (`CRAFT_FONTS_DIR`, `CRAFT_FONTS_REQUIRED`, script filters) as a table
   of `EmbeddedFace`s. No dependencies; the app picks the faces.
+- [`craft-hash`](crates/hash/README.md): CRC-32 (ISO-HDLC and MPEG-2), Adler-32, FNV-1a 32/64, a
+  stable 128-bit content hash (FNV-1a 128) and lowercase SHA-256. Streaming and one-shot, for
+  checksums and cache keys. SHA-256 is the only cryptographic hash.
 - [`craft-i18n`](crates/i18n/README.md): translations over the embedded craft-i18n catalogs:
   lookup with fallback (`pt-br` → `pt` → English), plurals, language names, the system locale and
   a pseudo locale. The catalogs stay a fully optional build input; apps keep `tl!` and their

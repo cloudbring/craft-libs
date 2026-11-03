@@ -890,6 +890,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "craft-hash"
+version = "0.1.0"
+dependencies = [
+ "proptest",
+ "sha2",
+]
+
+[[package]]
 name = "craft-i18n"
 version = "0.1.0"
 dependencies = [
