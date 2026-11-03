@@ -1,0 +1,19 @@
+[package]
+name = "craft-opus"
+description = "Clean-room pure-Rust Opus decoder (RFC 6716 / RFC 8251; OpusHead, multistream surround)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+craft-bitstream = { workspace = true }
+craft-fft = { workspace = true }
+
+[dev-dependencies]
+allocation-counter = "0.8.1"
+craft-media-testkit = { workspace = true }

@@ -101,6 +101,9 @@ craft-<name> = { git = "https://github.com/storytold/craft-libs", rev = "<commit
   (app menu, Window, Help, system-key clashes), a platform backend trait, and key equivalents
   fed back to egui as the input egui-winit would have made. Commands and their enabled state
   stay in each app.
+- [`craft-opus`](crates/opus/README.md): clean-room Opus decoder (SILK, CELT, hybrid and
+  multistream surround) from FilmCraft, with shared `craft-fft` MDCTs; downloaded RFC vectors
+  and external ffmpeg/libopus are test-only oracles.
 - [`craft-pcraft-format`](crates/pcraft-format/README.md): the envelope of PhotoCraft's `.pcraft`
   bundle: `Manifest<D>` with the document as a type parameter, `TileRef`, the entry paths, the
   manifest decode limits and the migration runner. The document model stays in PhotoCraft.
@@ -127,6 +130,8 @@ craft-<name> = { git = "https://github.com/storytold/craft-libs", rev = "<commit
 - [`craft-vectorcraft-format`](crates/vectorcraft-format/README.md): the envelope of VectorCraft's
   `.vectorcraft` file: its members, versions, embedded images and the data after the JSON, with the
   document as a type parameter. The document and its migrations stay in VectorCraft.
+- [`craft-vp8`](crates/vp8/README.md): clean-room pure-Rust VP8 decoder from FilmCraft; ffmpeg/libvpx generate local conformance fixtures and provide the test oracle.
+- [`craft-vp9`](crates/vp9/README.md): clean-room pure-Rust VP9 decoder from FilmCraft, with optional threading; ffmpeg/libvpx-vp9 generate local fixtures and provide the test oracle.
 - [Shared UI component audit](docs/ui-components-audit.md): source inventory, extraction priorities
   and compatibility boundaries across the Craft suite.
 - [Theme infrastructure](docs/theme-infrastructure.md): eight-app comparison and the small shared

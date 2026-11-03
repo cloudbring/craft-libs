@@ -35,6 +35,56 @@ fn exact_and_ties() {
     assert_eq!(rank(&items, "ab").iter().map(|entry| entry.index).collect::<Vec<_>>(), [1, 2, 3, 0]);
 }
 
+#[test]
+fn photocraft_prefixes_and_whole_words() {
+    let names = ["Open Recent", "Open As", "Open", "Copy", "New Layer", "Delete Layer", "Layer Mask", "Sublayer", "Filter Gallery", "Blur Filter"];
+    let items: Vec<_> = names.iter().map(|name| item(name)).collect();
+    let ordering = |query| rank(&items, query).into_iter().map(|entry| names[entry.index]).collect::<Vec<_>>();
+    let open = ordering("op");
+    assert!(open.iter().position(|name| *name == "Open") < open.iter().position(|name| *name == "Open As"));
+    assert!(open.iter().position(|name| *name == "Open As") < open.iter().position(|name| *name == "Open Recent"));
+    assert!(score("Open As", "op") > score("Copy", "op"));
+    assert!(score("Open File Open File", "op") > score("Open As File Open As File", "op"));
+    assert!(score("Layer Mask", "layer") > score("New Layer", "layer"));
+    assert!(score("New Layer", "layer") > score("Delete Layer", "layer"));
+    assert!(score("Delete Layer", "layer") > score("Sublayer", "layer"));
+    assert!(score("Extraordinarilylong Layer", "layer") > score("A B Layer", "layer"));
+    assert!(score("Filter Gallery", "filter") > score("Blur", "filter"));
+    assert!(score("Filter Gallery Filter Filter Gallery Filter", "filter") > score("Blur Filter Blur Filter", "filter"));
+    assert!(score("xxfilter", "filter") > score("f i l t e r", "filter"));
+}
+
+#[test]
+#[ignore = "manual synthetic 766-item comparison"]
+fn benchmark_photocraft_shape() {
+    let names =
+        ["Open", "Open As", "Open Recent", "Copy", "New Layer", "Delete Layer", "Layer Mask", "Filter Gallery", "Gaussian Blur", "Hue/Saturation"];
+    let items: Vec<_> =
+        (0..766).map(|index| format!("{} File › Menu {} File › Menu", names[index % names.len()], names[index % names.len()])).collect();
+    let cached: Vec<_> = items.iter().map(|text| item(text)).collect();
+    let queries = [
+        "op", "ps", "ab", "gblur", "hue", "levels", "layer", "mask", "new", "save", "export", "brush", "crop", "select", "zoom", "rotate", "color",
+        "type", "undo", "filter",
+    ];
+    let start = std::time::Instant::now();
+    for query in queries.iter().cycle().take(100) {
+        for text in &items {
+            let lowered: Vec<_> = text.to_lowercase().chars().collect();
+            let mut chars = lowered.iter();
+            let matched = query.to_lowercase().chars().all(|character| chars.any(|candidate| *candidate == character));
+            std::hint::black_box(matched);
+        }
+    }
+    let old = start.elapsed();
+    let start = std::time::Instant::now();
+    for query in queries.iter().cycle().take(100) {
+        for matcher in &cached {
+            std::hint::black_box(matcher.match_query(query));
+        }
+    }
+    eprintln!("synthetic 766 × 100: greedy subsequence {old:?}, craft-fuzzy {:?}", start.elapsed());
+}
+
 proptest! {
     #[test]
     fn positions_are_increasing_and_valid(hay in "[a-zA-Z ]{0,40}", query in "[a-zA-Z ]{0,12}") {

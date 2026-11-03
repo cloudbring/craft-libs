@@ -1104,6 +1104,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "craft-opus"
+version = "0.1.0"
+dependencies = [
+ "allocation-counter",
+ "craft-bitstream",
+ "craft-fft",
+ "craft-media-testkit",
+]
+
+[[package]]
 name = "craft-pcraft-format"
 version = "0.1.0"
 dependencies = [
@@ -1303,6 +1313,25 @@ dependencies = [
  "flate2",
  "serde",
  "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "craft-vp8"
+version = "0.1.0"
+dependencies = [
+ "craft-bitstream",
+ "craft-media-testkit",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "craft-vp9"
+version = "0.1.0"
+dependencies = [
+ "craft-bitstream",
+ "craft-media-testkit",
+ "rayon",
  "thiserror 2.0.21",
 ]
 

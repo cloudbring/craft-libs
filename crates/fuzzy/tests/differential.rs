@@ -113,8 +113,8 @@ fn optimal_alignment_finds_later_word_start() {
 }
 
 #[test]
-fn word_boundary_can_beat_an_interior_substring() {
+fn contiguous_substring_beats_scattered_word_boundaries() {
     assert!(soundcraft::call("xxab", "ab") > soundcraft::call("A Big", "ab"));
     assert!(anything::score("xxab", "ab") > anything::score("A Big", "ab"));
-    assert!(current("A Big", "ab") > current("xxab", "ab"));
+    assert!(current("xxab", "ab") > current("A Big", "ab"));
 }

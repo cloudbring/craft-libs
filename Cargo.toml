@@ -45,6 +45,7 @@ craft-log = { path = "crates/log" }
 craft-media = { path = "crates/media" }
 craft-media-testkit = { path = "crates/media-testkit" }
 craft-menu = { path = "crates/menu" }
+craft-opus = { path = "crates/opus" }
 craft-pcraft-format = { path = "crates/pcraft-format" }
 craft-pdf = { path = "crates/pdf", version = "=0.1.0" }
 craft-plate-test = { path = "crates/plate-test" }
@@ -60,6 +61,8 @@ craft-time = { path = "crates/time" }
 craft-ui = { path = "crates/ui" }
 craft-update = { path = "crates/update" }
 craft-vectorcraft-format = { path = "crates/vectorcraft-format" }
+craft-vp8 = { path = "crates/vp8" }
+craft-vp9 = { path = "crates/vp9" }
 craft-window = { path = "crates/window" }
 krilla = { version = "=0.8.2", default-features = false, features = ["raster-images"] }
 hayro = { version = "=0.7.1", default-features = false }
@@ -92,6 +95,9 @@ too_many_arguments = "deny"
 wildcard_imports = "deny"
 dbg_macro = "warn"
 todo = "warn"
+
+[profile.dev.package.craft-opus]
+opt-level = 3
 
 [patch.crates-io]
 krilla = { path = "vendor/krilla" }
