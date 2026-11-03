@@ -106,6 +106,18 @@ SOF11 (lossless) falls in that range and returns `Unsupported`.
 
 ## Testing
 
+Huffman tables include a 9-bit prefix lookup (1 KiB per table), built from the existing canonical
+code lengths. Longer or invalid prefixes use the original bit-serial decoder. Lookahead never
+consumes synthesized padding just to peek: the existing bit reader still controls stuffing,
+marker boundaries, restarts and damage detection. Both 8- and 12-bit Huffman scans use this path;
+arithmetic coding and the IDCT are unchanged. No external decoder source was consulted.
+
+The Huffman unit tests exhaust every 16-bit prefix of every table in the checked-in JPEG fixtures
+and fuzz seeds against the bit-serial decoder, including invalid prefixes. Every valid code is
+also tested at all eight bit alignments, plus truncation, stuffing and restart boundaries.
+For a synthetic kernel-only timing (not an image-decode benchmark), run
+`cargo test -p craft-jpeg --release huffman_lookahead_timing -- --ignored --nocapture`.
+
 `cargo test -p craft-jpeg` runs:
 
 - unit tests in `src/tests.rs`: arithmetic-coded streams from a test-only encoder must decode to

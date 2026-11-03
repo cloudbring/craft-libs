@@ -190,6 +190,8 @@ pub struct Decoded {
 // ---------------------------------------------------------------------------------------------
 // Tables and frame
 
+const LOOKAHEAD: u32 = 9;
+
 /// A Huffman table in the decoding form of F.2.2.3 (`MAXCODE`, `VALPTR`, `MINCODE`).
 #[derive(Clone)]
 struct Huffman {
@@ -197,11 +199,12 @@ struct Huffman {
     valptr: [i32; 17],
     mincode: [i32; 17],
     values: Vec<u8>,
+    lookahead: [u16; 1 << LOOKAHEAD],
 }
 
 impl Huffman {
     fn new(counts: &[u8], values: &[u8]) -> Result<Self, Error> {
-        let mut h = Huffman { maxcode: [-1; 17], valptr: [0; 17], mincode: [0; 17], values: values.to_vec() };
+        let mut h = Huffman { maxcode: [-1; 17], valptr: [0; 17], mincode: [0; 17], values: values.to_vec(), lookahead: [0; 1 << LOOKAHEAD] };
         let mut code: i32 = 0;
         let mut k: i32 = 0;
         for (l, &n) in (1..=16usize).zip(counts) {
@@ -218,10 +221,37 @@ impl Huffman {
             }
             code <<= 1;
         }
+        for length in 1..=LOOKAHEAD as usize {
+            let shift = LOOKAHEAD as usize - length;
+            for code in h.mincode[length]..=h.maxcode[length] {
+                let index = (h.valptr[length] + code - h.mincode[length]) as usize;
+                if let Some(&value) = h.values.get(index) {
+                    let entry = (length as u16) << 8 | u16::from(value);
+                    let start = (code as usize) << shift;
+                    if let Some(span) = h.lookahead.get_mut(start..start + (1 << shift)) {
+                        span.fill(entry);
+                    }
+                }
+            }
+        }
         Ok(h)
     }
 
     fn decode(&self, bits: &mut Bits) -> Result<u8, Error> {
+        if bits.n < LOOKAHEAD {
+            bits.fill();
+        }
+        let prefix = (bits.acc >> (32 - LOOKAHEAD)) as usize;
+        let entry = self.lookahead[prefix];
+        let length = u32::from(entry >> 8);
+        if length != 0 && length <= bits.n.saturating_sub(bits.pad) {
+            bits.get(length);
+            return Ok(entry as u8);
+        }
+        self.decode_serial(bits)
+    }
+
+    fn decode_serial(&self, bits: &mut Bits) -> Result<u8, Error> {
         let mut code: i32 = 0;
         for l in 1..=16 {
             code = (code << 1) | bits.bit() as i32;
