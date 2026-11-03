@@ -768,6 +768,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "craft-av1"
+version = "0.1.0"
+dependencies = [
+ "craft-bitstream",
+ "craft-media-testkit",
+ "rayon",
+ "rustix 1.1.5",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "craft-bitstream"
 version = "0.1.0"
 dependencies = [
