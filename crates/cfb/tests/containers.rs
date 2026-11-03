@@ -142,6 +142,57 @@ fn build_layout(major: u16, fat_count: usize, regular_length: usize, regular_las
     Fixture { bytes, sector_size, directory_sector, regular_sector, mini_sector, fat_sector: 0, root_sector }
 }
 
+fn build_truncated_mini_fixture(streams: &[(&str, u32, &[u8])], root_len: usize, physical_root_len: usize) -> Vec<u8> {
+    const SECTOR_SIZE: usize = 512;
+    const ROOT_OFFSET: usize = SECTOR_SIZE * 4;
+
+    let mut bytes = vec![0u8; ROOT_OFFSET + physical_root_len];
+    bytes[..8].copy_from_slice(&[0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]);
+    put16(&mut bytes, 26, 3);
+    put16(&mut bytes, 28, 0xfffe);
+    put16(&mut bytes, 30, 9);
+    put16(&mut bytes, 32, 6);
+    put32(&mut bytes, 44, 1);
+    put32(&mut bytes, 48, 1);
+    put32(&mut bytes, 56, 4096);
+    put32(&mut bytes, 60, 2);
+    put32(&mut bytes, 64, 1);
+    put32(&mut bytes, 68, END);
+    for index in 0..109 {
+        put32(&mut bytes, 76 + index * 4, if index == 0 { 0 } else { FREE });
+    }
+
+    for index in 0..SECTOR_SIZE / 4 {
+        put32(&mut bytes, SECTOR_SIZE + index * 4, FREE);
+    }
+    for (id, next) in [(0, FAT), (1, END), (2, END), (3, 4), (4, END)] {
+        put32(&mut bytes, SECTOR_SIZE + id * 4, next);
+    }
+
+    directory(&mut bytes, SECTOR_SIZE * 2, "Root Entry", 5, [1, FREE, FREE], (3, root_len as u64));
+    for (index, (name, start, data)) in streams.iter().enumerate() {
+        let next = if index + 1 == streams.len() { FREE } else { (index + 2) as u32 };
+        directory(&mut bytes, SECTOR_SIZE * 2 + (index + 1) * 128, name, 2, [FREE, FREE, next], (*start, data.len() as u64));
+    }
+
+    for index in 0..SECTOR_SIZE / 4 {
+        put32(&mut bytes, SECTOR_SIZE * 3 + index * 4, FREE);
+    }
+    for (_, start, data) in streams {
+        for index in 0..data.len().div_ceil(64) {
+            let id = *start as usize + index;
+            let next = if index + 1 == data.len().div_ceil(64) { END } else { (id + 1) as u32 };
+            put32(&mut bytes, SECTOR_SIZE * 3 + id * 4, next);
+        }
+        let offset = ROOT_OFFSET + *start as usize * 64;
+        if offset < bytes.len() {
+            let count = data.len().min(bytes.len() - offset);
+            bytes[offset..offset + count].copy_from_slice(&data[..count]);
+        }
+    }
+    bytes
+}
+
 #[test]
 fn directory_metadata_round_trips() {
     for major in [3, 4] {
@@ -214,15 +265,30 @@ fn regular_stream_allows_truncated_final_padding() {
 fn mini_stream_allows_truncated_root_padding() {
     for major in [3, 4] {
         let fixture = build(major, 1);
-        let end = (fixture.root_sector + 1) * fixture.sector_size + 128;
-        for name in ["EncryptionInfo", "Nested/Inner"] {
+        let root_offset = (fixture.root_sector + 1) * fixture.sector_size;
+        for (name, needed) in [("EncryptionInfo", 5), ("Nested/Inner", 69)] {
             let expected = Cfb::open(&fixture.bytes).unwrap().read_stream(name).unwrap();
-            for remaining in [end, end + 17, fixture.bytes.len() - 1] {
+            let end = root_offset + needed;
+            for remaining in [end, root_offset + 128, fixture.bytes.len() - 1] {
                 assert_eq!(Cfb::open(&fixture.bytes[..remaining]).unwrap().read_stream(name).unwrap(), expected);
             }
             assert!(Cfb::open(&fixture.bytes[..end - 1]).unwrap().read_stream(name).is_err());
         }
     }
+}
+
+#[test]
+fn mini_stream_reads_only_its_required_root_bytes() {
+    let workbook = (0..1000).map(|index| (index % 251) as u8).collect::<Vec<_>>();
+    let bytes = build_truncated_mini_fixture(&[("Workbook", 0, &workbook)], 1024, 1000);
+    assert_eq!(bytes.len(), 512 * 4 + 1000);
+    assert_eq!(Cfb::open(&bytes).unwrap().read_stream("Workbook").unwrap(), workbook);
+    assert!(Cfb::open(&bytes[..bytes.len() - 1]).unwrap().read_stream("Workbook").is_err());
+
+    let earlier = [0xa5; 128];
+    let later = [0x5a; 128];
+    let bytes = build_truncated_mini_fixture(&[("Earlier", 0, &earlier), ("Later", 8, &later)], 1024, 544);
+    assert_eq!(Cfb::open(&bytes).unwrap().read_stream("Earlier").unwrap(), earlier);
 }
 
 #[test]
