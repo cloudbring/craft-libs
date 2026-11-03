@@ -106,6 +106,9 @@ craft-<name> = { git = "https://github.com/storytold/craft-libs", rev = "<commit
   (app menu, Window, Help, system-key clashes), a platform backend trait, and key equivalents
   fed back to egui as the input egui-winit would have made. Commands and their enabled state
   stay in each app.
+- [`craft-opus`](crates/opus/README.md): clean-room Opus decoder (SILK, CELT, hybrid and
+  multistream surround) from FilmCraft, with shared `craft-fft` MDCTs; downloaded RFC vectors
+  and external ffmpeg/libopus are test-only oracles.
 - [`craft-pcraft-format`](crates/pcraft-format/README.md): the envelope of PhotoCraft's `.pcraft`
   bundle: `Manifest<D>` with the document as a type parameter, `TileRef`, the entry paths, the
   manifest decode limits and the migration runner. The document model stays in PhotoCraft.

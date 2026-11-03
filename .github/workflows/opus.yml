@@ -1,0 +1,62 @@
+name: Shared Opus
+
+on:
+  push:
+    branches: [main]
+    paths: ["crates/opus/**", "crates/fft/**", "crates/bitstream/**", "crates/media/**", "crates/media-testkit/**", "Cargo.toml", "Cargo.lock", ".github/workflows/opus.yml"]
+  pull_request:
+    paths: ["crates/opus/**", "crates/fft/**", "crates/bitstream/**", "crates/media/**", "crates/media-testkit/**", "Cargo.toml", "Cargo.lock", ".github/workflows/opus.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: shared-opus-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    timeout-minutes: 60
+    name: Opus lint, conformance, docs, WASM
+    runs-on: ubuntu-latest
+    env:
+      CRAFT_MEDIA_REQUIRE_ORACLES: "1"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          components: rustfmt, clippy
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          key: craft-opus
+      - name: Install the external conformance oracle
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends ffmpeg
+          ffmpeg -hide_banner -encoders > /tmp/opus-encoders.txt
+          ffmpeg -hide_banner -decoders > /tmp/opus-decoders.txt
+          grep -q libopus /tmp/opus-encoders.txt
+          grep -q libopus /tmp/opus-decoders.txt
+      - name: Download official RFC 8251 vectors (never committed)
+        run: |
+          mkdir -p target/fixtures/opus/vectors
+          curl --fail --location --retry 3 --max-time 600 \
+            https://opus-codec.org/static/testvectors/opus_testvectors-rfc8251.tar.gz \
+            -o target/fixtures/opus/opus_testvectors-rfc8251.tar.gz
+          (cd target/fixtures/opus && sha256sum -c ../../../crates/opus/test-support/vectors.sha256)
+          tar -xzf target/fixtures/opus/opus_testvectors-rfc8251.tar.gz \
+            --strip-components=1 -C target/fixtures/opus/vectors
+          for number in $(seq -w 1 12); do
+            for suffix in .bit .dec m.dec; do
+              test -s "target/fixtures/opus/vectors/testvector${number}${suffix}"
+            done
+          done
+      - run: cargo fmt -p craft-opus --check
+      - run: cargo clippy -p craft-opus --all-targets --locked -- -D warnings
+      - run: cargo test -p craft-opus --locked -- --nocapture
+      - run: cargo doc -p craft-opus --no-deps --locked
+      - run: cargo check -p craft-opus --locked --target wasm32-unknown-unknown
