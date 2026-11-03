@@ -50,6 +50,16 @@ struct Fixture {
     root_sector: usize,
 }
 
+impl Fixture {
+    fn set_metadata(&mut self, index: usize, clsid: [u8; 16], state_bits: u32, created: u64, modified: u64) {
+        let offset = (self.directory_sector + 1) * self.sector_size + index * 128;
+        self.bytes[offset + 80..offset + 96].copy_from_slice(&clsid);
+        put32(&mut self.bytes, offset + 96, state_bits);
+        self.bytes[offset + 100..offset + 108].copy_from_slice(&created.to_le_bytes());
+        self.bytes[offset + 108..offset + 116].copy_from_slice(&modified.to_le_bytes());
+    }
+}
+
 fn build(major: u16, fat_count: usize) -> Fixture {
     let sector_size = if major == 3 { 512 } else { 4096 };
     let per = sector_size / 4;
@@ -126,6 +136,47 @@ fn build(major: u16, fat_count: usize) -> Fixture {
     bytes[root_offset..root_offset + 5].copy_from_slice(b"hello");
     bytes[root_offset + 64..root_offset + 69].copy_from_slice(b"world");
     Fixture { bytes, sector_size, directory_sector, regular_sector, mini_sector, fat_sector: 0, root_sector }
+}
+
+#[test]
+fn directory_metadata_round_trips() {
+    for major in [3, 4] {
+        let mut fixture = build(major, 1);
+        let clsid = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+        for index in [0, 3, 4] {
+            fixture.set_metadata(
+                index,
+                clsid,
+                0x1234_5678 + index as u32,
+                0x1234_5678_9abc_def0 + index as u64,
+                0xfedc_ba98_7654_3210 + index as u64,
+            );
+        }
+        let cfb = Cfb::open(&fixture.bytes).unwrap();
+        for (path, name, kind, index, start) in [
+            ("", "", EntryKind::Root, 0, fixture.root_sector as u32),
+            ("Nested", "Nested", EntryKind::Storage, 3, END),
+            ("Nested/Inner", "Inner", EntryKind::Stream, 4, 1),
+        ] {
+            let entry = cfb.entries().find(|entry| entry.path() == path).unwrap();
+            assert_eq!(entry.kind(), kind);
+            assert_eq!(entry.name(), name);
+            assert_eq!(entry.clsid(), clsid);
+            assert_eq!(entry.state_bits(), 0x1234_5678 + index);
+            assert_eq!(entry.created(), 0x1234_5678_9abc_def0 + u64::from(index));
+            assert_eq!(entry.modified(), 0xfedc_ba98_7654_3210 + u64::from(index));
+            assert_eq!(entry.start_sector(), start);
+        }
+        let unset = cfb.entries().find(|entry| entry.path() == "EncryptionInfo").unwrap();
+        assert_eq!((unset.clsid(), unset.state_bits(), unset.created(), unset.modified()), ([0; 16], 0, 0, 0));
+    }
+}
+
+#[test]
+fn truncated_directory_record_is_rejected() {
+    let fixture = build(3, 1);
+    let end = (fixture.directory_sector + 1) * fixture.sector_size + 127;
+    assert!(Cfb::open(&fixture.bytes[..end]).is_err());
 }
 
 #[test]

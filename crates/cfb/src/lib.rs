@@ -49,9 +49,17 @@ pub struct Entry {
     kind: EntryKind,
     size: u64,
     start: u32,
+    clsid: [u8; 16],
+    state_bits: u32,
+    created: u64,
+    modified: u64,
 }
 
 impl Entry {
+    /// Entry name, or an empty string for the root.
+    pub fn name(&self) -> &str {
+        self.path.rsplit('/').next().unwrap_or("")
+    }
     /// Slash-delimited path relative to the root.
     pub fn path(&self) -> &str {
         &self.path
@@ -64,6 +72,26 @@ impl Entry {
     pub fn size(&self) -> u64 {
         self.size
     }
+    /// Raw CLSID bytes in their on-disk order.
+    pub fn clsid(&self) -> [u8; 16] {
+        self.clsid
+    }
+    /// Application-defined state bits.
+    pub fn state_bits(&self) -> u32 {
+        self.state_bits
+    }
+    /// Raw creation FILETIME, or zero when unset.
+    pub fn created(&self) -> u64 {
+        self.created
+    }
+    /// Raw modification FILETIME, or zero when unset.
+    pub fn modified(&self) -> u64 {
+        self.modified
+    }
+    /// Starting sector ID as stored in the directory record.
+    pub fn start_sector(&self) -> u32 {
+        self.start
+    }
 }
 
 struct Directory {
@@ -74,6 +102,25 @@ struct Directory {
     child: u32,
     start: u32,
     size: u64,
+    clsid: [u8; 16],
+    state_bits: u32,
+    created: u64,
+    modified: u64,
+}
+
+impl Directory {
+    fn entry(&self, path: String, kind: EntryKind) -> Entry {
+        Entry {
+            path,
+            kind,
+            size: self.size,
+            start: self.start,
+            clsid: self.clsid,
+            state_bits: self.state_bits,
+            created: self.created,
+            modified: self.modified,
+        }
+    }
 }
 
 /// Parsed, borrowed CFB container. Parsing and stream reads never trust declared sizes
@@ -177,7 +224,7 @@ impl<'a> Cfb<'a> {
         if root.kind != 5 {
             return Err(Error("missing root directory"));
         }
-        cfb.entries.push(Entry { path: String::new(), kind: EntryKind::Root, size: root.size, start: root.start });
+        cfb.entries.push(root.entry(String::new(), EntryKind::Root));
         let mut seen = vec![false; directory.len()];
         seen[0] = true;
         let mut stack = vec![(root.child, String::new(), false)];
@@ -201,7 +248,7 @@ impl<'a> Cfb<'a> {
                     return Err(Error("invalid directory name"));
                 }
                 let kind = if item.kind == 1 { EntryKind::Storage } else { EntryKind::Stream };
-                cfb.entries.push(Entry { path: path.clone(), kind, size: item.size, start: item.start });
+                cfb.entries.push(item.entry(path.clone(), kind));
                 if kind == EntryKind::Storage {
                     stack.push((item.child, path, false));
                 } else if item.child != FREE {
@@ -324,7 +371,19 @@ fn raw_sector(bytes: &[u8], sector_size: usize, count: usize, id: u32) -> Result
 fn parse_directory(raw: &[u8], major: u16) -> Result<Directory, Error> {
     let kind = raw[66];
     if kind == 0 {
-        return Ok(Directory { name: String::new(), kind, left: FREE, right: FREE, child: FREE, start: END, size: 0 });
+        return Ok(Directory {
+            name: String::new(),
+            kind,
+            left: FREE,
+            right: FREE,
+            child: FREE,
+            start: END,
+            size: 0,
+            clsid: [0; 16],
+            state_bits: 0,
+            created: 0,
+            modified: 0,
+        });
     }
     let length = usize::from(word(raw, 64)?);
     if !(2..=64).contains(&length) || length % 2 != 0 || word(raw, length - 2)? != 0 {
@@ -333,5 +392,20 @@ fn parse_directory(raw: &[u8], major: u16) -> Result<Directory, Error> {
     let units: Result<Vec<u16>, Error> = (0..length - 2).step_by(2).map(|index| word(raw, index)).collect();
     let name = String::from_utf16(&units?).map_err(|_| Error("invalid directory UTF-16"))?;
     let size = u64::from(dword(raw, 120)?) | if major == 4 { u64::from(dword(raw, 124)?) << 32 } else { 0 };
-    Ok(Directory { name, kind, left: dword(raw, 68)?, right: dword(raw, 72)?, child: dword(raw, 76)?, start: dword(raw, 116)?, size })
+    let clsid = raw.get(80..96).ok_or(Error("truncated CFB"))?.try_into().map_err(|_| Error("truncated CFB"))?;
+    let created = u64::from(dword(raw, 100)?) | (u64::from(dword(raw, 104)?) << 32);
+    let modified = u64::from(dword(raw, 108)?) | (u64::from(dword(raw, 112)?) << 32);
+    Ok(Directory {
+        name,
+        kind,
+        left: dword(raw, 68)?,
+        right: dword(raw, 72)?,
+        child: dword(raw, 76)?,
+        start: dword(raw, 116)?,
+        size,
+        clsid,
+        state_bits: dword(raw, 96)?,
+        created,
+        modified,
+    })
 }
