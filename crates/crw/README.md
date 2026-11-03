@@ -101,6 +101,14 @@ end-of-block code.
 
 ### Performance
 
+The two immutable 16-bit Huffman lookup tables are initialized once per selector and shared
+between decodes and threads. Each used selector retains 512 KiB (at most 1.5 MiB for all three),
+instead of allocating and rebuilding 512 KiB for each decode. Header-only reads do not initialize
+the cache. The frozen tables, stuffing and stream-end rules are unchanged.
+
+`cargo test -p craft-crw --release huffman_cache_timing -- --ignored --nocapture` compares table
+rebuilding with warmed cache access; it measures setup only, not full-image decoding.
+
 About 60 ms for a 6.5 MP EOS file and 70 ms for the 7.4 MP G6 in release mode on a 2024 laptop
 (`cargo test -p craft-crw --release --test samples -- --nocapture` prints the times).
 
