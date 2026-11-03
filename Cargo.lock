@@ -793,6 +793,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "craft-bitstream"
+version = "0.1.0"
+dependencies = [
+ "craft-media",
+]
+
+[[package]]
 name = "craft-blur"
 version = "0.1.0"
 dependencies = [
@@ -964,11 +971,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "craft-h264"
+version = "0.1.0"
+dependencies = [
+ "craft-bitstream",
+ "craft-media-testkit",
+ "rayon",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "craft-hash"
 version = "0.1.0"
 dependencies = [
  "proptest",
  "sha2",
+]
+
+[[package]]
+name = "craft-hevc"
+version = "0.1.0"
+dependencies = [
+ "craft-bitstream",
+ "craft-media-testkit",
+ "rayon",
+ "thiserror 2.0.21",
 ]
 
 [[package]]

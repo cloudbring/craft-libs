@@ -1,0 +1,46 @@
+name: Shared H.264
+
+on:
+  push:
+    branches: [main]
+    paths: ["crates/h264/**", "crates/bitstream/**", "crates/media/**", "crates/media-testkit/**", "Cargo.toml", "Cargo.lock", ".github/workflows/h264.yml"]
+  pull_request:
+    paths: ["crates/h264/**", "crates/bitstream/**", "crates/media/**", "crates/media-testkit/**", "Cargo.toml", "Cargo.lock", ".github/workflows/h264.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: shared-h264-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    timeout-minutes: 45
+    name: H.264 lint, conformance, docs, WASM
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          components: rustfmt, clippy
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          key: craft-h264
+      - name: Install the external conformance oracle
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends ffmpeg
+          ffmpeg -hide_banner -encoders | grep -q libx264
+      - run: cargo fmt -p craft-h264 --check
+      - run: cargo clippy -p craft-h264 --all-targets --locked -- -D warnings
+      - run: cargo test -p craft-h264 --locked
+        env:
+          CRAFT_MEDIA_REQUIRE_ORACLES: "1"
+      - run: cargo doc -p craft-h264 --no-deps --locked
+      - run: cargo check -p craft-h264 --locked --target wasm32-unknown-unknown
+      - run: cargo check -p craft-h264 --locked --no-default-features --target wasm32-unknown-unknown

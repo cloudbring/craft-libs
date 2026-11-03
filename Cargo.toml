@@ -15,6 +15,7 @@ repository = "https://github.com/storytold/craft-libs"
 craft-platform = { path = "crates/platform" }
 craft-ai-core = { path = "crates/ai-core" }
 craft-archive = { path = "crates/archive" }
+craft-bitstream = { path = "crates/bitstream" }
 craft-pdf = { path = "crates/pdf", version = "=0.1.0" }
 craft-plate-test = { path = "crates/plate-test" }
 krilla = { version = "=0.8.2", default-features = false, features = ["raster-images"] }
@@ -43,6 +44,8 @@ craft-font-store = { path = "crates/font-store" }
 craft-fonts-build = { path = "crates/fonts-build" }
 craft-hash = { path = "crates/hash" }
 craft-fuzzy = { path = "crates/fuzzy" }
+craft-h264 = { path = "crates/h264" }
+craft-hevc = { path = "crates/hevc" }
 craft-i18n = { path = "crates/i18n" }
 craft-io = { path = "crates/io" }
 craft-jpeg = { path = "crates/jpeg" }

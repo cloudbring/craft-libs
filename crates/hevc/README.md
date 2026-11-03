@@ -1,0 +1,306 @@
+# craft-hevc
+
+Clean-room, pure-Rust (no `unsafe`) H.265 / HEVC decoder, implemented from the public ITU-T
+Rec. H.265 (08/2021, ISO/IEC 23008-2) specification. It is an L0 crate: it depends only on
+`craft-bitstream`, `thiserror`, and optionally `rayon` (default feature `threads`), and builds
+for `wasm32-unknown-unknown`.
+
+All syntax tables (the CABAC `initValue` tables arranged per `initType` following Table 9-4, default
+scaling lists, `intraPredAngle` / `invAngle`, the chroma QP table, the deblocking beta'/tC' table,
+the luma / chroma interpolation filter taps and the 32x32 DCT matrix) were extracted from the
+specification text by [`tools/extract_tables.py`](tools/extract_tables.py) (it only reads the text
+of the ITU-T PDF, see the script header); the output is `src/spec_tables.rs`. Scan orders are
+derived by the algorithms of 6.5.3-6.5.5. No code was taken or ported from FFmpeg, libde265, x265 or
+the HM reference software; ffmpeg / libx265 / VideoToolbox are only used as external test oracles
+and fixture generators.
+
+## Provenance
+
+Copied verbatim from FilmCraft `crates/hevc` on `algo/48-use-craft-h264` at
+`eb3487a5c24c0d9d03fee9c01c207d52c050d8aa` for artcraft-algorithms #48 / #7.
+The initial import changed only crate names, workspace metadata/dependencies/lints,
+formatting configuration and the test-only adapter. The
+source already uses `craft-bitstream`. The clean-room statement above and the specification
+extraction script/table provenance are retained from FilmCraft. FilmCraft's `ATTRIBUTION.md`
+and `NOTICE` have no separate HEVC decoder attribution or third-party notice to transfer;
+the NVIDIA HEVC API entry concerns `crates/platform`, not this decoder.
+
+Hardening for typed two-pass `hvcC` preflight, whole-picture-store memory budgeting,
+PPS initial QP, slice QP at both parsing and decode initialization, and chroma weight
+denominators is ported from DeckCraft `main` at
+`3e178d8f5a59c787a6a53a7ed0f052b3e4a1489f`, following the fork-divergence audit at
+`0c593bc1` (audited fork `a42c666684ca8b96d4d7835848b7822d589d98e5`). Its synthetic
+budget/configuration and hostile parameter regressions are retained alongside the
+FilmCraft tests. No app-side budget dependency or stale decoder implementation was ported.
+Structural/type preflight leaves parameter stores untouched on failure; semantic errors
+during the second pass can still update earlier parameter sets. Framing changes only on success.
+
+`Decoder::set_memory_budget` defaults to 4 GiB on 64-bit targets and 1 GiB on 32-bit
+targets. Before starting a picture, checked arithmetic budgets samples for
+`max_dec_pic_buffering + 1 current + max_in_flight + 1 gray backing` pictures, where
+`max_in_flight = max(threads, 1) + 2`. Unlike the fork's all-`u16` storage, shared
+storage uses one byte per sample only when both planes' bit depths are at most 8,
+otherwise two. Missing-reference identities share one reserved gray backing, not
+one allocation per missing reference. This is conservative sample-store admission,
+not a hard allocator limit: metadata, decoder work buffers, queued pictures from
+previous formats and pictures retained by callers are not accounted for.
+
+## Status
+
+| Area | Status |
+|---|---|
+| NAL / Annex-B / `hvcC` length-prefixed input | done |
+| VPS, SPS (VUI, HRD skipped, scaling lists, st/lt RPS, PCM), PPS (tiles, WPP, deblocking control, scaling lists, list modification) | done |
+| Slice segment header (all fields: st/lt RPS, list modification, pred weight table, entry points, header extension) | done |
+| POC, RPS marking, missing-reference generation, RefPicList construction, DPB output / bumping (C.5.2) | done |
+| CABAC: all Main / Main 10 syntax elements, WPP context sync, dependent slice context restore, tiles | done |
+| Coding quadtree, CU (skip / intra / inter, AMP, PCM, transquant bypass), PU, transform tree | done |
+| Intra: 35 modes, reference substitution, [1 2 1] filtering, strong intra smoothing, constrained intra | done |
+| Inter: merge (spatial, temporal, combined bi-pred, zero), AMVP, TMVP, 8-tap / 4-tap interpolation, default and explicit weighted prediction | done |
+| Scaling (flat and scaling lists), DCT 4..32, DST 4x4, transform skip, sign data hiding | done |
+| Deblocking (bS, slice / tile boundary rules, PCM / bypass exemption), SAO (band / edge, boundary rules) | done |
+| Frame-level multithreading (CTB-row granularity dependencies) | done |
+| Draft mode (non-reference pictures skip deblocking / SAO; reduced-resolution playback only) | done |
+| Tiles / WPP | parsed and decoded sequentially within a picture (parallelism is across pictures) |
+| 4:2:2 / 4:4:4 / monochrome, range-extension tools (RExt), 12-bit+ with extended precision | not yet (`Error::Unsupported`) |
+| SCC, multilayer (SHVC / MV-HEVC), 3D extensions | not supported (layers > 0 are ignored) |
+
+## API
+
+```rust
+use craft_hevc::{Decoder, Plane};
+
+let mut dec = Decoder::new(); // or Decoder::with_threads(n), Decoder::from_hvcc(&hvcc)?
+for (pts, access_unit) in access_units {
+    for pic in dec.decode(access_unit, pts)? {
+        // pic.width / pic.height (cropped), pic.bit_depth,
+        // pic.y / pic.u / pic.v: Plane::U8(Vec<u8>) for 8-bit, Plane::U16(Vec<u16>) above,
+        // pic.y_stride / pic.uv_stride, pic.pts, pic.poc, pic.key (IRAP), pic.color (VUI), pic.sar
+    }
+}
+for pic in dec.flush() { /* ... */ }
+if let Some(err) = dec.take_error() { /* error reported by a decoding thread */ }
+// dec.set_draft(true): draft mode (playback at reduced resolution only)
+```
+
+`decode` expects whole access units (a buffer with several complete access units — e.g. an entire
+Annex-B file — also works). RASL pictures following a CRA that starts the stream are skipped, as
+ffmpeg does. `Decoder::stats()` returns counters of what was decoded (slice types, IDR/CRA, tiles,
+WPP, weighted prediction, TMVP, SAO, block kinds...).
+
+### Architecture
+
+Same design as `craft-h264`: the calling thread parses parameter sets and slice headers and does
+POC / RPS / DPB bookkeeping; the CTU layer of each picture runs as a job (rayon pool). A job
+reconstructs into private planes, deblocks CTB row r once row r+1 is decoded, applies SAO to row r
+once row r+1 is deblocked, and publishes final rows (samples + 16x16 compressed motion for TMVP)
+into the shared `Frame` (`OnceLock` per CTB row). Motion compensation of later pictures blocks per
+row on exactly the reference rows it reads. Samples are stored as `u8` for 8-bit pictures (half
+the memory traffic in prediction reads, in-loop filters and output) and as `u16` above 8 bits: the
+slice decoder and the filters are generic over the sample type (`picture::Sample`), monomorphised
+once per type.
+
+Unavailable references keep distinct frame IDs and POCs while sharing one immutable gray backing
+for the active picture format. This backing is created only when a reference is missing, replaced
+on geometry or plane-depth changes, and released on flush. Jobs still reading an older format keep
+its rows alive. Each backing retains the full coded picture dimensions.
+
+Draft mode (`Decoder::set_draft(true)`; FilmCraft enables it with Settings ▸ Playback ▸ Draft
+decoding while the Program monitor plays at 1/2 or 1/4): sub-layer non-reference pictures
+(TRAIL_N, RASL_N, ...) of the highest temporal sub-layer — no later picture predicts from them,
+and TMVP reads only reference pictures — skip deblocking and SAO and are flagged
+`Picture::draft`; every other picture is unchanged. libx265's non-reference B pictures are such
+pictures.
+
+Modules: `params` (VPS/SPS/PPS/tile layout), `slice` (NAL + slice header), `dpb` (POC, RPS, lists,
+bumping), `cabac`, `slicedec` (CTU syntax + reconstruction), `mvpred` (merge / AMVP / TMVP),
+`intra`, `inter`, `transform`, `filter` (deblocking, SAO, row publication).
+
+## Tests
+
+`cargo test -p craft-hevc` (fixtures are generated on first use into `target/fixtures/hevc/`
+with ffmpeg; tests print a message and skip when ffmpeg is absent).
+
+As in `craft-h264`, a crate-local `test-support` adapter replaces `filmcraft-testkit` with
+the dev-only `craft-media-testkit`. Fixtures and raw reference decodes are generated locally,
+never committed. `tests/it/common/mod.rs` generates the matrix using ffmpeg/libx265 (8-bit
+and 10-bit support required); optional macOS fixtures use VideoToolbox. Synthetic streams
+are generated by `src/synth_tests.rs`; hostile-input seeds by `tests/fuzz_hostile.rs`.
+ffmpeg supplies the reference decodes, and ffprobe verifies high-bit-depth encoder output.
+The testkit uses `CRAFT_MEDIA_FIXTURES_DIR` or the ignored workspace `target/fixtures`;
+`CRAFT_MEDIA_FFMPEG` and `CRAFT_MEDIA_FFPROBE` override tool discovery.
+Set `CRAFT_MEDIA_REQUIRE_ORACLES=1` to fail rather than skip missing oracles, including
+the optional libkvazaar tile seed in the hostile-input test. Without that setting, a missing
+libkvazaar encoder skips only that seed, as in FilmCraft; synthetic tests still cover tiles.
+Pre-generate the fixture matrix with
+`cargo test -p craft-hevc --test it conformance::generate_fixtures -- --ignored --nocapture`.
+`.github/workflows/hevc.yml` installs and checks ffmpeg/libx265 and ffprobe, requires the
+oracles for unit/conformance tests, and runs hostile-input tests with the upstream optional
+encoder behavior. All decoder tests and doctests run in CI.
+`CRAFT_HEVC_HOSTILE_TIMEOUT_SECS` overrides the hostile-input test deadline when needed.
+
+### Migration verification
+
+At extraction, both `craft-hevc` and an isolated copy of `filmcraft-hevc` at the source SHA
+above passed 89 tests: 41 unit, 1 hostile-input, 46 integration and 1 doctest; 0 failed and
+4 explicitly ignored in each suite. The same locally generated fixtures were used for both.
+Unit and integration tests also passed with required oracles enabled. The optional libkvazaar
+hostile-input seed was unavailable in the local ffmpeg build and skipped in both suites.
+Rustup stable (rustc 1.99.0): formatting, all-target Clippy with `-D warnings` (default and
+no-default features), documentation and `wasm32-unknown-unknown` checks (default and
+no-default features) passed. Documentation retains the same four upstream rustdoc link
+warnings; no decoder or documentation-link fixes were folded into this verbatim migration.
+
+- Unit tests: CABAC engine round trip against an encoder model and context initialisation, scan
+  orders, DCT matrix properties, QpC, intra predictors, transform DC / bounded-region shortcuts,
+  MV scaling.
+- Synthetic streams (`src/synth_tests.rs`): a small CABAC encoder writes streams with what libx265
+  never produces — tiles (uniform and explicit spacing, loop filter across tiles on / off), PCM
+  (with and without in-loop filtering), multiple slices, dependent slice segments (starting inside
+  and at the start of a tile), long-term reference pictures, reference list modification. Expected
+  output is known exactly where filters leave PCM samples alone; every stream is also compared with
+  ffmpeg.
+- Robustness: hvcC input with pts round trip; randomly corrupted, truncated and garbage input never
+  panics or deadlocks (single- and multi-threaded).
+- Conformance (`tests/it/conformance.rs`): every fixture is decoded with 1 thread, 3 threads and every
+  core and compared sample-exactly with `ffmpeg -f rawvideo -pix_fmt yuv420p / yuv420p10le`; on mismatch
+  the first differing frame, plane, sample, CTB and 8x8 block are reported. Output pts/POC order is
+  checked too, and that no picture is flagged draft without draft mode. `compare_detects_mismatch`
+  guards the harness itself. Draft mode (`draft_mode_changes_only_flagged_non_reference_pictures`):
+  on B-pyramid / weighted fixtures, single- and frame-threaded, every unflagged picture is
+  bit-exact and only flagged pictures differ.
+
+### Fixture matrix (all bit-exact, single- and multi-threaded)
+
+libx265 unless noted (x265 enables WPP by default, so most streams carry entry points).
+
+| fixture | source / size | configuration |
+|---|---|---|
+| intra_main / intra_main10 | testsrc2+noise 352x288 | keyint=1, 8 / 10-bit |
+| intra_nosao_nodbk | testsrc2+noise 352x288 | intra, no SAO, no deblocking |
+| ultrafast / veryfast / medium / slow | 352x288 | presets (slow: rect + AMP) |
+| medium_main10 / slow_main10 | 352x288 | Main 10 presets |
+| p_only | 352x288 | bframes=0 |
+| bframes | 352x288, 30 frames | bframes=8, b-pyramid, ref=4 |
+| no_sao / no_deblock / deblock_m3_3 | 352x288 | loop filter variants |
+| no_wpp | 352x288 | WPP off |
+| rect_amp / min_cu16 | mandelbrot / testsrc2 | rect + AMP, min CU 16 |
+| tskip | 352x288 | transform skip |
+| weightp / weightp_main10 | fade-in | weightp + weightb |
+| crf0 / crf51 / qp1_main10 | | quantizer extremes |
+| lossless / cu_lossless | 176x144 | cu_transquant_bypass |
+| slices4 | 352x288 | 4 slices per picture |
+| scaling_list | 352x288 | default scaling lists |
+| ctu16 / ctu32_tu4 | 352x288 | CTB 16, CTB 32 with deep TU trees, max TU 16 |
+| no_signhide / constrained_intra / no_tmvp / no_strong_intra / max_merge1 | 352x288 | tool toggles |
+| open_gop | 352x288, 40 frames | CRA + RASL / RADL, keyint 12 |
+| keyint5_idr | 352x288 | closed GOP, IDR every 5 |
+| odd_1918x1078 | 1918x1078 | conformance-window cropping |
+| hd_1080p | 1920x1080 | preset fast |
+| uhd_4k_main10 | 3840x2160 | Main 10 ultrafast |
+| vt_main / vt_main10 | 640x360 | Apple VideoToolbox (hevc_videotoolbox), macOS only |
+| synthetic (7 streams) | 96x64 | tiles, PCM, slices, dependent segments, LTR, list modification |
+
+`cargo test -p craft-hevc --test it conformance::coverage_report -- --ignored --nocapture` prints the
+decoder statistics per fixture.
+
+### DeckCraft hardening validation (#48, 2026-11-03)
+
+The unchanged FilmCraft-origin suite passed **89/0** before the port (41 unit,
+1 hostile-input, 46 integration, 1 doctest; 4 existing ignored utility/benchmark
+tests). With the new budget field/setter present but no enforcement or parser
+fixes, `cargo test -p craft-hevc --lib deckcraft_` produced **5 passed, 14 failed**.
+The same checks pass **19/0** after the fixes:
+
+| Fix | Before-fix evidence | Red → green tests |
+|---|---|---|
+| F1: typed `hvcC` preflight | Mismatched types, AUD and valid VCL accepted; late truncation populated VPS storage; semantic failure changed framing from 2 to 4 bytes | 5 |
+| F2: picture-store budget | One-byte-under budget decoded successfully; admission accepted insufficient sample/worker/gray budgets and an overflowing store count | 4 |
+| F3: PPS QP | `-75` accepted; `i32::MAX` panicked at `26 + read_se()` | 2 |
+| F4: slice QP | `i32::MAX` panicked in both header parsing and `SliceDecoder::decode` initialization | 2 |
+| F5: weight denominator | Luma denominator 1 plus `i32::MAX` chroma delta panicked | 1 |
+
+Five positive/boundary controls already passed: SEI arrays, valid VPS/SPS/PPS,
+SPS-dependent slice-QP bounds, weight-denominator bounds, and hostile short-term
+RPS deltas. Existing hostile SPS/crop coverage is unchanged. Budget coverage checks
+8/10/12-bit and mixed-depth storage, 1/4 threads, exact and one-byte-under limits,
+failure before state changes, and one shared gray backing for multiple identities.
+The 64-bit store-count overflow test also fails with `u64::MAX` budget when the
+admission guard is removed, then passes after restoring it.
+
+Validation uses rustup stable (`PATH`, `RUSTC` and `RUSTDOC` explicitly set), with
+`CARGO_TARGET_DIR=/Users/emm/ArtCraft/worktrees/craft-libs-48-hevc-fixes/target-48`.
+Generated ffmpeg/libx265 fixtures and temporary files also live inside that directory,
+which is deleted after validation. No fixtures are checked in.
+
+- `cargo test -p craft-hevc`: **108 passed, 0 failed**, 4 existing ignored.
+- `cargo test -p craft-hevc -- --skip deckcraft_`: the original suite remains **89/0**.
+- `cargo test -p craft-hevc --no-default-features`: **108 passed, 0 failed**, 4 existing ignored.
+- `CRAFT_MEDIA_REQUIRE_ORACLES=1 cargo test -p craft-hevc --lib` and `--test it`:
+  **60/0** and **46/0**, confirming required ffmpeg fixtures do not silently skip.
+- `cargo clippy -p craft-hevc --all-targets -- -D warnings`, `cargo fmt --all -- --check`,
+  `cargo doc -p craft-hevc --no-deps` and
+  `cargo check -p craft-hevc --target wasm32-unknown-unknown`: passed.
+- Existing environment limits: the optional hostile-input libkvazaar seed is unavailable;
+  four pre-existing rustdoc link warnings and two unused workspace patch warnings remain.
+
+## Performance
+
+`cargo test --release -p craft-hevc --test it perf:: -- --ignored --nocapture` (bit-exactness is
+verified first). Apple M4 Pro (14 cores), measured while the machine was heavily shared (load
+average 50-100), so these are lower bounds:
+
+| stream | 1 thread | 14 threads |
+|---|---|---|
+| 1080p Main, x265 medium CRF 24, 60 frames | ~75 fps | ~225 fps |
+| 2160p Main 10, x265 fast CRF 26, 20 frames | ~20 fps | ~95 fps |
+
+No intrinsics: the hot loops are written to auto-vectorise. M4.8
+profiling (`cargo xtask bench`, macOS `sample`) found the inverse transform at over half of the
+decoder's CPU time: it evaluated the full matrix product with strided table reads. It now sums
+contiguous basis rows scaled by the non-zero coefficients only, with the block size a compile-time
+constant so the loops vectorise (exact integer sums, so bit-exact; `transform::tests` checks it
+against the direct product on random sparse and dense blocks). SAO edge offset has a check-free
+loop for samples whose neighbours are inside the CTB. Together: ~60 % less CPU per frame
+(1080p 78 → 33 ms, 2160p 320 → 129 ms of CPU per frame through the media stack, alternating A/B), see
+[docs/performance.md](../../docs/performance.md).
+`cargo run --release -p craft-hevc --example hevcdec -- in.hevc out.yuv` decodes a file
+(`HEVC_THREADS=n`, `HEVC_LOOPS=k`, `HEVC_DRAFT=1`).
+
+M4.10 (2026-10-03), CPU cycles per frame counted by the kernel (`/usr/bin/time -l`, all threads
+summed; mean of two interleaved base / after rounds at load average 190-320) on the
+`cargo xtask bench` decode clips (x265 preset fast, CRF 22, testsrc2 + grain), bit-exact:
+
+| stream | threads | Mcycles / frame before | after | after, draft mode |
+|---|---|---|---|---|
+| 1080p (120 frames) | 1 | 90.9 | **67.3** (−26 %) | 61.2 |
+| 1080p | 14 | 100.2 | **75.1** (−25 %) | 67.3 |
+| 2160p (72 frames) | 1 | 362.6 | **262.3** (−28 %) | 232.5 |
+| 2160p | 14 | 398.3 | **284.8** (−28 %) | 260.1 |
+
+What changed: motion compensation zeroed two 10 KB windows per prediction block per component
+and list (11 % of the time in `memset`) and filtered with dynamic-width scalar sums; it now keeps
+reusable scratch windows and runs taps outer / outputs inner over fixed block widths. SAO
+looked its offset up per sample in a table (20 % of the time); the edge / band offset is now
+selected per lane from the neighbour-sign sum / band index, so the runs vectorise. Uni / bi
+output clips with min / max instead of `clamp` (whose bound assert kept it scalar). Runs of
+bypass bins (signs, Rice suffixes, SAO / intra fields) decode with one division, and
+context-coded bins are branch-free. Single-threaded 4K now splits into CABAC residual parsing
+~28 %, reference window copies ~11 %, interpolation ~11 %, deblocking + SAO + row publication
+~15 %, inverse transform ~8 %.
+
+## Known gaps
+
+- 4:2:2 (Main 4:2:2 10, RExt) is the next step: chroma geometry is 4:2:0-specific in `slicedec`
+  (chroma TU placement, second chroma cbf flags, Table 8-3 intra mode mapping), `inter` (vertical
+  chroma MV scaling), `filter` (chroma edge spacing, QpC = Min(qPi, 51)) and `picture`. Range
+  extension tools (implicit / explicit RDPCM, cross-component prediction, extended precision,
+  persistent Rice adaptation, bypass alignment, chroma QP offset lists) are rejected with
+  `Error::Unsupported`.
+- Tiles and WPP substreams are decoded sequentially (entry points are parsed but the decoder finds
+  substream starts itself); parallelism is at the picture level.
+- Error concealment is minimal: missing references are replaced by grey pictures, undecodable
+  slices leave grey / partial content.
+- No fixture covers the `pic_output_flag = 0` path or decoding-order-only CRA handling after EOS
+  beyond the synthetic streams; libx265 never emits PCM, tiles or long-term references (covered by
+  the synthetic streams only).

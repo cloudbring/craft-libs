@@ -37,6 +37,7 @@ craft-<name> = { git = "https://github.com/storytold/craft-libs", rev = "<commit
 - [`craft-atomic`](crates/atomic/README.md): Crash-safe atomic file writing and replacement with same-directory staging, directory fsync, Apple `F_FULLFSYNC` fallback, transient lock backoff, and fault injection for the Craft suite.
 - [`craft-bvh`](crates/bvh/README.md): binned surface-area-heuristic mesh BVH (12 bins, leaf size 4) over `[f32; 3]` triangles: closest-hit and any-hit rays, nearest point and box queries. No dependencies. Each split is scored from a prefix/suffix sweep of the bin bounds.
 - [`craft-blur`](crates/blur/README.md): separable floating-point Gaussian and running-sum box filters with explicit exact, recursive and box approximation contracts, edge policies, cancellation and reusable worker scratch.
+- [`craft-bitstream`](crates/bitstream/README.md): shared bit-level reader/writer from `craft-media` and the allocation-free VP8/VP9 boolean decoder from FilmCraft.
 - [`craft-cms`](crates/cms/README.md): pure-Rust ICC v2/v4 colour management: profile parsing
   and writing, transforms, rendering intents, black point compensation, soft proofing, gamut
   checks, 3D LUTs and built-in profiles (sRGB, Display P3, synthetic coated CMYK and others).
@@ -78,6 +79,10 @@ craft-<name> = { git = "https://github.com/storytold/craft-libs", rev = "<commit
   stable 128-bit content hash (FNV-1a 128) and lowercase SHA-256. Streaming and one-shot, for
   checksums and cache keys. SHA-256 is the only cryptographic hash.
 - [`craft-fuzzy`](crates/fuzzy/README.md): cached Unicode-aware command-palette matching and highlighting.
+- [`craft-h264`](crates/h264/README.md): clean-room pure-Rust H.264/AVC decoder from FilmCraft,
+  with CAVLC/CABAC and optional frame threading; ffmpeg is a test oracle, not a dependency.
+- [`craft-hevc`](crates/hevc/README.md): clean-room pure-Rust H.265/HEVC Main / Main 10 decoder
+  from FilmCraft, with optional frame threading; ffmpeg/libx265 are external test oracles only.
 - [`craft-i18n`](crates/i18n/README.md): translations over the embedded craft-i18n catalogs:
   lookup with fallback (`pt-br` → `pt` → English), plurals, language names, the system locale and
   a pseudo locale. The catalogs stay a fully optional build input; apps keep `tl!` and their
