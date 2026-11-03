@@ -957,6 +957,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "craft-fuzzy"
+version = "0.1.0"
+dependencies = [
+ "proptest",
+]
+
+[[package]]
 name = "craft-hash"
 version = "0.1.0"
 dependencies = [

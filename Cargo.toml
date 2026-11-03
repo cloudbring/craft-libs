@@ -42,6 +42,7 @@ craft-font-manager = { path = "crates/font-manager" }
 craft-font-store = { path = "crates/font-store" }
 craft-fonts-build = { path = "crates/fonts-build" }
 craft-hash = { path = "crates/hash" }
+craft-fuzzy = { path = "crates/fuzzy" }
 craft-i18n = { path = "crates/i18n" }
 craft-io = { path = "crates/io" }
 craft-jpeg = { path = "crates/jpeg" }
