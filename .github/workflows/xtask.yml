@@ -1,0 +1,31 @@
+name: Shared xtask
+
+on:
+  push:
+    branches: [main]
+    paths: ["crates/xtask-lib/**", "crates/hash/**", "Cargo.toml", "Cargo.lock", ".github/workflows/xtask.yml"]
+  pull_request:
+    paths: ["crates/xtask-lib/**", "crates/hash/**", "Cargo.toml", "Cargo.lock", ".github/workflows/xtask.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-70
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec
+        with:
+          components: rustfmt, clippy
+      - run: cargo fmt -p craft-xtask --check
+      - run: cargo clippy -p craft-xtask --all-targets --locked -- -D warnings
+      - run: cargo test -p craft-xtask --locked
+      - run: cargo doc -p craft-xtask --no-deps --locked
+      - if: always()
+        run: rm -rf "$CARGO_TARGET_DIR"

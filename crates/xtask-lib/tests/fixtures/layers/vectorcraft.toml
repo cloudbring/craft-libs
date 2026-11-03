@@ -1,0 +1,11 @@
+# Provenance: vectorcraft/xtask/src/layers.rs; captured 2026-11-03.
+layers = [["L0", ["vectorcraft-geom", "vectorcraft-color", "vectorcraft-affinity", "vectorcraft-scriptcheck"]], ["L1", ["vectorcraft-doc"]], ["L2", ["vectorcraft-pathops", "vectorcraft-brush", "vectorcraft-trace", "vectorcraft-text", "vectorcraft-effects", "vectorcraft-three-d", "vectorcraft-plugins"]], ["L3", ["vectorcraft-render", "vectorcraft-svg", "vectorcraft-pdf", "vectorcraft-format", "vectorcraft-cad", "vectorcraft-eps", "vectorcraft-metafile"]], ["L4", ["vectorcraft-tools"]], ["L5", ["vectorcraft-engine"]], ["L6", ["vectorcraft-ui-egui", "vectorcraft-mcp", "vectorcraft-testkit"]]]
+exempt = ["vectorcraft", "vectorcraft-cli", "vectorcraft-web", "xtask"]
+standalone = ["vectorcraft-affinity", "vectorcraft-scriptcheck"]
+testkits = ["vectorcraft-testkit"]
+allowed_edges = [["vectorcraft-color", "vectorcraft-geom"], ["vectorcraft-effects", "vectorcraft-pathops"], ["vectorcraft-trace", "vectorcraft-pathops"], ["vectorcraft-effects", "vectorcraft-text"], ["vectorcraft-eps", "vectorcraft-render"], ["vectorcraft-eps", "vectorcraft-metafile"], ["vectorcraft-eps", "vectorcraft-pdf"], ["vectorcraft-effects", "vectorcraft-plugins"], ["vectorcraft-effects", "vectorcraft-three-d"], ["vectorcraft-three-d", "vectorcraft-pathops"]]
+allowed_dev_edges = []
+
+[[external_rules]]
+dependencies = ["egui", "eframe", "winit", "egui_kittest", "craft-ui", "craft-keymap", "rfd", "bevy*"]
+allowed_from = ["vectorcraft-ui-egui", "vectorcraft-mcp", "vectorcraft-testkit"]

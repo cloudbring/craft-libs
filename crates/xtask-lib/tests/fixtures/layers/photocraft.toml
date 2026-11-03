@@ -1,0 +1,11 @@
+# Provenance: photocraft/xtask/src/layers.rs; captured 2026-11-03.
+layers = [["L0", ["photocraft-geom", "photocraft-cms", "photocraft-color", "photocraft-raster", "photocraft-psd", "photocraft-codecs", "photocraft-heif", "photocraft-ipp", "photocraft-raw", "photocraft-affinity", "photocraft-adobe-assets", "photocraft-tablet"]], ["L1", ["photocraft-doc"]], ["L2", ["photocraft-ops", "photocraft-paint", "photocraft-algo", "photocraft-text", "photocraft-vector"]], ["L3", ["photocraft-compose", "photocraft-gpu", "photocraft-format"]], ["L4", ["photocraft-io", "photocraft-tools", "photocraft-viewport", "photocraft-ml", "photocraft-plugins"]], ["L5", ["photocraft-engine"]], ["L6", ["photocraft-ui-egui", "photocraft-automation", "photocraft-platform", "photocraft-testkit"]]]
+exempt = ["photocraft", "photocraft-cli", "photocraft-web", "photocraft-web-boot", "xtask"]
+standalone = ["photocraft-psd", "photocraft-codecs", "photocraft-heif", "photocraft-ipp", "photocraft-raw", "photocraft-affinity", "photocraft-adobe-assets", "photocraft-tablet"]
+testkits = ["photocraft-testkit"]
+allowed_edges = [["photocraft-cms", "photocraft-geom"], ["photocraft-color", "photocraft-geom"], ["photocraft-color", "photocraft-cms"], ["photocraft-raster", "photocraft-geom"], ["photocraft-raster", "photocraft-cms"], ["photocraft-raster", "photocraft-color"], ["photocraft-gpu", "photocraft-compose"], ["photocraft-codecs", "photocraft-heif"]]
+allowed_dev_edges = []
+
+[[external_rules]]
+dependencies = ["egui", "eframe", "winit", "egui_kittest", "craft-ui", "rfd", "bevy*"]
+allowed_from = ["photocraft-ui-egui", "photocraft-automation", "photocraft-platform", "photocraft-testkit"]

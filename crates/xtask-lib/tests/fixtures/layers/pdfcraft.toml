@@ -1,0 +1,18 @@
+# Provenance: pdfcraft/xtask/src/layers.rs; captured 2026-11-03.
+layers = [["L0", ["pdfcraft-geom", "pdfcraft-filters", "pdfcraft-crypt", "pdfcraft-arlington"]], ["L1", ["pdfcraft-cos"]], ["L2", ["pdfcraft-content", "pdfcraft-model", "pdfcraft-color", "pdfcraft-fonts", "pdfcraft-ops"]], ["L3", ["pdfcraft-render", "pdfcraft-text", "pdfcraft-annot", "pdfcraft-forms", "pdfcraft-js", "pdfcraft-xfa", "pdfcraft-ml"]], ["L4", ["pdfcraft-edit", "pdfcraft-organize", "pdfcraft-security", "pdfcraft-redact", "pdfcraft-audit", "pdfcraft-xfdf", "pdfcraft-sign", "pdfcraft-ocr", "pdfcraft-create", "pdfcraft-export", "pdfcraft-optimize", "pdfcraft-preflight", "pdfcraft-prepress", "pdfcraft-a11y", "pdfcraft-compare", "pdfcraft-measure", "pdfcraft-search", "pdfcraft-print", "pdfcraft-media", "pdfcraft-ai"]], ["L5", ["pdfcraft-viewport", "pdfcraft-tools"]], ["L6", ["pdfcraft-engine"]], ["L7", ["pdfcraft-platform", "pdfcraft-ui-common", "pdfcraft-ui-egui", "pdfcraft-automation", "pdfcraft-testkit", "pdfcraft-oracle"]]]
+exempt = ["pdfcraft", "pdfcraft-cli", "pdfcraft-web", "xtask"]
+standalone = ["pdfcraft-geom", "pdfcraft-filters", "pdfcraft-crypt", "pdfcraft-arlington", "pdfcraft-cos"]
+testkits = ["pdfcraft-testkit", "pdfcraft-oracle"]
+allowed_edges = [["pdfcraft-redact", "pdfcraft-edit"], ["pdfcraft-audit", "pdfcraft-edit"], ["pdfcraft-a11y", "pdfcraft-preflight"], ["pdfcraft-prepress", "pdfcraft-preflight"], ["pdfcraft-export", "pdfcraft-ocr"], ["pdfcraft-sign", "pdfcraft-security"], ["pdfcraft-ui-egui", "pdfcraft-ui-common"], ["pdfcraft-ui-egui", "pdfcraft-platform"], ["pdfcraft-automation", "pdfcraft-platform"], ["pdfcraft-cos", "pdfcraft-filters"], ["pdfcraft-cos", "pdfcraft-crypt"], ["pdfcraft-cos", "pdfcraft-geom"]]
+allowed_dev_edges = []
+testkits_may_depend_on_testkits = true
+standalone_may_use_testkits = true
+
+[[external_rules]]
+dependencies = ["egui", "eframe", "winit", "craft-ui", "egui_extras", "egui_dock", "egui_tiles", "rfd", "wgpu*"]
+allowed_from = ["pdfcraft-platform", "pdfcraft-ui-common", "pdfcraft-ui-egui", "pdfcraft-automation", "pdfcraft-testkit", "pdfcraft-oracle"]
+
+[[external_rules]]
+dependencies = ["egui_kittest"]
+allowed_from = ["pdfcraft-platform", "pdfcraft-ui-common", "pdfcraft-ui-egui", "pdfcraft-automation", "pdfcraft-testkit", "pdfcraft-oracle"]
+allowed_dev_from = ["*"]
