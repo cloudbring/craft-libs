@@ -234,7 +234,12 @@ fn verbatim_relationship_sidecars_round_trip_byte_for_byte() -> Result<(), Box<d
     assert_eq!(out, RAW);
     let package = Package::open(&bytes, &OpcLimits::default())?;
     // Resolved targets are canonical (lowercase) like every other `Package` lookup key.
-    assert!(package.rels_of("customXml/item1.xml").and_then(|r| r.by_id("rId1")).is_some_and(|r| r.target.eq_ignore_ascii_case("customXml/itemProps1.xml")));
+    assert!(
+        package
+            .rels_of("customXml/item1.xml")
+            .and_then(|r| r.by_id("rId1"))
+            .is_some_and(|r| r.target.eq_ignore_ascii_case("customXml/itemProps1.xml"))
+    );
     let mut bad = PackageWriter::new();
     bad.add_part("a/x.xml", "application/xml", b"<x/>".to_vec())?;
     assert!(
