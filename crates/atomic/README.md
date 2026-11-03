@@ -2,6 +2,8 @@
 
 `craft-atomic` provides crash-safe atomic file writing and replacement for the Craft suite.
 
+By default both replacement and exclusive creation publish complete files atomically or return an error. Destination symlinks (including dangling links) are followed and staging occurs beside the final target; symlinked parent directories are supported. `WriteOptions::with_follow_symlinks(false)` refuses a symlink destination with `InvalidInput` containing `SymlinkRefused`. A cross-device publication fails with `CrossesDevices`; when hard links are unavailable, exclusive creation returns `Unsupported` containing `NotAtomic` rather than copying. `with_allow_non_atomic_fallback(true)` explicitly opts exclusive creation into copying, which can expose partial contents and is not crash-atomic. These path-based operations cannot protect against concurrent changes to symlinks or directories; callers must prevent such changes during a save.
+
 Extracted from the storage engine in **PhotoCraft** (refs #2, #14), it guarantees that a failed save or abnormal termination never leaves user documents truncated, corrupted, or missing.
 
 ## Core Guarantees: Atomicity vs. Durability
@@ -13,7 +15,7 @@ Extracted from the storage engine in **PhotoCraft** (refs #2, #14), it guarantee
    - **Hardware Durability Limits**: The sequence `sync_file < rename < sync_dir` proves ordering and kernel dispatch. Software tests do not prove survival across physical power interruption or unbuffered drive controller write caches.
 3. **Transient Lock Backoff (Windows)**: Antivirus scanners and search indexers hold newly written files momentarily. `RenameRetry` automatically retries renames encountering `PermissionDenied`, sharing violations (32), or lock violations (33) with exponential backoff capped at 200ms.
 4. **Permission & Symlink Invariants**: On Unix, new documents and exports use normal creation permissions (`0666`, subject to umask/default ACL), including their staging files. Private data must explicitly select `NewFilePermissions::Private` to create staging files with mode `0600`. Replacements always stage privately and restore the existing destination mode after the streaming callback. New files keep callback-selected modes with both hard links and the exclusive-copy fallback. Symlink chains are resolved with a hop limit, writing through the symlink to the ultimate target without replacing the link itself.
-5. **Safe Exclusive Creation (`write_new`)**: Uses hard links where supported, or exclusive create (`O_EXCL`), guaranteeing that an existing file is never replaced under race conditions.
+5. **Safe Exclusive Creation (`write_new`)**: Uses hard links, guaranteeing that an existing file is never replaced under race conditions. The optional non-atomic fallback uses exclusive create (`O_EXCL`).
 6. **Fault-Injection Testability**: The `AtomicFs` trait enables unit and integration test suites to simulate disk-full, locked files, and permission failures without physical disk I/O.
 
 A replaced file is a new file (a new inode), so its owner and group, extended attributes and ACLs, Finder tags, alternate data streams and hard links are not kept; a crash between the write and the rename can leave a `.<name>.<pid>-<n>.craft_tmp` file beside the destination.
@@ -70,7 +72,7 @@ On Unix, a new document/export stage is created directly with mode `0666`; the O
 process umask, setgid directory group and default ACL. This matches ordinary file creation
 (for example, `0644` under umask `022`, or `0664` under `002`). No process-global umask changes,
 empty permission probe, or `chmod` is needed for an unchanged new-file mode. The same policy
-applies when exclusive creation falls back to copying on volumes without hard links.
+applies when exclusive creation is explicitly allowed to fall back to copying on volumes without hard links.
 
 This is a deliberate change from the earlier untagged revision's private default. Settings,
 credentials and recovery data must opt into private creation **before writing any bytes**:
@@ -105,7 +107,7 @@ silently ignored. Existing-file replacements and deliberate callback changes can
 still require `chmod`; this is not a claim that every save works on every external filesystem.
 
 These policies do not promise preservation of existing ACLs, ownership or other metadata
-across replacements. The copy fallback never overwrites an existing target, but a reader may
+across replacements. The opt-in copy fallback never overwrites an existing target, but a reader may
 see the newly created target while it is being copied. A failed copy is removed.
 
 ### Fault Injection & Testing
