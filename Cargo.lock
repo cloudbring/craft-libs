@@ -1195,6 +1195,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "craft-vp8"
+version = "0.1.0"
+dependencies = [
+ "craft-bitstream",
+ "craft-media-testkit",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "craft-vp9"
+version = "0.1.0"
+dependencies = [
+ "craft-bitstream",
+ "craft-media-testkit",
+ "rayon",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "craft-window"
 version = "0.1.0"
 dependencies = [
