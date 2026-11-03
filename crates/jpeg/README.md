@@ -97,6 +97,68 @@ fn use_craft_jpeg(bytes: &[u8]) -> bool {
 
 SOF11 (lossless) falls in that range and returns `Unsupported`.
 
+## Inverse DCT
+
+The separable inverse transform transposes the 11-multiply, 29-add butterfly/rotation graph
+in figure 1 of C. Loeffler, A. Ligtenberg and G. S. Moschytz, *Practical fast 1-D DCT algorithms
+with 11 multiplications* (ICASSP 1989, pp. 988–991,
+[DOI 10.1109/ICASSP.1989.266596](https://doi.org/10.1109/ICASSP.1989.266596)). The even rotation
+is at 6π/16 with gain √2 (the figure's printed c1 is c6); the odd rotations are at 3π/16 and
+π/16 with unit gain. Each rotation `(c·a − s·b, s·a + c·b)` uses the shared product
+`c·(a+b)` and the two products `(c+s)·b`, `(s−c)·a`. This implementation was derived from
+that graph and the T.81 A.3.3 transform, not from IJG implementation code. The existing
+libjpeg-turbo decoded fixture remains an independent output reference.
+
+### Precision and rounding
+
+- Dequantization is exact `i64` multiplication. Signals carry eight fractional bits (Q8).
+  The three rotation triplets `(c, c+s, s−c)` and √2 are independently rounded Q56 constants.
+  Blocks with dequantized Q8 magnitudes at most `2²² − 2` use rounded Q32 constants
+  in `i64`, add 2³¹, and arithmetically shift right 32 bits. Other blocks use the full
+  Q56 `i128` product, add 2⁵⁵, and shift right 56 bits. Both round to nearest, with exact
+  ties toward positive infinity. The narrow path's extra error is below 1/16 Q8 unit per
+  product and avoids wide multiplications on ordinary 8-/12-bit blocks.
+- A line produces √8 times the T.81 one-dimensional inverse. After both passes, division
+  by `8 × 256` removes that gain and the Q8 scale. Fractions are retained in the existing
+  `f32` sample planes; they are not rounded to integer samples before chroma interpolation
+  and color conversion. The unchanged output stage clamps and rounds nonnegative samples
+  to nearest (ties upward), scaling 12-bit samples to `0..=65535` first.
+- The DC-only block shortcut computes `F00 / 8` exactly before conversion to the sample
+  plane. A DC-only line also skips the rotations, covering first-row/first-column sparsity.
+  All coefficient orders and quantization tables remain unchanged.
+
+### Integer headroom
+
+The bounds include malformed inputs, not just valid 12-bit DCT ranges: an `i32` coefficient
+times any `u16` quantizer has magnitude below 2⁴⁷; its Q8 representation is below 2⁵⁵.
+For a line whose input magnitudes are bounded by B, the absolute row sum of the scaled
+inverse matrix is below 7.473, including Q56 constant quantization. Product rounding and
+the bounded Q32 approximation add less than four Q8 units to an output, so `8B + 8` bounds
+each returned value. Evaluating
+the butterfly graph with triangle bounds gives `16B + 8` for every internal sum/difference.
+Thus first-pass outputs are below `2⁵⁸ + 8`, and every second-pass intermediate is below
+`2⁶² + 136`, safely inside `i64`. Multipliers have magnitude below 2⁵⁷, so full products
+and rounding offsets also fit comfortably in `i128` (magnitude below 2¹²⁰).
+The narrow path multiplies a magnitude below 2²⁹ by a Q32 factor below 2³³; its product
+plus rounding offset has magnitude below 2⁶³. Selecting the path once per block bounds
+every second-pass intermediate by `128B + 136 < 2²⁹`, without per-product branching.
+
+`src/idct_tests.rs` checks 8,192 seeded random blocks against a separate f64 T.81 matrix
+transform, including 8-/12-bit coefficient ranges and 8-/16-bit quantizers. It also checks
+every frequency impulse, sparse axes, all 65,536 signed 16-bit DCs, all 256 sign patterns
+at both line bounds, full-i32 coefficient extremes and randomized malformed blocks.
+The retained test-only previous f32 reconstruction compares final pixels for every JPEG
+fixture and fuzz seed: differences must be at most one **output** LSB, including scaled
+16-bit outputs. Bit identity is not guaranteed because the old f32 cosine matrix and the
+fixed-point graph have different intermediate rounding; entropy transcodes remain identical.
+
+For whole-decode timing (200 iterations of the largest image, 512×512 whitetail, and the
+largest 12-bit fixture), run on the old and new revisions with the same release toolchain:
+
+```sh
+cargo test -p craft-jpeg --release --locked --test idct_timing -- --ignored --nocapture
+```
+
 ## Boundaries
 
 - In scope: decoding the frames above into samples.
@@ -118,7 +180,8 @@ SOF11 (lossless) falls in that range and returns `Unsupported`.
   - `whitetail-ari.jpg` (SOF9 from cjpeg, a white lower part that decodes from the zeros
     supplied at EOI) decodes undamaged and equal to its Huffman transcode.
   - `testorig.jpg` matches `zune-jpeg`, and `testorig12.jpg` matches libjpeg-turbo's 12-bit
-    decode, within the float-against-integer IDCT difference (mean under 0.75, max 4).
+    decode, allowing for fractional reconstruction and color-conversion differences
+    (mean under 0.75, max 4).
 - `tests/mutation.rs`: a seeded mutation run (truncations, bit flips, byte and frame-header
   overwrites, deleted and repeated spans) over the test images and the fuzz seeds. Decoding must
   not panic and must stay within small `Limits`.

@@ -67,7 +67,7 @@ fn arithmetic_white_tail_decodes_from_implied_zeros() {
 }
 
 /// The 8-bit path against zune-jpeg. Both use centered linear chroma upsampling; the residual is
-/// float against integer IDCT and color conversion.
+/// fractional reconstruction against integer IDCT and color conversion.
 #[test]
 fn baseline_image_matches_zune_jpeg() {
     let bytes = fixture("testorig.jpg");
@@ -109,8 +109,8 @@ fn ppm16(bytes: &[u8]) -> (u32, u32, u32, Vec<u16>) {
 }
 
 /// testorig12.jpg against libjpeg-turbo's decode (testorig12.ppm, 12-bit RGB; SOURCE.md says how
-/// it was made). libjpeg-turbo uses an integer IDCT and integer color conversion, craft-jpeg
-/// floats; the comparison is on the 12-bit scale.
+/// it was made). libjpeg-turbo rounds the IDCT to integer samples; craft-jpeg retains fractions
+/// through upsampling and color conversion. The comparison is on the 12-bit scale.
 #[test]
 fn twelve_bit_image_matches_libjpeg_turbo() {
     let (w, h, maxval, reference) = ppm16(&fixture("testorig12.ppm"));
