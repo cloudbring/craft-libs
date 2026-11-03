@@ -185,6 +185,9 @@ fn foreign_key(name: &str) -> Option<(Key, bool)> {
     if squashed.is_empty() {
         return None;
     }
+    if let Some(key) = Key::parse(&squashed).filter(|key| key.is_keypad()) {
+        return Some((key, false));
+    }
     // egui reports keypad keys as the main keys, so `Num 5` binds `5`.
     let keypad = squashed.strip_prefix("numpad").or_else(|| squashed.strip_prefix("num")).filter(|r| !r.is_empty() && *r != "lock");
     let (n, numpad) = match keypad {

@@ -7,7 +7,7 @@ use craft_ui::layout::fit_toolbar;
 use egui::{Key as EguiKey, RichText, TextEdit, Ui};
 
 use super::{Draw, FIELD_W};
-use crate::profiles::{Profiles, set_name};
+use crate::profiles::Profiles;
 use crate::ui::state::{DialogState, SetForm, SetFormKind};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -40,6 +40,8 @@ impl Draw<'_, '_> {
         let Some((p, b)) = self.env.sets.as_ref() else { return };
         let names = p.names(b);
         let active = p.active_name(b).to_string();
+        let active_label = p.display_name(&active).to_string();
+        let labels: Vec<_> = names.iter().map(|name| p.display_name(name).to_string()).collect();
         let builtin = Profiles::is_builtin(&active, b);
         let modified = DialogState::is_modified(self.env);
         let items = self.set_items(builtin, modified);
@@ -49,9 +51,9 @@ impl Draw<'_, '_> {
                 let set_label = self.ui("Set:");
                 let l = ui.label(self.vis(&set_label));
                 let mut pick = None;
-                self.combo(ui, "set", &l, &set_label, &active, |ui| {
-                    for n in &names {
-                        if ui.selectable_label(*n == active, self.vis(n)).clicked() {
+                self.combo(ui, "set", &l, &set_label, &active_label, |ui| {
+                    for (n, label) in names.iter().zip(&labels) {
+                        if ui.selectable_label(*n == active, self.vis(label)).clicked() {
                             pick = Some(n.clone());
                         }
                     }
@@ -190,14 +192,14 @@ impl Draw<'_, '_> {
                 SetFormKind::New { .. } => self.ui("Create"),
                 SetFormKind::Rename => self.ui("Rename"),
             };
-            submit |= self.button(ui, set_name(&form.name).is_some(), &ok, "shortcuts.setForm.ok");
+            submit |= self.button(ui, self.valid_set_name(&form.name), &ok, "shortcuts.setForm.ok");
             cancel |= self.button(ui, true, &self.ui("Cancel"), "shortcuts.setForm.cancel");
         });
         if cancel {
             self.state.set_form = None;
             return;
         }
-        if !submit || set_name(&form.name).is_none() {
+        if !submit || !self.valid_set_name(&form.name) {
             self.state.set_form = Some(form);
             return;
         }
@@ -209,5 +211,9 @@ impl Draw<'_, '_> {
         // A refused name keeps the form open for another try.
         let refused = self.state.message.as_ref().is_some_and(|m| m.refused);
         self.state.set_form = refused.then_some(form);
+    }
+
+    pub(super) fn valid_set_name(&self, name: &str) -> bool {
+        self.env.sets.as_ref().is_some_and(|(profiles, _)| profiles.validate_name(name).is_some())
     }
 }

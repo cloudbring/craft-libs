@@ -159,5 +159,5 @@ pub use keymap::{
     MAX_BINDINGS, MAX_COMMANDS, MAX_CONFLICTS, Overrides, Policy, Problem, TypingRule, text_editing_chords,
 };
 pub use layout::{KeyInput, Layout};
-pub use profiles::{Builtins, MAX_EXPORT_BYTES, MAX_SET_NAME, MAX_SETS, ProfileError, Profiles, SetProblem};
+pub use profiles::{Builtins, MAX_EXPORT_BYTES, MAX_SET_NAME, MAX_SETS, Overflow, ProfileError, ProfileLimits, Profiles, ProfilesError, SetProblem};
 pub use scope::{Active, MAX_SCOPE_NAME, Scope, ScopeKind, Scopes};

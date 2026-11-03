@@ -1,11 +1,114 @@
 use craft_keymap::{
-    Bindable, Binding, CommandRef, ContextRule, Flavor, ForeignEntry, ForeignKey, ForeignSet, ImportOptions, Keymap, MAX_SETS, Overrides, Platform,
-    Policy, ProfileError, Profiles, Scope, Scopes, SetProblem, Start, plan,
+    Bindable, Binding, CommandRef, ContextRule, Flavor, ForeignEntry, ForeignKey, ForeignSet, ImportOptions, Keymap, MAX_SETS, Overflow, Overrides,
+    Platform, Policy, ProfileError, ProfileLimits, Profiles, ProfilesError, Scope, Scopes, SetProblem, Start, plan,
 };
 use serde_json::json;
 
 fn b(text: &str) -> Binding {
     Binding::parse(text).unwrap_or_else(|e| panic!("{text}: {e}"))
+}
+
+#[test]
+fn default_limits_load_65_sets_and_long_active_names_losslessly() {
+    let long = "é".repeat(65);
+    let mut sets: Vec<_> = (0..64).map(|index| json!({"name": format!("set{index}"), "overrides": {"save": ["Cmd+S"]}})).collect();
+    sets.push(json!({"name": long, "overrides": {"comp.addMarker": ["Num*"]}}));
+    let text = json!({"version": 1, "active": long, "sets": sets}).to_string();
+    let profiles: Profiles = serde_json::from_str(&text).unwrap();
+    assert_eq!(profiles.sets().len(), 65);
+    assert_eq!(profiles.active(), long);
+    assert_eq!(profiles.active_overrides(&[]), &profiles.sets()[&long]);
+    assert!(profiles.problems().is_empty());
+    let saved = serde_json::to_string(&profiles).unwrap();
+    assert_eq!(serde_json::from_str::<Profiles>(&saved).unwrap(), profiles);
+    assert_eq!(profiles.limits(), ProfileLimits { max_sets: 256, max_set_name: 256, max_notes: 256 });
+}
+
+#[test]
+fn explicit_limits_reject_overflow_instead_of_dropping_sets() {
+    let text = json!({"active": "long name", "sets": [{"name": "long name", "overrides": {}}]}).to_string();
+    let limits = ProfileLimits { max_sets: 0, ..ProfileLimits::default() };
+    for overflow in [Overflow::Error, Overflow::TruncateNames] {
+        assert_eq!(Profiles::load(&text, limits, overflow), Err(ProfilesError::TooManySets { count: 1, max: 0 }));
+    }
+    let limits = ProfileLimits { max_set_name: 4, ..ProfileLimits::default() };
+    assert_eq!(Profiles::load(&text, limits, Overflow::Error), Err(ProfilesError::NameTooLong { name: "long name".into(), max: 4 }));
+    let too_long = "x".repeat(257);
+    assert!(serde_json::from_value::<Profiles>(json!({"sets": [{"name": too_long, "overrides": {}}]})).is_err());
+}
+
+#[test]
+fn legacy_map_duplicates_are_reported_without_overwriting_the_first_set() {
+    let text = r#"{"active":"same","sets":{"same":{"first":["A"]},"same":{"second":["B"]}}}"#;
+    let profiles = Profiles::load(text, ProfileLimits::default(), Overflow::Error).unwrap();
+    assert_eq!(profiles.active(), "same");
+    assert_eq!(profiles.problems(), &[SetProblem::Duplicate { name: "same".into() }]);
+    let expected: Overrides = serde_json::from_value(json!({"first": ["A"]})).unwrap();
+    assert_eq!(profiles.active_overrides(&[]), &expected);
+    assert_eq!(serde_json::from_str::<Profiles>(text).unwrap(), profiles);
+}
+
+#[test]
+fn truncation_preserves_names_collisions_selection_and_metadata() {
+    let original = "ééééé-first";
+    let text = json!({"version": 1, "active": original, "sets": [
+        {"name": original, "overrides": {"first": ["Num*"]}},
+        {"name": "ééééé-second", "overrides": {"second": ["Num+"]}},
+        {"name": "éééé", "overrides": {"short": ["A"]}}
+    ]})
+    .to_string();
+    let limits = ProfileLimits { max_set_name: 4, ..ProfileLimits::default() };
+    let mut profiles = Profiles::load(&text, limits, Overflow::TruncateNames).unwrap();
+    assert_eq!(profiles.sets().len(), 3);
+    assert!(profiles.sets().keys().all(|name| name.chars().count() <= 4));
+    assert_eq!(profiles.display_name(profiles.active()), original);
+    assert_eq!(profiles.active_overrides(&[]), &profiles.sets()[profiles.active()]);
+    let value = serde_json::to_value(&profiles).unwrap();
+    assert_eq!(value["sets"].as_array().unwrap().iter().filter(|set| set.get("display_name").is_some()).count(), 2);
+    assert_eq!(Profiles::load(&value.to_string(), limits, Overflow::Error).unwrap(), profiles);
+    assert_eq!(serde_json::from_value::<Profiles>(value).unwrap(), profiles);
+    let export = profiles.export(profiles.active(), &[]).unwrap();
+    let mut imported = Profiles::with_limits(limits);
+    imported.import(&export, &[]).unwrap();
+    assert_eq!(imported.display_name(imported.active()), original);
+    let active = profiles.active().to_string();
+    profiles.reconcile(&[(&active, Overrides::new())]);
+    assert_ne!(profiles.active(), active);
+    assert_eq!(profiles.display_name(profiles.active()), original);
+    let active = profiles.active().to_string();
+    profiles.rename(&active, "new", &[]).unwrap();
+    assert_eq!(profiles.active(), "new");
+    assert_eq!(profiles.display_name("new"), original);
+}
+
+#[test]
+fn unlimited_limits_apply_to_loading_and_editing() {
+    let long = "x".repeat(300);
+    let limits = ProfileLimits::unlimited();
+    let mut profiles = Profiles::with_limits(limits);
+    for index in 0..300 {
+        profiles.save_as(&format!("{long}{index}"), Overrides::new(), &[]).unwrap();
+    }
+    let text = serde_json::to_string(&profiles).unwrap();
+    assert_eq!(Profiles::load(&text, limits, Overflow::Error).unwrap(), profiles);
+    assert!(serde_json::from_str::<Profiles>(&text).is_err());
+    assert!(profiles.duplicate(profiles.active().to_string().as_str(), &long, &[]).is_ok());
+    assert!(profiles.duplicate(&long, &long, &[]).is_ok());
+}
+
+#[test]
+fn legacy_maps_notes_and_zero_name_limits_keep_explicit_semantics() {
+    let text = r#"{"version":1,"active":"a long name","sets":{"a long name":{},"b":{}}}"#;
+    let limits = ProfileLimits { max_set_name: 2, max_notes: 1, ..ProfileLimits::default() };
+    let profiles = Profiles::load(text, limits, Overflow::TruncateNames).unwrap();
+    assert_eq!(profiles.display_name(profiles.active()), "a long name");
+    assert_eq!(profiles.sets().len(), 2);
+    let text = r#"{"active":"missing long name","sets":[{"name":"","overrides":{}},{"name":" pad ","overrides":{}}]}"#;
+    let profiles = Profiles::load(text, limits, Overflow::TruncateNames).unwrap();
+    assert_eq!(profiles.active(), "missing long name");
+    assert_eq!(profiles.problems().len(), 1);
+    let limits = ProfileLimits { max_set_name: 0, ..limits };
+    assert!(matches!(Profiles::load(r#"{"sets":{"a":{}}}"#, limits, Overflow::TruncateNames), Err(ProfilesError::NameTooLong { .. })));
 }
 
 fn keymap() -> Keymap {
@@ -47,7 +150,7 @@ fn profiles_copy_built_ins_on_edit_and_round_trip_as_json() {
     assert_eq!(p.rename("Custom 3", "classic", &builtins), Err(ProfileError::NameTaken));
     assert_eq!(p.rename("Custom 3", "Mine", &builtins), Ok("Mine".into()));
     assert_eq!(p.active(), "Mine");
-    assert_eq!(p.save_as(&"x".repeat(65), Overrides::new(), &builtins), Err(ProfileError::BadName));
+    assert_eq!(p.save_as(&"x".repeat(craft_keymap::MAX_SET_NAME + 1), Overrides::new(), &builtins), Err(ProfileError::BadName));
     p.delete("Mine", &builtins).unwrap();
     assert_eq!(p.active_name(&builtins), "Craft");
 
@@ -201,8 +304,7 @@ fn loading_lists_the_sets_it_drops_and_the_store_has_a_version() {
     );
 
     let many: Vec<_> = (0..MAX_SETS + 3).map(|i| json!({"name": format!("s{i}"), "overrides": {}})).collect();
-    let p: Profiles = serde_json::from_value(json!({ "sets": many })).unwrap();
-    assert_eq!((p.sets().len(), p.problems()), (MAX_SETS, &[SetProblem::TooMany { ignored: 3 }][..]));
+    assert!(serde_json::from_value::<Profiles>(json!({ "sets": many })).is_err());
 
     assert_eq!(serde_json::to_value(&p).unwrap()["version"], 1);
     let unversioned: Profiles = serde_json::from_str(r#"{"active": "x", "sets": []}"#).unwrap();

@@ -8,7 +8,7 @@ use crate::command::CommandRef;
 use crate::editor::{self, DOUBLE_PRESS, EditSession, Recorded, Recorder};
 use crate::import::{self, ForeignSet, ImportOptions, ImportPlan, ImportReport};
 use crate::keymap::{AssignError, Assigned, Binding, BindingError, Holder, Keymap, MAX_BINDINGS, Overrides, Policy};
-use crate::profiles::{Builtins, ProfileError, Profiles, set_name};
+use crate::profiles::{Builtins, ProfileError, Profiles};
 use crate::scope::Scope;
 use crate::ui::rows::{AreaEntry, AreaId, Built, Filter, RowCache, View};
 use crate::ui::text::{Text, trigger_text};
@@ -891,7 +891,8 @@ impl DialogState {
     }
 
     fn name_taken(env: &Env, name: &str) -> bool {
-        let (Some((p, b)), Some(name)) = (env.sets.as_ref(), set_name(name)) else { return false };
+        let Some((p, b)) = env.sets.as_ref() else { return false };
+        let Some(name) = p.validate_name(name) else { return false };
         p.taken(&name, b)
     }
 

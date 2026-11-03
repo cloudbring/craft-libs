@@ -78,10 +78,32 @@ macOS it folds into `cmd` (`Chord::effective`).
   double press.
 - `Chord::parse` also reads common aliases (`⇧⌘Z`, `opt+left`, `Ctrl+Cmd+M`).
 - `Chord::display(Platform)` gives `⇧⌘Z` on macOS and `Ctrl+Shift+Z` elsewhere.
+- Distinct keypad keys serialize as `Keypad0`–`Keypad9`, `KeypadMultiply`, `KeypadAdd`,
+  `KeypadSubtract`, `KeypadDivide`, `KeypadDecimal`, and `KeypadEnter`. Operator aliases
+  `Num*`, `Num+`, `Num-`, `Num/`, `Num.`, and `NumEnter` are accepted, including after modifiers
+  (`Cmd+Num+`). `Num0`–`Num9` remain aliases for **top-row** `0`–`9`, never keypad digits.
+  Keypad bindings and top-row bindings such as `Num*` and US `Shift+8` are distinct for conflicts.
 - `chord::foreign::read_foreign` reads key text written by other applications (Windows or Mac
   modifier names, numeric keypad keys).
 
 ## Keyboard layouts
+
+The pinned egui 0.37 fork has no distinct keypad key variants. `Key::to_egui()` and
+`Chord::to_egui_shortcut()` therefore return `Option` (`None` for keypad keys), rather than
+misrepresenting them as top-row shortcuts. Integrations with physical keypad information can
+feed the distinct keys through `KeyInput`; egui's ambiguous digit keys keep their old identity.
+
+`Trigger::from_text("*")` supplies a plain `KeypadMultiply` candidate (likewise single digits,
+`+`, `-`, `/`, `.`, and newline/return). The dispatcher uses this fallback with the paired
+press's modifiers (or the frame's for text alone) only outside text fields and **only when the
+same text has no Key-based binding in scope**. It checks paired key events and known printable
+equivalents, including US `Shift+8`
+for `*`, and double bindings. A declined Key-based hit still claims its text. Accepted fallback
+hits consume their text and paired press; rejected hits leave input untouched. Multi-character
+text, IME events, and repeated paired presses do not become fallback shortcuts. Text alone
+cannot prove keypad origin: another source typing the same character can activate the fallback.
+The dialog records a keypad candidate from text only when no corresponding key press exists;
+otherwise it records the reported key, so ordinary typing is not recorded twice.
 
 [`layout`](src/layout.rs) decides which chord a key press means, the same way for matching
 (`Layout::candidates`), the shortcut recorder (`Layout::resolve`) and labels
@@ -212,10 +234,22 @@ store.update(|p| p.shortcut_sets = sets.clone());
 - `export(name)` writes one set as JSON
   (`{"format":"craft-keymap","version":1,"name":…,"overrides":…}`); `import(text)` reads it into
   a new set. A file from a newer version is refused (`ProfileError::NewerVersion`).
-- Loading never fails. `problems()` lists what loading dropped: sets with a bad or repeated name,
-  overrides that are neither a list nor a map, sets past `MAX_SETS`, and a `version` newer than
-  this crate writes. The app shows them before the next save writes the sets without them.
-  Stored `Profiles` carry `version = 1`; a file without it reads as version 1.
+- `ProfileLimits { max_sets, max_set_name, max_notes }` defaults to **256/256/256**; names count
+  Unicode scalar values, not bytes. `ProfileLimits::unlimited()` explicitly disables these
+  bounds for trusted stores. `Profiles::with_limits(limits)` also applies limits to editing;
+  `limits()` and `validate_name()` expose that policy to callers and the dialog.
+- Serde loading uses default limits and fails on overflow, rather than dropping presets.
+  `Profiles::load(json, limits, Overflow::Error)` returns typed
+  `ProfilesError::TooManySets { count, max }` or `NameTooLong { name, max }`.
+  `Overflow::TruncateNames` opts into shorter storage names only: collisions receive unique
+  suffixes and each original name survives in the serialized set's `display_name` field.
+  `display_name(name)` and the dialog picker show that original; the active selection follows
+  the storage name. If no unique nonempty name fits, loading fails. Neither policy drops excess
+  sets. Limits are caller policy, not saved data: use the same limits to reload an unlimited store.
+- `problems()` still reports malformed names, duplicates, malformed overrides, and newer store
+  versions, capped by `max_notes`. Stored `Profiles` carry `version = 1`; version-1 stores,
+  unversioned stores, and legacy name-to-overrides maps remain readable. Save/load preserves
+  the active name (even an unresolved one), overrides, and original display names.
 - `import_plan(&plan, &keymap, name)` applies an import plan (see Importing a shortcut set) to a
   copy of the keymap and keeps the result as a new set, so another application's set becomes one
   the user can switch to and away from.

@@ -188,6 +188,16 @@ fn copy_event_records_cmd_c() {
 }
 
 #[test]
+fn text_only_keypad_press_records_and_displays_in_the_dialog() {
+    let mut h = mac();
+    click(&mut h, "Save: ⌘S");
+    h.event(Event::Text("*".into()));
+    h.run();
+    assert_eq!(h.state().bindings("file.save"), ["KeypadMultiply"]);
+    assert!(has(&h, "Save: KeypadMultiply"));
+}
+
+#[test]
 fn double_press_records_k_k() {
     let mut fx = Fx::new(fixture(Platform::Mac));
     fx.options.double_press = true;
