@@ -32,6 +32,7 @@ craft-dialogs = { path = "crates/dialogs" }
 craft-doc = { path = "crates/doc" }
 craft-docpath = { path = "crates/docpath" }
 craft-ecproj-format = { path = "crates/ecproj-format" }
+craft-fft = { path = "crates/fft" }
 craft-font-catalog = { path = "crates/font-catalog" }
 craft-font-manager = { path = "crates/font-manager" }
 craft-font-store = { path = "crates/font-store" }
@@ -66,6 +67,9 @@ proptest = "1"
 # SHA-256 (RustCrypto). Already used by craft-update, craft-font-store, craft-keymap and
 # craft-crw's tests; craft-hash is the shared wrapper.
 sha2 = "0.10"
+realfft = "3.5.1"
+rustdct = "0.7.1"
+rustfft = "6.4.1"
 # All date/time conversion goes through chrono (no hand-rolled calendar code beyond the 400-year range extension; AGENTS.md).
 chrono = { version = "0.4.45", default-features = false, features = ["std"] }
 
