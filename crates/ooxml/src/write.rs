@@ -41,11 +41,17 @@ pub struct XmlWriter {
     bytes: Vec<u8>,
     stack: Vec<String>,
     pending: bool,
+    deckcraft_attributes: bool,
 }
 
 impl XmlWriter {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Use deckcraft's double-quoted attribute escaping (apostrophes remain literal).
+    pub fn deckcraft() -> Self {
+        Self { deckcraft_attributes: true, ..Self::default() }
     }
 
     pub fn declaration(&mut self) -> &mut Self {
@@ -74,7 +80,12 @@ impl XmlWriter {
             self.bytes.push(b' ');
             self.bytes.extend_from_slice(name.as_bytes());
             self.bytes.extend_from_slice(b"=\"");
-            self.bytes.extend_from_slice(escape_attr(value).as_bytes());
+            let escaped = escape_attr(value);
+            if self.deckcraft_attributes {
+                self.bytes.extend_from_slice(escaped.replace("&apos;", "'").as_bytes());
+            } else {
+                self.bytes.extend_from_slice(escaped.as_bytes());
+            }
             self.bytes.push(b'"');
         }
         self
