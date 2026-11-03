@@ -31,10 +31,28 @@ pub enum Mode {
     Tolerant,
 }
 
+/// Flate framing, independent of incomplete-stream handling.
+///
+/// pdfcraft uses header detection in both strict and tolerant decoding; use
+/// `Auto` with the corresponding [`Mode`]. Unlike pdfcraft, zlib framing here
+/// validates the Adler-32 trailer and does not retry a valid-looking header.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FlateWrapper {
+    Zlib,
+    Raw,
+    /// Select zlib for a valid RFC 1950 header, otherwise raw DEFLATE.
+    Auto,
+}
+
 /// A supported stream decoding stage.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Filter {
     Flate,
+    /// Explicit framing; `Auto` encoding produces zlib-wrapped output.
+    FlateWithWrapper {
+        wrapper: FlateWrapper,
+        predictor: Option<Predictor>,
+    },
     Lzw {
         early_change: bool,
     },
@@ -153,6 +171,16 @@ impl FilterChain {
                     Filter::Flate => {
                         let (output, accounting) = self.flate(&current, remaining, stage)?;
                         (output, accounting, None)
+                    }
+                    Filter::FlateWithWrapper { wrapper, predictor } => {
+                        let wrapper = match wrapper {
+                            FlateWrapper::Zlib => Wrapper::Zlib,
+                            FlateWrapper::Raw => Wrapper::Raw,
+                            FlateWrapper::Auto if has_zlib_header(&current) => Wrapper::Zlib,
+                            FlateWrapper::Auto => Wrapper::Raw,
+                        };
+                        let (output, accounting) = self.inflate(&current, remaining, wrapper, stage)?;
+                        (output, accounting, predictor)
                     }
                     Filter::Lzw { early_change } => {
                         let (output, accounting) = self.lzw(&current, remaining, early_change, stage)?;
@@ -285,6 +313,10 @@ impl FilterChain {
             return Ok((output, Accounting { bytes_in: consumed as u64, bytes_out: next, incomplete }));
         }
     }
+}
+
+fn has_zlib_header(input: &[u8]) -> bool {
+    if let [cmf, flg, ..] = input { cmf & 15 == 8 && cmf >> 4 <= 7 && u16::from_be_bytes([*cmf, *flg]) % 31 == 0 } else { false }
 }
 
 #[cfg(test)]

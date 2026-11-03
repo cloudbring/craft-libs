@@ -1,6 +1,10 @@
-use super::{Error, Filter, Predictor, predictor};
-use flate2::{Compression, write::ZlibEncoder};
+use super::{Error, Filter, FlateWrapper, Predictor, predictor};
+use flate2::{
+    Compression,
+    write::{DeflateEncoder, ZlibEncoder},
+};
 use std::io::Write;
+use weezl::{BitOrder, encode::Encoder};
 
 /// Encoding options; predictor-bearing filters carry their own parameters.
 #[derive(Clone, Copy, Debug)]
@@ -20,18 +24,33 @@ impl Default for EncodeParams {
 /// Encode a single filter. Unsupported filters and invalid parameters return an error.
 pub fn encode(filter: Filter, data: &[u8], params: EncodeParams) -> Result<Vec<u8>, Error> {
     match filter {
-        Filter::Flate | Filter::FlatePredictor(_) => {
+        Filter::Flate | Filter::FlatePredictor(_) | Filter::FlateWithWrapper { .. } => {
             if params.level > 9 {
                 return Err(Error::Corrupt);
             }
             let prediction = match filter {
                 Filter::FlatePredictor(value) => Some(value),
+                Filter::FlateWithWrapper { predictor, .. } => predictor,
                 _ => params.predictor,
             };
             let bytes = if let Some(value) = prediction { predictor::encode(value, data)? } else { data.to_vec() };
+            if matches!(filter, Filter::FlateWithWrapper { wrapper: FlateWrapper::Raw, .. }) {
+                let mut encoder = DeflateEncoder::new(Vec::new(), Compression::new(params.level));
+                encoder.write_all(&bytes).map_err(|error| Error::Inflate(craft_archive::InflateError::Io(error)))?;
+                return encoder.finish().map_err(|error| Error::Inflate(craft_archive::InflateError::Io(error)));
+            }
             let mut encoder = ZlibEncoder::new(Vec::new(), Compression::new(params.level));
             encoder.write_all(&bytes).map_err(|error| Error::Inflate(craft_archive::InflateError::Io(error)))?;
             encoder.finish().map_err(|error| Error::Inflate(craft_archive::InflateError::Io(error)))
+        }
+        Filter::Lzw { early_change } | Filter::LzwPredictor { early_change, .. } => {
+            let prediction = match filter {
+                Filter::LzwPredictor { predictor, .. } => Some(predictor),
+                _ => params.predictor,
+            };
+            let bytes = if let Some(value) = prediction { predictor::encode(value, data)? } else { data.to_vec() };
+            let mut encoder = if early_change { Encoder::with_tiff_size_switch(BitOrder::Msb, 8) } else { Encoder::new(BitOrder::Msb, 8) };
+            encoder.encode(&bytes).map_err(|_| Error::Corrupt)
         }
         Filter::AsciiHex => {
             let mut output = Vec::new();

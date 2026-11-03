@@ -2,7 +2,7 @@
 //! Differential fixtures copied verbatim from pdfcraft commit 3936f93a1479366a951206fc6d3094680fe2d3dc:
 //! `crates/filters/src/lzw.rs` and `crates/filters/src/flate.rs`.
 
-use craft_pdf::filters::{Filter, FilterChain, Limits, Mode};
+use craft_pdf::filters::{EncodeParams, Filter, FilterChain, FlateWrapper, Limits, Mode, encode, encode_chain};
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
@@ -18,6 +18,52 @@ mod flate;
 enum FilterError {
     Corrupt { filter: &'static str, detail: String },
     LimitExceeded(usize),
+}
+
+#[test]
+fn lzw_encoder_and_chain_match_pdfcraft() -> Result<(), Box<dyn std::error::Error>> {
+    let data: Vec<u8> = (0..8192).map(|index| ((index * 73 + index / 17) % 256) as u8).collect();
+    for early_change in [false, true] {
+        let filter = Filter::Lzw { early_change };
+        for input in [&b"TOBEORNOTTOBEORTOBEORNOT"[..], &data[..]] {
+            let encoded = encode(filter, input, EncodeParams::default()).map_err(|error| format!("{error:?}"))?;
+            assert_eq!(encoded, lzw::encode(input, early_change));
+            let stages = [(Filter::Ascii85, EncodeParams::default()), (filter, EncodeParams::default())];
+            let encoded = encode_chain(&stages, input).map_err(|error| format!("{error:?}"))?;
+            let chain = FilterChain {
+                filters: stages.iter().map(|stage| stage.0).collect(),
+                limits: Limits { max_input: 100_000, max_output: 100_000, max_ratio: 100_000, max_depth: 2 },
+                mode: Mode::Strict,
+            };
+            assert_eq!(chain.decode(&encoded).map_err(|error| format!("{error:?}"))?.data, input);
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn flate_wrapper_selection() -> Result<(), Box<dyn std::error::Error>> {
+    let data = b"headerless deflate data";
+    for mode in [Mode::Strict, Mode::Tolerant] {
+        for source in [FlateWrapper::Raw, FlateWrapper::Zlib] {
+            let filter = Filter::FlateWithWrapper { wrapper: source, predictor: None };
+            let encoded = encode(filter, data, EncodeParams::default()).map_err(|error| format!("{error:?}"))?;
+            for wrapper in [FlateWrapper::Raw, FlateWrapper::Zlib, FlateWrapper::Auto] {
+                let chain = FilterChain {
+                    filters: vec![Filter::FlateWithWrapper { wrapper, predictor: None }],
+                    limits: Limits { max_input: 1000, max_output: 1000, max_ratio: 1000, max_depth: 1 },
+                    mode,
+                };
+                let decoded = chain.decode(&encoded);
+                if wrapper == FlateWrapper::Auto || wrapper == source {
+                    assert_eq!(decoded.map_err(|error| format!("{error:?}"))?.data, data);
+                } else if mode == Mode::Strict || wrapper == FlateWrapper::Zlib {
+                    assert!(decoded.is_err());
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 #[allow(dead_code)]
