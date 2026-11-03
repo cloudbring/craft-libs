@@ -6,6 +6,37 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
+#[test]
+fn progress_tracks_bytes_and_cancellation_cleans_up() -> io::Result<()> {
+    use craft_atomic::{Cancelled, WriteOptions};
+    let dir = TempDir::new("progress");
+    let path = dir.0.join("doc.dat");
+    std::fs::write(&path, ORIGINAL)?;
+    let mut reports = Vec::new();
+    let mut progress = |written, total| {
+        reports.push((written, total));
+        Ok(())
+    };
+    WriteOptions::default().atomic_write_with_progress(&path, Some(6), &mut progress, |writer| {
+        writer.write_all(b"abc")?;
+        writer.write_all(b"def")
+    })?;
+    assert!(reports.windows(2).all(|pair| pair[0].0 <= pair[1].0));
+    assert_eq!(reports.last(), Some(&(6, Some(6))));
+    std::fs::write(&path, ORIGINAL)?;
+    let mut cancel = |written, _| if written >= 3 { Err(Cancelled) } else { Ok(()) };
+    let error = WriteOptions::default()
+        .atomic_write_with_progress(&path, Some(6), &mut cancel, |writer| {
+            let _ = writer.write_all(b"abc");
+            Ok(())
+        })
+        .err();
+    assert!(error.as_ref().and_then(io::Error::get_ref).is_some_and(|inner| inner.is::<Cancelled>()));
+    assert_eq!(std::fs::read(&path)?, ORIGINAL);
+    assert_no_temp(&dir.0);
+    Ok(())
+}
+
 struct TempDir(PathBuf);
 impl TempDir {
     fn new(tag: &str) -> Self {
@@ -36,6 +67,31 @@ fn assert_no_temp(dir: &Path) {
 }
 
 const ORIGINAL: &[u8] = b"original precious document";
+
+#[test]
+fn options_create_parents_and_preserve_modified_time() -> io::Result<()> {
+    let dir = TempDir::new("parents-metadata");
+    let path = dir.0.join("a/b/doc.dat");
+    assert!(craft_atomic::atomic_write(&path, b"old").is_err());
+    craft_atomic::WriteOptions::default().with_create_parents(true).atomic_write(&path, b"old")?;
+    let modified = std::time::SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(1_600_000_000);
+    std::fs::OpenOptions::new().write(true).open(&path)?.set_times(std::fs::FileTimes::new().set_modified(modified))?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o640))?;
+    }
+    craft_atomic::WriteOptions::default().with_preserve_metadata(true).atomic_write(&path, b"new")?;
+    let metadata = std::fs::metadata(&path)?;
+    assert_eq!(metadata.modified()?, modified);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        assert_eq!(metadata.permissions().mode() & 0o777, 0o640);
+    }
+    assert_eq!(std::fs::read(&path)?, b"new");
+    Ok(())
+}
 
 #[test]
 fn atomic_write_with_streaming_writer() {
