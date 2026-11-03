@@ -1,0 +1,16 @@
+[package]
+name = "craft-metafile"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+description = "Bounded EMF, WMF and EMF+ reader into a neutral vector scene"
+
+[lints]
+workspace = true
+
+[dependencies]
+kurbo.workspace = true
+thiserror.workspace = true
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "gif", "tiff", "bmp"] }

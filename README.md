@@ -120,6 +120,9 @@ Its process/filesystem tooling is native-only and is not part of the per-crate w
   (app menu, Window, Help, system-key clashes), a platform backend trait, and key equivalents
   fed back to egui as the input egui-winit would have made. Commands and their enabled state
   stay in each app.
+- [`craft-metafile`](crates/metafile/README.md): bounded EMF/WMF/EMF+ reading into a neutral scene
+  (curves, text, tiles, bitmaps and clips); shared format/algorithm layer below app document
+  adapters and renderers.
 - [`craft-opus`](crates/opus/README.md): clean-room Opus decoder (SILK, CELT, hybrid and
   multistream surround) from FilmCraft, with shared `craft-fft` MDCTs; downloaded RFC vectors
   and external ffmpeg/libopus are test-only oracles.

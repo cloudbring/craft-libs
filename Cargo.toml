@@ -49,6 +49,7 @@ craft-log = { path = "crates/log" }
 craft-media = { path = "crates/media" }
 craft-media-testkit = { path = "crates/media-testkit" }
 craft-menu = { path = "crates/menu" }
+craft-metafile = { path = "crates/metafile" }
 craft-opus = { path = "crates/opus" }
 craft-ooxml = { path = "crates/ooxml" }
 craft-pcraft-format = { path = "crates/pcraft-format" }
