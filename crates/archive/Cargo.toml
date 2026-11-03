@@ -11,6 +11,7 @@ repository.workspace = true
 workspace = true
 
 [dependencies]
+craft-hash = { workspace = true }
 flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
 zip = { version = "9", default-features = false, features = ["deflate"] }
 thiserror = { workspace = true }

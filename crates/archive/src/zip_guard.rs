@@ -76,6 +76,11 @@ impl<R: Read + Seek> ZipGuard<R> {
         self.total_read
     }
 
+    /// Returns the validated name of an entry in central-directory order.
+    pub fn entry_name(&mut self, index: usize) -> Result<String, ZipError> {
+        Ok(self.archive.by_index(index)?.name()?.into_owned())
+    }
+
     /// Reads an entry to completion, including its CRC check, without exceeding caps.
     pub fn read_entry(&mut self, index: usize) -> Result<Vec<u8>, ZipError> {
         let mut entry = self.archive.by_index(index)?;
