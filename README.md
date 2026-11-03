@@ -35,6 +35,7 @@ craft-<name> = { git = "https://github.com/storytold/craft-libs", rev = "<commit
 - [`craft-blur`](crates/blur/README.md): separable floating-point Gaussian and running-sum box filters with explicit exact, recursive and box approximation contracts, edge policies, cancellation and reusable worker scratch.
 - [`craft-bvh`](crates/bvh/README.md): binned surface-area-heuristic mesh BVH (12 bins, leaf size 4) over `[f32; 3]` triangles: closest-hit and any-hit rays, nearest point and box queries. No dependencies. Each split is scored from a prefix/suffix sweep of the bin bounds.
 - [`craft-cache`](crates/cache/README.md): cost-bounded LRU, frame-sweep caching, shared budgets and stable fingerprints.
+- [`craft-cfb`](crates/cfb/README.md): bounded, read-only OLE2/CFB directory and stream reader with FAT, DIFAT, and mini-stream support.
 - [`craft-cms`](crates/cms/README.md): pure-Rust ICC v2/v4 colour management: profile parsing
   and writing, transforms, rendering intents, black point compensation, soft proofing, gamut
   checks, 3D LUTs and built-in profiles (sRGB, Display P3, synthetic coated CMYK and others).
