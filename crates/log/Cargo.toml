@@ -1,0 +1,15 @@
+[package]
+name = "craft-log"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+description = "Asynchronous rotating desktop logging for Craft applications"
+
+[lints]
+workspace = true
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+chrono = { workspace = true, features = ["clock"] }
+log = "0.4"

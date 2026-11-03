@@ -37,6 +37,7 @@ craft-fonts-build = { path = "crates/fonts-build" }
 craft-i18n = { path = "crates/i18n" }
 craft-jpeg = { path = "crates/jpeg" }
 craft-keymap = { path = "crates/keymap" }
+craft-log = { path = "crates/log" }
 craft-media = { path = "crates/media" }
 craft-media-testkit = { path = "crates/media-testkit" }
 craft-menu = { path = "crates/menu" }
