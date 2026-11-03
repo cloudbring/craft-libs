@@ -61,15 +61,19 @@ impl Fixture {
 }
 
 fn build(major: u16, fat_count: usize) -> Fixture {
+    build_layout(major, fat_count, 4096, false)
+}
+
+fn build_layout(major: u16, fat_count: usize, regular_length: usize, regular_last: bool) -> Fixture {
     let sector_size = if major == 3 { 512 } else { 4096 };
     let per = sector_size / 4;
     let difat_count = fat_count.saturating_sub(109).div_ceil(per - 1);
     let directory_sector = fat_count + difat_count;
-    let regular_sector = directory_sector + 2;
-    let regular_count = 4096 / sector_size;
-    let mini_sector = regular_sector + regular_count;
+    let regular_count = regular_length.div_ceil(sector_size);
+    let mini_sector = directory_sector + 2 + if regular_last { 0 } else { regular_count };
     let root_sector = mini_sector + 1;
-    let count = if fat_count > 1 { fat_count * per } else { root_sector + 1 };
+    let regular_sector = if regular_last { root_sector + 1 } else { directory_sector + 2 };
+    let count = if fat_count > 1 { fat_count * per } else { directory_sector + 4 + regular_count };
     let mut bytes = vec![0u8; (count + 1) * sector_size];
     bytes[..8].copy_from_slice(&[0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]);
     put16(&mut bytes, 26, major);
@@ -121,7 +125,7 @@ fn build(major: u16, fat_count: usize) -> Fixture {
     let dir = (directory_sector + 1) * sector_size;
     directory(&mut bytes, dir, "Root Entry", 5, [1, FREE, FREE], (root_sector as u32, 128));
     directory(&mut bytes, dir + 128, "EncryptionInfo", 2, [FREE, 3, 2], (0, 5));
-    directory(&mut bytes, dir + 256, "EncryptedPackage", 2, [FREE, FREE, FREE], (regular_sector as u32, 4096));
+    directory(&mut bytes, dir + 256, "EncryptedPackage", 2, [FREE, FREE, FREE], (regular_sector as u32, regular_length as u64));
     directory(&mut bytes, dir + 384, "Nested", 1, [4, FREE, FREE], (END, 0));
     bytes[dir + 256 + 67] = 0;
     bytes[dir + 384 + 67] = 0;
@@ -190,6 +194,98 @@ fn v3_and_v4_regular_mini_and_directory_tree() {
         assert_eq!(cfb.read_stream("nested/inner").unwrap(), b"world");
         assert_eq!(cfb.read_stream("EncryptedPackage").unwrap(), vec![0x42; 4096]);
     }
+}
+
+#[test]
+fn regular_stream_allows_truncated_final_padding() {
+    for major in [3, 4] {
+        let fixture = build_layout(major, 1, 4097, true);
+        let end = (fixture.regular_sector + 1) * fixture.sector_size + 4097;
+        let expected = Cfb::open(&fixture.bytes).unwrap().read_stream("EncryptedPackage").unwrap();
+        assert_eq!(expected, vec![0x42; 4097]);
+        for remaining in [end, end + 17, fixture.bytes.len() - 1] {
+            assert_eq!(Cfb::open(&fixture.bytes[..remaining]).unwrap().read_stream("EncryptedPackage").unwrap(), expected);
+        }
+        assert!(Cfb::open(&fixture.bytes[..end - 1]).unwrap().read_stream("EncryptedPackage").is_err());
+    }
+}
+
+#[test]
+fn mini_stream_allows_truncated_root_padding() {
+    for major in [3, 4] {
+        let fixture = build(major, 1);
+        let end = (fixture.root_sector + 1) * fixture.sector_size + 128;
+        for name in ["EncryptionInfo", "Nested/Inner"] {
+            let expected = Cfb::open(&fixture.bytes).unwrap().read_stream(name).unwrap();
+            for remaining in [end, end + 17, fixture.bytes.len() - 1] {
+                assert_eq!(Cfb::open(&fixture.bytes[..remaining]).unwrap().read_stream(name).unwrap(), expected);
+            }
+            assert!(Cfb::open(&fixture.bytes[..end - 1]).unwrap().read_stream(name).is_err());
+        }
+    }
+}
+
+#[test]
+fn truncated_non_final_regular_sector_is_rejected() {
+    for major in [3, 4] {
+        let mut fixture = build_layout(major, 1, 4097, true);
+        let last = fixture.bytes.len() / fixture.sector_size - 2;
+        let dir = (fixture.directory_sector + 1) * fixture.sector_size;
+        let fat = (fixture.fat_sector + 1) * fixture.sector_size;
+        put32(&mut fixture.bytes, dir + 256 + 116, last as u32);
+        put32(&mut fixture.bytes, fat + last * 4, fixture.regular_sector as u32);
+        put32(&mut fixture.bytes, fat + (last - 1) * 4, END);
+        assert_eq!(Cfb::open(&fixture.bytes).unwrap().read_stream("EncryptedPackage").unwrap(), vec![0x42; 4097]);
+        let end = (last + 1) * fixture.sector_size + 200;
+        assert!(Cfb::open(&fixture.bytes[..end]).unwrap().read_stream("EncryptedPackage").is_err());
+    }
+}
+
+#[test]
+fn truncated_non_final_root_sector_is_rejected() {
+    for major in [3, 4] {
+        let mut fixture = build(major, 1);
+        let dir = (fixture.directory_sector + 1) * fixture.sector_size;
+        let fat = (fixture.fat_sector + 1) * fixture.sector_size;
+        put32(&mut fixture.bytes, dir + 120, fixture.sector_size as u32 + 128);
+        put32(&mut fixture.bytes, fat + fixture.root_sector * 4, fixture.regular_sector as u32);
+        put32(&mut fixture.bytes, fat + fixture.regular_sector * 4, END);
+        assert_eq!(Cfb::open(&fixture.bytes).unwrap().read_stream("Nested/Inner").unwrap(), b"world");
+        let end = (fixture.root_sector + 1) * fixture.sector_size + 128;
+        assert!(Cfb::open(&fixture.bytes[..end]).unwrap().read_stream("Nested/Inner").is_err());
+    }
+}
+
+#[test]
+fn truncated_sector_must_terminate_the_fat_chain() {
+    for major in [3, 4] {
+        for regular_last in [false, true] {
+            let mut fixture = build_layout(major, 1, 4097, regular_last);
+            let last = fixture.bytes.len() / fixture.sector_size - 2;
+            let fat = (fixture.fat_sector + 1) * fixture.sector_size;
+            let length = if regular_last { 1 } else { 128 };
+            let name = if regular_last { "EncryptedPackage" } else { "Nested/Inner" };
+            for next in [fixture.regular_sector as u32, FREE, FAT, DIFAT, 999_999] {
+                put32(&mut fixture.bytes, fat + last * 4, next);
+                let end = (last + 1) * fixture.sector_size + length;
+                assert!(Cfb::open(&fixture.bytes[..end]).unwrap().read_stream(name).is_err());
+            }
+        }
+    }
+}
+
+#[test]
+fn truncated_metadata_sectors_remain_strict() {
+    for major in [3, 4] {
+        let fixture = build(major, 1);
+        for sector in [fixture.fat_sector, fixture.directory_sector + 1, fixture.mini_sector] {
+            let end = (sector + 2) * fixture.sector_size - 1;
+            assert!(Cfb::open(&fixture.bytes[..end]).is_err());
+        }
+    }
+    let fixture = build(3, 110);
+    let end = (110 + 2) * fixture.sector_size - 1;
+    assert!(Cfb::open(&fixture.bytes[..end]).is_err());
 }
 
 #[test]
