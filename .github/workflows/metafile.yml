@@ -1,0 +1,42 @@
+name: Metafile
+on:
+  push:
+    branches: [main]
+    paths: ["crates/metafile/**", "Cargo.toml", "Cargo.lock", ".github/workflows/metafile.yml"]
+  pull_request:
+    paths: ["crates/metafile/**", "Cargo.toml", "Cargo.lock", ".github/workflows/metafile.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+env:
+  CARGO_TARGET_DIR: ${{ github.workspace }}/target-92
+jobs:
+  native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec
+        with:
+          toolchain: "1.95"
+          components: rustfmt, clippy
+      - run: cargo fmt -p craft-metafile --check
+      - run: cargo clippy -p craft-metafile --all-targets --locked -- -D warnings
+      - run: cargo test -p craft-metafile --locked
+      - run: cargo doc -p craft-metafile --no-deps --locked
+        env:
+          RUSTDOCFLAGS: -D warnings
+  wasm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec
+        with:
+          toolchain: "1.95"
+          targets: wasm32-unknown-unknown
+      - run: cargo check -p craft-metafile --locked --target wasm32-unknown-unknown
