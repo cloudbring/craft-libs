@@ -977,6 +977,9 @@ impl FrameHeader {
             let mut widest = 0;
             let mut start = 0;
             while start < sb_cols {
+                if t.mi_col_starts.len() >= MAX_TILE_COLS {
+                    return Err(Error::Invalid("tile_cols exceeds MAX_TILE_COLS"));
+                }
                 t.mi_col_starts.push(start << sb_shift);
                 let max_width = (sb_cols - start).min(max_tile_width_sb);
                 let size = r.ns(max_width)? + 1;
@@ -994,6 +997,9 @@ impl FrameHeader {
             let max_tile_height_sb = (max_tile_area_sb / widest.max(1)).max(1);
             let mut start = 0;
             while start < sb_rows {
+                if t.mi_row_starts.len() >= MAX_TILE_ROWS {
+                    return Err(Error::Invalid("tile_rows exceeds MAX_TILE_ROWS"));
+                }
                 t.mi_row_starts.push(start << sb_shift);
                 let max_height = (sb_rows - start).min(max_tile_height_sb);
                 let size = r.ns(max_height)? + 1;
@@ -1460,7 +1466,29 @@ fn decode_subexp(r: &mut BitReader, num_syms: i32) -> Result<i32> {
 
 #[cfg(test)]
 mod tests {
-    use super::strictly_increasing;
+    use super::{FrameHeader, SequenceHeader, strictly_increasing};
+    use crate::Error;
+    use crate::bits::BitReader;
+
+    #[test]
+    fn explicit_tile_columns_cannot_exceed_spec_limit() {
+        let mut header = FrameHeader { mi_cols: 1040, mi_rows: 16, ..Default::default() };
+        let mut bits = BitReader::new(&[0; 128]);
+        assert!(matches!(header.tile_info(&mut bits, &SequenceHeader::default()), Err(Error::Invalid("tile_cols exceeds MAX_TILE_COLS"))));
+        let mut at_limit = FrameHeader { mi_cols: 1024, mi_rows: 16, ..Default::default() };
+        assert!(at_limit.tile_info(&mut BitReader::new(&[0; 128]), &SequenceHeader::default()).is_ok());
+        assert_eq!(at_limit.tile_info.cols, 64);
+    }
+
+    #[test]
+    fn explicit_tile_rows_cannot_exceed_spec_limit() {
+        let mut header = FrameHeader { mi_cols: 16, mi_rows: 1040, ..Default::default() };
+        let mut bits = BitReader::new(&[0; 128]);
+        assert!(matches!(header.tile_info(&mut bits, &SequenceHeader::default()), Err(Error::Invalid("tile_rows exceeds MAX_TILE_ROWS"))));
+        let mut at_limit = FrameHeader { mi_cols: 16, mi_rows: 1024, ..Default::default() };
+        assert!(at_limit.tile_info(&mut BitReader::new(&[0; 128]), &SequenceHeader::default()).is_ok());
+        assert_eq!(at_limit.tile_info.rows, 64);
+    }
 
     #[test]
     fn film_grain_points_must_strictly_increase() {
