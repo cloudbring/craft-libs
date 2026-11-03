@@ -1,0 +1,19 @@
+[package]
+name = "craft-distortion"
+description = "Shared 8-bit SAD, SATD and SSE kernels for the H.264, HEVC, VP9 and AV1 encoders."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+# On wasm32, also pass RUSTFLAGS="-C target-feature=+simd128". The feature is a
+# no-op on NEON and SSE2 targets, where `wide` already selects those ISAs.
+simd128 = []
+
+[dependencies]
+wide = { workspace = true }

@@ -25,6 +25,7 @@ craft-cache-derive = { path = "crates/cache-derive" }
 craft-cms = { path = "crates/cms" }
 craft-crw = { path = "crates/crw" }
 craft-dialogs = { path = "crates/dialogs" }
+craft-distortion = { path = "crates/distortion" }
 craft-doc = { path = "crates/doc" }
 craft-docpath = { path = "crates/docpath" }
 craft-ecproj-format = { path = "crates/ecproj-format" }
@@ -81,6 +82,9 @@ rustdct = "0.7.1"
 rustfft = "6.4.1"
 # All date/time conversion goes through chrono (no hand-rolled calendar code beyond the 400-year range extension; AGENTS.md).
 chrono = { version = "0.4.45", default-features = false, features = ["std"] }
+# Safe 128-bit SIMD for craft-distortion (NEON, SSE2, optional wasm SIMD128, scalar fallback).
+# The workspace forbids unsafe, so this crate does not call core::arch. See crates/distortion/README.md.
+wide = { version = "1.7.1", default-features = false }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

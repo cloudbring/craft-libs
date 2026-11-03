@@ -1,0 +1,38 @@
+name: Distortion
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['crates/distortion/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/distortion.yml']
+  pull_request:
+    paths: ['crates/distortion/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/distortion.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  distortion:
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        # macOS runners are kept for releases: macOS runs only when started by hand.
+        os: ${{ github.event_name == 'workflow_dispatch' && fromJSON('["ubuntu-latest","windows-latest","macos-latest"]') || fromJSON('["ubuntu-latest","windows-latest"]') }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: "1.95"
+          components: rustfmt, clippy
+          targets: wasm32-unknown-unknown
+      - run: cargo fmt --check
+      - run: cargo clippy -p craft-distortion --all-targets --locked -- -D warnings
+      - run: cargo test -p craft-distortion --locked -- --nocapture
+      - run: cargo check -p craft-distortion --locked --target wasm32-unknown-unknown
+      - run: cargo check -p craft-distortion --locked --target wasm32-unknown-unknown --features simd128
+        env:
+          RUSTFLAGS: -C target-feature=+simd128
