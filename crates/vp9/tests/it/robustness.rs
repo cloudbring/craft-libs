@@ -117,3 +117,16 @@ fn oversized_frame_is_rejected() {
     let mut dec = Decoder::new();
     assert!(dec.decode(&v, 0).is_err());
 }
+
+#[test]
+fn a_small_budget_rejects_the_frame_store() {
+    let Some((ivf, _)) = common::ensure(common::fixture("tiny_odd")) else { return };
+    let data = std::fs::read(ivf).unwrap();
+    let frame = common::ivf_frames(&data)[0];
+    let mut unlimited = Decoder::with_threads(1);
+    assert!(unlimited.decode(frame, 0).is_ok());
+
+    let mut limited = Decoder::with_threads(1);
+    limited.set_memory_budget(1);
+    assert!(matches!(limited.decode(frame, 0), Err(craft_vp9::Error::Invalid(message)) if message.contains("memory budget")));
+}
