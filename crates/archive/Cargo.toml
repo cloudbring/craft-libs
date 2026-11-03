@@ -1,0 +1,19 @@
+[package]
+name = "craft-archive"
+description = "Bounded DEFLATE, guarded ZIP reading, and validated PNG chunks."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
+zip = { version = "9", default-features = false, features = ["deflate"] }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
