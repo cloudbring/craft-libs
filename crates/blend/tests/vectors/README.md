@@ -32,4 +32,5 @@ That exclusion is a mathematical requirement, not an error tolerance; see
 `../../TRUST.md` and theorem `no_rational_sqrt_half`. Separate Rust tests ensure
 nonsquare SoftLight returns an error instead of an approximation.
 
-CI runs Cargo against the committed CSV. **Lean is not run in CI yet.**
+CI runs Cargo against the committed CSV, and the `Blend Lean` workflow runs
+`lean/check.sh` (build, axiom audit, regenerate and `cmp`). Run it locally the same way.
