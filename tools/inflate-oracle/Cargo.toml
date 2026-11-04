@@ -1,0 +1,21 @@
+[package]
+name = "inflate-oracle"
+version = "0.0.0"
+edition = "2024"
+publish = false
+description = "Differential of craft-archive's bounded inflate against the verified pure-Lean lean-zip decoder over the Office corpus and hostile streams; see docs/verification/inflate-oracle.md"
+
+# Own workspace, like tools/container-oracle: nothing here leaks into the main craft-libs lockfile.
+[workspace]
+
+[dependencies]
+craft-archive = { path = "../../crates/archive" }
+craft-oracle = { path = "../../crates/oracle" }
+craft-compare = { path = "../../crates/compare" }
+# Extra sides: flate2 used directly (no craft-archive limits/accounting wrapper) and miniz_oxide
+# straight from its own API. craft-archive itself is flate2 with the miniz_oxide backend.
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
+miniz_oxide = "0.8"
+# Reads raw (still compressed) entry payloads through `by_index_raw`.
+zip = { version = "9", default-features = false, features = ["deflate"] }
+serde_json = "1"

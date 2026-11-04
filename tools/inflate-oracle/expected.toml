@@ -1,0 +1,10 @@
+# Intended differences between craft-archive's inflate and lean-zip's verified decoder over the
+# Office corpus and the hostile streams of tools/inflate-oracle. Matched per input name:
+# `<corpus-relative zip>!<entry>` for corpus streams, `hostile/<class>/<case>` for generated ones.
+# An entry that matches nothing is reported as stale. Root causes: docs/verification/inflate-oracle.md.
+
+[[expected]]
+id = "hostile-incomplete-litlen"
+reason = "Incomplete literal/length Huffman code (Kraft sum below 1, longest code over one bit) in a dynamic block header. zlib (inflate_table: incomplete set only allowed for max length 1) and miniz_oxide reject it at table build, so craft-archive (flate2/miniz_oxide) rejects. lean-zip's verified decoder accepts it: its specification requires only a prefix-free code, and it fails later, with `invalid Huffman code`, only when the stream reaches an unassigned code. The streams are seeded bit/byte mutations of valid streams whose first block header is classified by an independent header parser (hostile::first_block_incomplete_litlen). craft-archive is the stricter side, the same as zlib, which every producer targets; no valid stream a conforming compressor emits has an incomplete literal/length code, and the corpus agrees on every real stream."
+evidence = "RFC 1951 3.2.7; zlib inflate_table (inftrees.c) incomplete-set rule; lean-zip Zip/Spec/Huffman.lean valid-code definition; docs/verification/inflate-oracle.md"
+glob = "mutation/incomplete-litlen/**"
