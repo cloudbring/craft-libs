@@ -21,6 +21,10 @@ pub enum NameMode {
 }
 
 impl NameMode {
+    pub(crate) fn apply_cow(self, name: std::borrow::Cow<'_, str>) -> std::borrow::Cow<'_, str> {
+        if self == Self::NormalizeBackslash && name.contains('\\') { std::borrow::Cow::Owned(name.replace('\\', "/")) } else { name }
+    }
+
     /// Returns the name as exposed by the guard under this mode.
     pub fn apply<'a>(self, name: &'a str) -> std::borrow::Cow<'a, str> {
         if self == Self::NormalizeBackslash && name.contains('\\') {
@@ -77,34 +81,7 @@ impl<R: Read + Seek> ZipGuard<R> {
 
     /// Like [`new`](Self::new) with an explicit [`NameMode`].
     pub fn new_with_names(archive: zip::ZipArchive<R>, limits: ZipLimits, names: NameMode) -> Result<Self, ZipError> {
-        if archive.has_duplicate_names() {
-            return Err(ZipError::Duplicate);
-        }
-        if archive.len() > limits.max_entries {
-            return Err(ZipError::EntryCount);
-        }
-        let mut total = 0u64;
-        let mut seen = std::collections::BTreeSet::new();
-        for index in 0..archive.len() {
-            let entry = archive.by_index_data(index)?;
-            let name = names.apply(&entry.name()?).into_owned();
-            if !safe_name(&name) {
-                return Err(ZipError::UnsafePath(name));
-            }
-            if names != NameMode::Strict && !seen.insert(name.clone()) {
-                return Err(ZipError::Duplicate);
-            }
-            if entry.unix_mode().is_some_and(|mode| mode & 0o170000 == 0o120000) {
-                return Err(ZipError::Symlink(name.to_string()));
-            }
-            if entry.size() > limits.max_entry_bytes {
-                return Err(ZipError::EntryLimit);
-            }
-            total = total.checked_add(entry.size()).ok_or(ZipError::TotalLimit)?;
-            if total > limits.max_total_bytes {
-                return Err(ZipError::TotalLimit);
-            }
-        }
+        validate(&archive, &limits, names)?;
         Ok(Self { archive, limits, names, total_read: 0 })
     }
 
@@ -125,6 +102,10 @@ impl<R: Read + Seek> ZipGuard<R> {
 
     /// Returns validated metadata for one entry without reading its contents.
     pub fn entry(&mut self, index: usize) -> Result<ZipEntry, ZipError> {
+        self.entry_at(index)
+    }
+
+    pub(crate) fn entry_at(&self, index: usize) -> Result<ZipEntry, ZipError> {
         let entry = self.archive.by_index_data(index)?;
         #[allow(deprecated)]
         let compression_method = entry.compression().to_u16();
@@ -134,6 +115,13 @@ impl<R: Read + Seek> ZipGuard<R> {
             size: entry.size(),
             compression_method,
             encrypted: entry.encrypted(),
+        })
+    }
+
+    /// Index of the first entry whose exposed name equals `name`.
+    pub(crate) fn index_of(&self, name: &str) -> Option<usize> {
+        (0..self.archive.len()).find(|&index| {
+            self.archive.by_index_data(index).ok().and_then(|entry| entry.name().ok().map(|raw| self.names.apply(&raw) == name)).unwrap_or(false)
         })
     }
 
@@ -180,12 +168,55 @@ impl<R: Read + Seek> ZipGuard<R> {
     }
 }
 
+/// One pass over the central directory: duplicates, count, names, symlinks and declared sizes.
+/// Allocates nothing per entry in strict mode.
+fn validate<R: Read + Seek>(archive: &zip::ZipArchive<R>, limits: &ZipLimits, mode: NameMode) -> Result<(), ZipError> {
+    if archive.has_duplicate_names() {
+        return Err(ZipError::Duplicate);
+    }
+    if archive.len() > limits.max_entries {
+        return Err(ZipError::EntryCount);
+    }
+    // Strict names are unique already (`has_duplicate_names` above); normalising can create collisions.
+    let mut seen = std::collections::HashSet::<String>::new();
+    if mode != NameMode::Strict {
+        seen.try_reserve(archive.len()).map_err(|_| ZipError::EntryCount)?;
+    }
+    let mut total = 0u64;
+    for index in 0..archive.len() {
+        let entry = archive.by_index_data(index)?;
+        let raw = entry.name()?;
+        let name = mode.apply_cow(raw);
+        if !safe_name(&name) {
+            return Err(ZipError::UnsafePath(name.into_owned()));
+        }
+        if mode != NameMode::Strict && !seen.insert(name.to_string()) {
+            return Err(ZipError::Duplicate);
+        }
+        if entry.unix_mode().is_some_and(|mode| mode & 0o170000 == 0o120000) {
+            return Err(ZipError::Symlink(name.into_owned()));
+        }
+        if entry.size() > limits.max_entry_bytes {
+            return Err(ZipError::EntryLimit);
+        }
+        total = total.checked_add(entry.size()).ok_or(ZipError::TotalLimit)?;
+        if total > limits.max_total_bytes {
+            return Err(ZipError::TotalLimit);
+        }
+    }
+    Ok(())
+}
+
 fn safe_name(name: &str) -> bool {
     let path = name.strip_suffix('/').unwrap_or(name);
-    !path.is_empty()
-        && !name.starts_with('/')
-        && !name.contains('\\')
-        && !name.chars().any(char::is_control)
-        && !name.as_bytes().get(1).is_some_and(|colon| *colon == b':')
-        && path.split('/').all(|part| !part.is_empty() && part != "." && part != "..")
+    if path.is_empty() || name.starts_with('/') || name.as_bytes().get(1) == Some(&b':') {
+        return false;
+    }
+    // One byte pass. `char::is_control` is U+0000..=U+001F and U+007F..=U+009F; the latter range is
+    // the UTF-8 pair C2 80..=C2 9F, and no other multi-byte sequence contains a control character.
+    let bytes = name.as_bytes();
+    if bytes.iter().any(|&b| b < 0x20 || b == 0x7f || b == b'\\') || bytes.windows(2).any(|w| w[0] == 0xC2 && (0x80..=0x9F).contains(&w[1])) {
+        return false;
+    }
+    path.split('/').all(|part| !part.is_empty() && part != "." && part != "..")
 }
