@@ -172,6 +172,9 @@ pub enum OpcError {
     Invalid(String),
     #[error("OPC limit exceeded: {0}")]
     Limit(&'static str),
+    /// A ZIP entry exists but its data is damaged or unreadable.
+    #[error("corrupt ZIP entry: {0}")]
+    Corrupt(String),
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -229,20 +232,34 @@ pub struct Tolerance {
     pub lenient_rels: bool,
     /// A corrupt or unreadable ZIP entry is skipped; its bytes still count against the budget.
     pub skip_corrupt_entries: bool,
+    /// Entries whose names fail the part-name check are kept under their raw name (with a warning).
+    pub lenient_part_names: bool,
+    /// Malformed `[Content_Types].xml` or an unsafe Override yields warnings and best-effort types.
+    pub lenient_content_types: bool,
+    /// Relationship targets escaping the root with `..` clamp at the root instead of being skipped.
+    pub clamp_targets: bool,
 }
 
 impl Tolerance {
     pub fn lenient() -> Self {
-        Self { merge_case_duplicates: true, missing_content_types: true, lenient_rels: true, skip_corrupt_entries: true }
+        Self {
+            merge_case_duplicates: true,
+            missing_content_types: true,
+            lenient_rels: true,
+            skip_corrupt_entries: true,
+            lenient_part_names: true,
+            lenient_content_types: true,
+            clamp_targets: true,
+        }
     }
 }
 
 struct Part {
     name: String,
-    data: Arc<[u8]>,
+    data: Arc<Vec<u8>>,
 }
 
-type Groups = BTreeMap<String, Vec<(String, Arc<[u8]>)>>;
+type Groups = BTreeMap<String, Vec<(String, Arc<Vec<u8>>)>>;
 
 pub struct Package {
     parts: BTreeMap<String, Part>,
@@ -294,25 +311,27 @@ impl Package {
             if name.ends_with('/') {
                 continue;
             }
-            let original = checked_part(name)?;
+            let original = part_name(name, tolerance, &mut warnings)?;
             let group = groups.entry(original.to_ascii_lowercase()).or_default();
             if !group.is_empty() && !tolerance.merge_case_duplicates {
                 return Err(OpcError::Invalid("case-duplicate part".into()));
             }
-            group.push((original.to_string(), Arc::from(entry)));
+            group.push((original.to_string(), Arc::new(entry)));
         }
         Self::assemble(groups, limits, tolerance, warnings)
     }
 
     /// Build a package from in-memory parts keyed by part name. `Lenient` also enables every
     /// [`Tolerance`] switch (there are no ZIP entries to skip, but names may collide by case).
-    pub fn from_parts(parts: BTreeMap<String, Vec<u8>>, limits: &OpcLimits, mode: dom::ReadMode) -> Result<Self, OpcError> {
+    pub fn from_parts<V: Into<Arc<Vec<u8>>>>(parts: BTreeMap<String, V>, limits: &OpcLimits, mode: dom::ReadMode) -> Result<Self, OpcError> {
         let mut limits = *limits;
         limits.xml.read_mode = mode;
         let tolerance = if mode == dom::ReadMode::Lenient { Tolerance::lenient() } else { Tolerance::default() };
         let mut total = 0u64;
         let mut groups = Groups::new();
+        let mut warnings = Vec::new();
         for (name, data) in parts {
+            let data: Arc<Vec<u8>> = data.into();
             if data.len() as u64 > limits.zip.max_entry_bytes {
                 return Err(ZipError::EntryLimit.into());
             }
@@ -320,18 +339,18 @@ impl Package {
             if total > limits.zip.max_total_bytes {
                 return Err(ZipError::TotalLimit.into());
             }
-            let original = checked_part(&name)?.to_string();
+            let original = part_name(&name, &tolerance, &mut warnings)?.to_string();
             let group = groups.entry(original.to_ascii_lowercase()).or_default();
             if !group.is_empty() && !tolerance.merge_case_duplicates {
                 return Err(OpcError::Invalid("case-duplicate part".into()));
             }
-            group.push((original, Arc::from(data)));
+            group.push((original, data));
         }
-        Self::assemble(groups, &limits, &tolerance, Vec::new())
+        Self::assemble(groups, &limits, &tolerance, warnings)
     }
 
     fn assemble(groups: Groups, limits: &OpcLimits, tolerance: &Tolerance, mut warnings: Vec<String>) -> Result<Self, OpcError> {
-        let mut chosen: BTreeMap<String, (String, Arc<[u8]>)> = BTreeMap::new();
+        let mut chosen: BTreeMap<String, (String, Arc<Vec<u8>>)> = BTreeMap::new();
         let mut pending = Vec::new();
         for (key, mut group) in groups {
             if group.len() == 1 {
@@ -363,7 +382,7 @@ impl Package {
         }
         let mut content_types = ContentTypes::default();
         match chosen.get("[content_types].xml") {
-            Some((_, ct_bytes)) => content_types = parse_content_types(ct_bytes, &limits.xml)?,
+            Some((_, ct_bytes)) => content_types = parse_content_types(ct_bytes, &limits.xml, tolerance, &mut warnings)?,
             None if tolerance.missing_content_types => warnings.push("missing [Content_Types].xml: using empty content types".into()),
             None => return Err(OpcError::Invalid("missing content types".into())),
         }
@@ -389,7 +408,7 @@ impl Package {
     }
 
     /// Shared handle to a part's bytes; cheap to clone and keep after the package is dropped.
-    pub fn part_shared(&self, name: &str) -> Option<Arc<[u8]>> {
+    pub fn part_shared(&self, name: &str) -> Option<Arc<Vec<u8>>> {
         self.parts.get(&name.trim_start_matches('/').to_ascii_lowercase()).map(|part| Arc::clone(&part.data))
     }
 
@@ -407,6 +426,44 @@ impl Package {
     pub fn rels_of(&self, source: &str) -> Option<&Relationships> {
         self.relationships.get(&source.trim_start_matches('/').to_ascii_lowercase())
     }
+}
+
+/// Parse a `.rels` document without an eager package. Never fails: problems become warnings and
+/// the result is best-effort (bad targets skipped, escaping targets clamped per `tolerance`).
+pub fn parse_relationships(xml: &[u8], source_part: &str, tolerance: &Tolerance) -> (Vec<Relationship>, Vec<String>) {
+    let source = source_part.trim_start_matches('/');
+    let mut limits = OpcLimits::default();
+    limits.xml.read_mode = dom::ReadMode::Lenient;
+    let tolerance = Tolerance { lenient_rels: true, ..*tolerance };
+    let mut warnings = Vec::new();
+    let rels = parse_rels(&rels_path(source), source, xml, &limits, &tolerance, &mut warnings).unwrap_or_default();
+    (rels.0, warnings)
+}
+
+fn clamp_for_source(source: &str, raw: &str) -> String {
+    if raw.starts_with('#') && !source.is_empty() {
+        return source.to_string();
+    }
+    resolve_target_clamped(source.rsplit_once('/').map_or("", |(dir, _)| dir), raw)
+}
+
+/// Infallible resolution of an internal target against a base directory (e.g. `"word"`). `..`
+/// beyond the root clamps at the root; bad escapes are kept literally.
+pub fn resolve_target_clamped(base_dir: &str, target: &str) -> String {
+    let reference = target.split('#').next().unwrap_or("");
+    let decoded = percent_decode(reference).unwrap_or_else(|_| reference.to_string());
+    let base = base_dir.trim_matches('/');
+    let mut segments: Vec<&str> = if decoded.starts_with('/') || base.is_empty() { Vec::new() } else { base.split('/').collect() };
+    for segment in decoded.split('/') {
+        match segment {
+            "" | "." => {}
+            ".." => {
+                segments.pop();
+            }
+            other => segments.push(other),
+        }
+    }
+    segments.join("/")
 }
 
 fn parse_rels(
@@ -456,6 +513,8 @@ fn parse_rels(
         };
         let target = if mode == TargetMode::External {
             raw.to_string()
+        } else if tolerance.clamp_targets {
+            clamp_for_source(source, raw)
         } else {
             match resolve_target(source, raw) {
                 Ok(target) => target,
@@ -473,13 +532,23 @@ fn parse_rels(
     Ok(rels)
 }
 
+/// Budget behaviour for [`LazyPackage`] reads.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct LazyLimits {
+    /// A read that fails with [`OpcError::Corrupt`] is charged its full cap (`read_optional`) or
+    /// exhausts the remaining budget (`read`), so damaged entries cannot be retried for free.
+    pub charge_failed_reads_full_cap: bool,
+}
+
 /// Index-only reader for large archives (spreadsheets, ODS). Parts are decompressed one at a time
 /// on request; a damaged part fails only its own read. Not OPC-specific: `[Content_Types].xml`
-/// is parsed if present and otherwise ignored.
-pub struct LazyPackage {
-    archive: zip::ZipArchive<Cursor<Vec<u8>>>,
+/// is parsed if present and otherwise ignored. `D` is the archive storage: `Vec<u8>`, `&[u8]`
+/// (no copy), `Arc<[u8]>`, ...
+pub struct LazyPackage<D: AsRef<[u8]> = Vec<u8>> {
+    archive: zip::ZipArchive<Cursor<D>>,
     index: BTreeMap<String, LazyEntry>,
     limits: OpcLimits,
+    lazy: LazyLimits,
     total_read: u64,
     pub content_types: ContentTypes,
     warnings: Vec<String>,
@@ -496,9 +565,13 @@ struct LazyEntry {
 const LAZY_MAX_RATIO: u64 = 500;
 const LAZY_RATIO_FLOOR: u64 = 1024 * 1024;
 
-impl LazyPackage {
-    pub fn open(bytes: Vec<u8>, limits: &OpcLimits) -> Result<Self, OpcError> {
-        if bytes.len() > limits.max_archive_bytes {
+impl<D: AsRef<[u8]>> LazyPackage<D> {
+    pub fn open(bytes: D, limits: &OpcLimits) -> Result<Self, OpcError> {
+        Self::open_with(bytes, limits, LazyLimits::default())
+    }
+
+    pub fn open_with(bytes: D, limits: &OpcLimits, lazy: LazyLimits) -> Result<Self, OpcError> {
+        if bytes.as_ref().len() > limits.max_archive_bytes {
             return Err(OpcError::Limit("archive bytes"));
         }
         let archive = zip::ZipArchive::new(Cursor::new(bytes))?;
@@ -525,12 +598,15 @@ impl LazyPackage {
                 Err(error) => warnings.push(format!("{name}: unreadable entry skipped: {error}")),
             }
         }
-        let mut package = Self { archive, index, limits: *limits, total_read: 0, content_types: ContentTypes::default(), warnings };
+        let mut package = Self { archive, index, limits: *limits, lazy, total_read: 0, content_types: ContentTypes::default(), warnings };
         match package.read_optional("[Content_Types].xml", package.limits.xml.max_total_bytes as u64) {
-            Ok(Some(bytes)) => match parse_content_types(&bytes, &package.limits.xml) {
-                Ok(content_types) => package.content_types = content_types,
-                Err(error) => package.warnings.push(format!("[Content_Types].xml ignored: {error}")),
-            },
+            Ok(Some(bytes)) => {
+                let mut ignored = Vec::new();
+                match parse_content_types(&bytes, &package.limits.xml, &Tolerance::default(), &mut ignored) {
+                    Ok(content_types) => package.content_types = content_types,
+                    Err(error) => package.warnings.push(format!("[Content_Types].xml ignored: {error}")),
+                }
+            }
             Ok(None) => {}
             Err(error) => package.warnings.push(format!("[Content_Types].xml ignored: {error}")),
         }
@@ -546,6 +622,12 @@ impl LazyPackage {
         self.index.keys().map(String::as_str)
     }
 
+    /// Case-insensitive lookup; returns the spelling stored in the archive.
+    pub fn find(&self, name: &str) -> Option<&str> {
+        let name = name.trim_start_matches('/');
+        self.index.keys().map(String::as_str).find(|stored| stored.eq_ignore_ascii_case(name))
+    }
+
     /// Uncompressed size claimed by the ZIP index (untrusted; reads are still bounded).
     pub fn declared_size(&self, name: &str) -> Option<u64> {
         self.index.get(name).map(|entry| entry.size)
@@ -556,11 +638,60 @@ impl LazyPackage {
         self.total_read
     }
 
+    /// Budget left before reads fail with `Limit("package bytes")`.
+    pub fn remaining_budget(&self) -> u64 {
+        self.limits.zip.max_total_bytes.saturating_sub(self.total_read)
+    }
+
+    /// Charge `n` bytes against the budget (e.g. for work done outside this reader).
+    pub fn charge(&mut self, n: u64) -> Result<(), OpcError> {
+        if n > self.remaining_budget() {
+            self.total_read = self.limits.zip.max_total_bytes;
+            return Err(OpcError::Limit("package bytes"));
+        }
+        self.total_read += n;
+        Ok(())
+    }
+
+    /// Relationships of `source_part` (`""` for the package root), read leniently with
+    /// [`parse_relationships`]. Missing sidecar yields an empty list; warnings join `warnings()`.
+    pub fn rels_of(&mut self, source_part: &str, cap: u64) -> Result<Vec<Relationship>, OpcError> {
+        let source = source_part.trim_start_matches('/');
+        let path = rels_path(source);
+        let Some(stored) = self.find(&path).map(str::to_string) else {
+            return Ok(Vec::new());
+        };
+        let Some(bytes) = self.read_optional(&stored, cap)? else {
+            return Ok(Vec::new());
+        };
+        let (rels, warnings) = parse_relationships(&bytes, source, &Tolerance::lenient());
+        self.warnings.extend(warnings);
+        Ok(rels)
+    }
+
     pub fn read(&mut self, name: &str, cap: u64) -> Result<Vec<u8>, OpcError> {
-        self.read_optional(name, cap)?.ok_or_else(|| OpcError::Invalid(format!("missing part: {name}")))
+        self.read_charged(name, cap, true)?.ok_or_else(|| OpcError::Invalid(format!("missing part: {name}")))
     }
 
     pub fn read_optional(&mut self, name: &str, cap: u64) -> Result<Option<Vec<u8>>, OpcError> {
+        self.read_charged(name, cap, false)
+    }
+
+    fn read_charged(&mut self, name: &str, cap: u64, exhaust: bool) -> Result<Option<Vec<u8>>, OpcError> {
+        let before = self.total_read;
+        let result = self.read_raw(name, cap);
+        if self.lazy.charge_failed_reads_full_cap && matches!(result, Err(OpcError::Corrupt(_))) {
+            if exhaust {
+                self.total_read = self.limits.zip.max_total_bytes;
+            } else {
+                let extra = cap.min(self.limits.zip.max_entry_bytes).saturating_sub(self.total_read - before);
+                self.total_read += extra.min(self.remaining_budget());
+            }
+        }
+        result
+    }
+
+    fn read_raw(&mut self, name: &str, cap: u64) -> Result<Option<Vec<u8>>, OpcError> {
         let Some(entry) = self.index.get(name).copied() else {
             return Ok(None);
         };
@@ -568,14 +699,14 @@ impl LazyPackage {
         if entry.size > cap {
             return Err(OpcError::Limit("part bytes"));
         }
-        let mut file = self.archive.by_index(entry.index)?;
+        let mut file = self.archive.by_index(entry.index).map_err(|error| OpcError::Corrupt(error.to_string()))?;
         let mut output = Vec::new();
         let mut buffer = [0; 8192];
         loop {
             let remaining_entry = cap - output.len() as u64;
             let remaining_total = self.limits.zip.max_total_bytes - self.total_read;
             let chunk = buffer.len().min(usize::try_from(remaining_entry.min(remaining_total).saturating_add(1)).unwrap_or(usize::MAX));
-            let count = file.read(&mut buffer[..chunk])?;
+            let count = file.read(&mut buffer[..chunk]).map_err(|error| OpcError::Corrupt(error.to_string()))?;
             if count == 0 {
                 return Ok(Some(output));
             }
@@ -596,9 +727,21 @@ impl LazyPackage {
     }
 }
 
-fn parse_content_types(bytes: &[u8], xml: &Limits) -> Result<ContentTypes, OpcError> {
-    let ct = dom::parse(bytes, xml)?;
+fn parse_content_types(bytes: &[u8], xml: &Limits, tolerance: &Tolerance, warnings: &mut Vec<String>) -> Result<ContentTypes, OpcError> {
+    let tolerant = tolerance.lenient_content_types;
+    let ct = match dom::parse(bytes, xml) {
+        Ok(ct) => ct,
+        Err(error) if tolerant => {
+            warnings.push(format!("[Content_Types].xml ignored: {error}"));
+            return Ok(ContentTypes::default());
+        }
+        Err(error) => return Err(error.into()),
+    };
     if ct.name != "Types" {
+        if tolerant {
+            warnings.push("[Content_Types].xml ignored: wrong root element".into());
+            return Ok(ContentTypes::default());
+        }
         return Err(OpcError::Invalid("content types root".into()));
     }
     let mut content_types = ContentTypes::default();
@@ -609,10 +752,27 @@ fn parse_content_types(bytes: &[u8], xml: &Limits) -> Result<ContentTypes, OpcEr
     }
     for node in ct.children("Override") {
         if let (Some(name), Some(kind)) = (node.attr("PartName"), node.attr("ContentType")) {
-            content_types.overrides.insert(checked_part(name)?.to_ascii_lowercase(), kind.to_string());
+            match checked_part(name) {
+                Ok(name) => {
+                    content_types.overrides.insert(name.to_ascii_lowercase(), kind.to_string());
+                }
+                Err(error) if tolerant => warnings.push(format!("[Content_Types].xml: override skipped: {error}")),
+                Err(error) => return Err(error),
+            }
         }
     }
     Ok(content_types)
+}
+
+fn part_name<'a>(name: &'a str, tolerance: &Tolerance, warnings: &mut Vec<String>) -> Result<&'a str, OpcError> {
+    match checked_part(name) {
+        Ok(name) => Ok(name),
+        Err(error) if tolerance.lenient_part_names => {
+            warnings.push(format!("{error}: kept under raw name"));
+            Ok(name.trim_start_matches('/'))
+        }
+        Err(error) => Err(error),
+    }
 }
 
 fn checked_part(name: &str) -> Result<&str, OpcError> {
