@@ -1,0 +1,38 @@
+name: Blur Lean
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['crates/blur/lean/**', 'crates/blur/tests/vectors/**', '.github/workflows/blur-lean.yml']
+  pull_request:
+    paths: ['crates/blur/lean/**', 'crates/blur/tests/vectors/**', '.github/workflows/blur-lean.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  lean:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: crates/blur/lean
+    steps:
+      - uses: actions/checkout@v7
+      - name: Read pinned toolchain
+        id: toolchain
+        run: echo "name=$(tr -d '[:space:]' < lean-toolchain)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.elan
+            crates/blur/lean/.lake
+          key: lean-${{ runner.os }}-${{ hashFiles('crates/blur/lean/lean-toolchain', 'crates/blur/lean/lake-manifest.json') }}
+      - name: Install elan with the pinned toolchain
+        run: |
+          curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf \
+            | sh -s -- -y --default-toolchain "${{ steps.toolchain.outputs.name }}"
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - name: Build, audit axioms, and compare vectors
+        run: ./check.sh

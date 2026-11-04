@@ -1,0 +1,29 @@
+import CraftBlur
+
+#print axioms CraftBlur.mom0_conv
+#print axioms CraftBlur.mom1_conv
+#print axioms CraftBlur.mom2_conv
+#print axioms CraftBlur.var_conv
+#print axioms CraftBlur.var_conv_reflect
+#print axioms CraftBlur.box_mom0
+#print axioms CraftBlur.box_mom1
+#print axioms CraftBlur.box_mom2
+#print axioms CraftBlur.box_var
+#print axioms CraftBlur.cascade_moments
+#print axioms CraftBlur.cascadeW_var
+#print axioms CraftBlur.lower_sq_le
+#print axioms CraftBlur.lt_upper_sq
+#print axioms CraftBlur.mStar_bounds
+#print axioms CraftBlur.count_le_three
+#print axioms CraftBlur.widths_odd
+#print axioms CraftBlur.widthVar_widths
+#print axioms CraftBlur.variance_error_le
+#print axioms CraftBlur.relative_error_le
+#print axioms CraftBlur.integer_sigma
+#print axioms CraftBlur.weights_sum_one
+#print axioms CraftBlur.mean_zero
+#print axioms CraftBlur.varianceSampled_eq
+#print axioms CraftBlur.varianceSampled_nonneg
+#print axioms CraftBlur.varianceSampled_le
+#print axioms CraftBlur.pdf_eq_gw
+#print axioms CraftBlur.continuous_second_moment
