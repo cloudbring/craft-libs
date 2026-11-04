@@ -2,8 +2,9 @@
 //! designcraft/crates/pptx/src/package.rs, wordcraft/crates/docx/src/package.rs,
 //! gridcraft/crates/xlsx/src/package.rs. Slide, document, and sheet models remain in apps.
 
-use std::collections::BTreeMap;
-use std::io::{Cursor, Write};
+use std::collections::{BTreeMap, BTreeSet};
+use std::io::{Cursor, Read, Write};
+use std::sync::Arc;
 
 use craft_archive::{ZipError, ZipGuard, ZipLimits};
 
@@ -217,8 +218,34 @@ impl ContentTypes {
     }
 }
 
+/// Opt-in tolerant-read switches for [`Package::open_with`]. The default is fully strict.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Tolerance {
+    /// Case-duplicate entries merge into one part, preferring the spelling a relationship names.
+    pub merge_case_duplicates: bool,
+    /// A missing `[Content_Types].xml` yields empty content types plus a warning.
+    pub missing_content_types: bool,
+    /// Malformed `.rels` (root, missing attribute, duplicate id) degrade to a partial list.
+    pub lenient_rels: bool,
+    /// A corrupt or unreadable ZIP entry is skipped; its bytes still count against the budget.
+    pub skip_corrupt_entries: bool,
+}
+
+impl Tolerance {
+    pub fn lenient() -> Self {
+        Self { merge_case_duplicates: true, missing_content_types: true, lenient_rels: true, skip_corrupt_entries: true }
+    }
+}
+
+struct Part {
+    name: String,
+    data: Arc<[u8]>,
+}
+
+type Groups = BTreeMap<String, Vec<(String, Arc<[u8]>)>>;
+
 pub struct Package {
-    parts: BTreeMap<String, Vec<u8>>,
+    parts: BTreeMap<String, Part>,
     pub content_types: ContentTypes,
     relationships: BTreeMap<String, Relationships>,
     warnings: Vec<String>,
@@ -226,6 +253,11 @@ pub struct Package {
 
 impl Package {
     pub fn open(bytes: &[u8], limits: &OpcLimits) -> Result<Self, OpcError> {
+        Self::open_with(bytes, limits, &Tolerance::default())
+    }
+
+    /// Like [`open`](Self::open) with the given tolerances; problems are reported in `warnings()`.
+    pub fn open_with(bytes: &[u8], limits: &OpcLimits, tolerance: &Tolerance) -> Result<Self, OpcError> {
         if bytes.len() > limits.max_archive_bytes {
             return Err(OpcError::Limit("archive bytes"));
         }
@@ -240,89 +272,347 @@ impl Package {
             })
             .collect::<Result<_, _>>()?;
         let mut guard = ZipGuard::new(archive, limits.zip)?;
-        let mut parts = BTreeMap::new();
+        let mut groups = Groups::new();
+        let mut warnings = Vec::new();
+        // Declared bytes of skipped entries that the guard did not see decoded.
+        let mut unread = 0u64;
         for (index, name) in names.iter().enumerate() {
-            let entry = guard.read_entry(index)?;
+            let before = guard.total_read();
+            let entry = match guard.read_entry(index) {
+                Ok(entry) => entry,
+                Err(error @ (ZipError::Archive(_) | ZipError::Io(_))) if tolerance.skip_corrupt_entries => {
+                    let declared = guard.entry(index).map_or(0, |entry| entry.size);
+                    unread = unread.saturating_add(declared.saturating_sub(guard.total_read() - before));
+                    if guard.total_read().saturating_add(unread) > limits.zip.max_total_bytes {
+                        return Err(ZipError::TotalLimit.into());
+                    }
+                    warnings.push(format!("{name}: unreadable entry skipped: {error}"));
+                    continue;
+                }
+                Err(error) => return Err(error.into()),
+            };
             if name.ends_with('/') {
                 continue;
             }
-            let canonical = checked_part(name)?.to_ascii_lowercase();
-            if parts.insert(canonical, entry).is_some() {
+            let original = checked_part(name)?;
+            let group = groups.entry(original.to_ascii_lowercase()).or_default();
+            if !group.is_empty() && !tolerance.merge_case_duplicates {
                 return Err(OpcError::Invalid("case-duplicate part".into()));
             }
+            group.push((original.to_string(), Arc::from(entry)));
         }
-        let ct_bytes = parts.get("[content_types].xml").ok_or_else(|| OpcError::Invalid("missing content types".into()))?;
-        let ct = dom::parse(ct_bytes, &limits.xml)?;
-        if ct.name != "Types" {
-            return Err(OpcError::Invalid("content types root".into()));
+        Self::assemble(groups, limits, tolerance, warnings)
+    }
+
+    /// Build a package from in-memory parts keyed by part name. `Lenient` also enables every
+    /// [`Tolerance`] switch (there are no ZIP entries to skip, but names may collide by case).
+    pub fn from_parts(parts: BTreeMap<String, Vec<u8>>, limits: &OpcLimits, mode: dom::ReadMode) -> Result<Self, OpcError> {
+        let mut limits = *limits;
+        limits.xml.read_mode = mode;
+        let tolerance = if mode == dom::ReadMode::Lenient { Tolerance::lenient() } else { Tolerance::default() };
+        let mut total = 0u64;
+        let mut groups = Groups::new();
+        for (name, data) in parts {
+            if data.len() as u64 > limits.zip.max_entry_bytes {
+                return Err(ZipError::EntryLimit.into());
+            }
+            total = total.saturating_add(data.len() as u64);
+            if total > limits.zip.max_total_bytes {
+                return Err(ZipError::TotalLimit.into());
+            }
+            let original = checked_part(&name)?.to_string();
+            let group = groups.entry(original.to_ascii_lowercase()).or_default();
+            if !group.is_empty() && !tolerance.merge_case_duplicates {
+                return Err(OpcError::Invalid("case-duplicate part".into()));
+            }
+            group.push((original, Arc::from(data)));
+        }
+        Self::assemble(groups, &limits, &tolerance, Vec::new())
+    }
+
+    fn assemble(groups: Groups, limits: &OpcLimits, tolerance: &Tolerance, mut warnings: Vec<String>) -> Result<Self, OpcError> {
+        let mut chosen: BTreeMap<String, (String, Arc<[u8]>)> = BTreeMap::new();
+        let mut pending = Vec::new();
+        for (key, mut group) in groups {
+            if group.len() == 1 {
+                chosen.insert(key, group.remove(0));
+            } else if key == "[content_types].xml" || source_of_rels(&key).is_some() {
+                warnings.push(format!("case-duplicate {key}: kept {}", group[0].0));
+                chosen.insert(key, group.remove(0));
+            } else {
+                pending.push((key, group));
+            }
+        }
+        if !pending.is_empty() {
+            let mut targets = BTreeSet::new();
+            for (name, (_, data)) in &chosen {
+                if let Some(source) = source_of_rels(name)
+                    && let Ok(rels) = parse_rels(name, &source, data, limits, &Tolerance::lenient(), &mut Vec::new())
+                {
+                    targets.extend(rels.0.into_iter().filter(|rel| rel.mode == TargetMode::Internal).map(|rel| rel.target));
+                }
+            }
+            for (key, group) in pending {
+                let position = group.iter().position(|(name, _)| targets.contains(name)).unwrap_or(0);
+                let spellings: Vec<_> = group.iter().map(|(name, _)| name.as_str()).collect();
+                warnings.push(format!("case-duplicate parts {} merged into {}", spellings.join(", "), spellings[position]));
+                if let Some(entry) = group.into_iter().nth(position) {
+                    chosen.insert(key, entry);
+                }
+            }
         }
         let mut content_types = ContentTypes::default();
-        for node in ct.children("Default") {
-            if let (Some(ext), Some(kind)) = (node.attr("Extension"), node.attr("ContentType")) {
-                content_types.defaults.insert(ext.to_ascii_lowercase(), kind.to_string());
-            }
-        }
-        for node in ct.children("Override") {
-            if let (Some(name), Some(kind)) = (node.attr("PartName"), node.attr("ContentType")) {
-                content_types.overrides.insert(checked_part(name)?.to_ascii_lowercase(), kind.to_string());
-            }
+        match chosen.get("[content_types].xml") {
+            Some((_, ct_bytes)) => content_types = parse_content_types(ct_bytes, &limits.xml)?,
+            None if tolerance.missing_content_types => warnings.push("missing [Content_Types].xml: using empty content types".into()),
+            None => return Err(OpcError::Invalid("missing content types".into())),
         }
         let mut relationships = BTreeMap::new();
-        let mut warnings = Vec::new();
-        for (name, data) in &parts {
+        for (name, (_, data)) in &chosen {
             if let Some(source) = source_of_rels(name) {
-                let root = dom::parse(data, &limits.xml)?;
-                if root.name != "Relationships" {
-                    return Err(OpcError::Invalid("relationships root".into()));
-                }
-                let mut rels = Relationships::default();
-                for node in root.children("Relationship") {
-                    let (Some(id), Some(kind), Some(raw)) = (node.attr("Id"), node.attr("Type"), node.attr("Target")) else {
-                        return Err(OpcError::Invalid("incomplete relationship".into()));
-                    };
-                    if rels.by_id(id).is_some() {
-                        return Err(OpcError::Invalid("duplicate relationship id".into()));
-                    }
-                    let mode = if node.attr("TargetMode").is_some_and(|value| value.eq_ignore_ascii_case("external")) {
-                        TargetMode::External
-                    } else {
-                        TargetMode::Internal
-                    };
-                    let target = if mode == TargetMode::External {
-                        raw.to_string()
-                    } else {
-                        match resolve_target(&source, raw) {
-                            Ok(target) => target,
-                            // Lenient reads skip a bad relationship instead of failing the whole
-                            // package; the target is never followed in either mode.
-                            Err(error) if limits.xml.read_mode == dom::ReadMode::Lenient => {
-                                warnings.push(format!("{name}: relationship {id} skipped: {error}"));
-                                continue;
-                            }
-                            Err(error) => return Err(error),
-                        }
-                    };
-                    rels.0.push(Relationship { id: id.into(), kind: kind.into(), target, mode });
-                }
+                let rels = parse_rels(name, &source, data, limits, tolerance, &mut warnings)?;
                 relationships.insert(source, rels);
             }
         }
+        let parts = chosen.into_iter().map(|(key, (name, data))| (key, Part { name, data })).collect();
         Ok(Self { parts, content_types, relationships, warnings })
     }
 
-    /// Relationships skipped under [`dom::ReadMode::Lenient`], one line each; empty when strict.
+    /// Notes about skipped or repaired input: relationships skipped under
+    /// [`dom::ReadMode::Lenient`] and anything tolerated via [`Tolerance`]. Empty when strict.
     pub fn warnings(&self) -> &[String] {
         &self.warnings
     }
 
     pub fn part(&self, name: &str) -> Option<&[u8]> {
-        self.parts.get(&name.trim_start_matches('/').to_ascii_lowercase()).map(Vec::as_slice)
+        self.parts.get(&name.trim_start_matches('/').to_ascii_lowercase()).map(|part| &part.data[..])
+    }
+
+    /// Shared handle to a part's bytes; cheap to clone and keep after the package is dropped.
+    pub fn part_shared(&self, name: &str) -> Option<Arc<[u8]>> {
+        self.parts.get(&name.trim_start_matches('/').to_ascii_lowercase()).map(|part| Arc::clone(&part.data))
+    }
+
+    /// Stored (original-case) part names, in canonical (lowercase) order.
+    pub fn part_names(&self) -> impl Iterator<Item = &str> {
+        self.parts.values().map(|part| part.name.as_str())
+    }
+
+    /// Map a name in any case to the spelling stored in the package.
+    pub fn canonical(&self, name: &str) -> Option<&str> {
+        self.parts.get(&name.trim_start_matches('/').to_ascii_lowercase()).map(|part| part.name.as_str())
     }
 
     /// Empty string denotes the package root.
     pub fn rels_of(&self, source: &str) -> Option<&Relationships> {
         self.relationships.get(&source.trim_start_matches('/').to_ascii_lowercase())
     }
+}
+
+fn parse_rels(
+    name: &str,
+    source: &str,
+    data: &[u8],
+    limits: &OpcLimits,
+    tolerance: &Tolerance,
+    warnings: &mut Vec<String>,
+) -> Result<Relationships, OpcError> {
+    let tolerant = tolerance.lenient_rels;
+    let root = match dom::parse(data, &limits.xml) {
+        Ok(root) => root,
+        Err(error) if tolerant => {
+            warnings.push(format!("{name}: relationships ignored: {error}"));
+            return Ok(Relationships::default());
+        }
+        Err(error) => return Err(error.into()),
+    };
+    if root.name != "Relationships" {
+        if tolerant {
+            warnings.push(format!("{name}: relationships ignored: wrong root element"));
+            return Ok(Relationships::default());
+        }
+        return Err(OpcError::Invalid("relationships root".into()));
+    }
+    let mut rels = Relationships::default();
+    for node in root.children("Relationship") {
+        let (Some(id), Some(kind), Some(raw)) = (node.attr("Id"), node.attr("Type"), node.attr("Target")) else {
+            if tolerant {
+                warnings.push(format!("{name}: incomplete relationship skipped"));
+                continue;
+            }
+            return Err(OpcError::Invalid("incomplete relationship".into()));
+        };
+        if rels.by_id(id).is_some() {
+            if tolerant {
+                warnings.push(format!("{name}: duplicate relationship id {id} skipped"));
+                continue;
+            }
+            return Err(OpcError::Invalid("duplicate relationship id".into()));
+        }
+        let mode = if node.attr("TargetMode").is_some_and(|value| value.eq_ignore_ascii_case("external")) {
+            TargetMode::External
+        } else {
+            TargetMode::Internal
+        };
+        let target = if mode == TargetMode::External {
+            raw.to_string()
+        } else {
+            match resolve_target(source, raw) {
+                Ok(target) => target,
+                // Lenient reads skip a bad relationship instead of failing the whole
+                // package; the target is never followed in either mode.
+                Err(error) if limits.xml.read_mode == dom::ReadMode::Lenient => {
+                    warnings.push(format!("{name}: relationship {id} skipped: {error}"));
+                    continue;
+                }
+                Err(error) => return Err(error),
+            }
+        };
+        rels.0.push(Relationship { id: id.into(), kind: kind.into(), target, mode });
+    }
+    Ok(rels)
+}
+
+/// Index-only reader for large archives (spreadsheets, ODS). Parts are decompressed one at a time
+/// on request; a damaged part fails only its own read. Not OPC-specific: `[Content_Types].xml`
+/// is parsed if present and otherwise ignored.
+pub struct LazyPackage {
+    archive: zip::ZipArchive<Cursor<Vec<u8>>>,
+    index: BTreeMap<String, LazyEntry>,
+    limits: OpcLimits,
+    total_read: u64,
+    pub content_types: ContentTypes,
+    warnings: Vec<String>,
+}
+
+#[derive(Clone, Copy)]
+struct LazyEntry {
+    index: usize,
+    size: u64,
+    compressed: u64,
+}
+
+/// Expansion ratio above which a part larger than 1 MiB is treated as a zip bomb.
+const LAZY_MAX_RATIO: u64 = 500;
+const LAZY_RATIO_FLOOR: u64 = 1024 * 1024;
+
+impl LazyPackage {
+    pub fn open(bytes: Vec<u8>, limits: &OpcLimits) -> Result<Self, OpcError> {
+        if bytes.len() > limits.max_archive_bytes {
+            return Err(OpcError::Limit("archive bytes"));
+        }
+        let archive = zip::ZipArchive::new(Cursor::new(bytes))?;
+        if archive.len() > limits.zip.max_entries {
+            return Err(OpcError::Limit("entries"));
+        }
+        let mut index = BTreeMap::new();
+        let mut warnings = Vec::new();
+        for position in 0..archive.len() {
+            let name = match archive.name_for_index(position) {
+                Some(Ok(name)) => name.into_owned(),
+                _ => {
+                    warnings.push(format!("entry {position}: unreadable name skipped"));
+                    continue;
+                }
+            };
+            if name.ends_with('/') {
+                continue;
+            }
+            match archive.by_index_data(position) {
+                Ok(entry) => {
+                    index.insert(name, LazyEntry { index: position, size: entry.size(), compressed: entry.compressed_size() });
+                }
+                Err(error) => warnings.push(format!("{name}: unreadable entry skipped: {error}")),
+            }
+        }
+        let mut package = Self { archive, index, limits: *limits, total_read: 0, content_types: ContentTypes::default(), warnings };
+        match package.read_optional("[Content_Types].xml", package.limits.xml.max_total_bytes as u64) {
+            Ok(Some(bytes)) => match parse_content_types(&bytes, &package.limits.xml) {
+                Ok(content_types) => package.content_types = content_types,
+                Err(error) => package.warnings.push(format!("[Content_Types].xml ignored: {error}")),
+            },
+            Ok(None) => {}
+            Err(error) => package.warnings.push(format!("[Content_Types].xml ignored: {error}")),
+        }
+        Ok(package)
+    }
+
+    pub fn warnings(&self) -> &[String] {
+        &self.warnings
+    }
+
+    /// Stored entry names (directories excluded), in sorted order.
+    pub fn part_names(&self) -> impl Iterator<Item = &str> {
+        self.index.keys().map(String::as_str)
+    }
+
+    /// Uncompressed size claimed by the ZIP index (untrusted; reads are still bounded).
+    pub fn declared_size(&self, name: &str) -> Option<u64> {
+        self.index.get(name).map(|entry| entry.size)
+    }
+
+    /// Bytes decoded so far across all reads, including partial reads that failed.
+    pub fn total_read(&self) -> u64 {
+        self.total_read
+    }
+
+    pub fn read(&mut self, name: &str, cap: u64) -> Result<Vec<u8>, OpcError> {
+        self.read_optional(name, cap)?.ok_or_else(|| OpcError::Invalid(format!("missing part: {name}")))
+    }
+
+    pub fn read_optional(&mut self, name: &str, cap: u64) -> Result<Option<Vec<u8>>, OpcError> {
+        let Some(entry) = self.index.get(name).copied() else {
+            return Ok(None);
+        };
+        let cap = cap.min(self.limits.zip.max_entry_bytes);
+        if entry.size > cap {
+            return Err(OpcError::Limit("part bytes"));
+        }
+        let mut file = self.archive.by_index(entry.index)?;
+        let mut output = Vec::new();
+        let mut buffer = [0; 8192];
+        loop {
+            let remaining_entry = cap - output.len() as u64;
+            let remaining_total = self.limits.zip.max_total_bytes - self.total_read;
+            let chunk = buffer.len().min(usize::try_from(remaining_entry.min(remaining_total).saturating_add(1)).unwrap_or(usize::MAX));
+            let count = file.read(&mut buffer[..chunk])?;
+            if count == 0 {
+                return Ok(Some(output));
+            }
+            if count as u64 > remaining_entry {
+                return Err(OpcError::Limit("part bytes"));
+            }
+            if count as u64 > remaining_total {
+                return Err(OpcError::Limit("package bytes"));
+            }
+            self.total_read += count as u64;
+            output.try_reserve_exact(count).map_err(|_| OpcError::Limit("part bytes"))?;
+            output.extend_from_slice(&buffer[..count]);
+            let produced = output.len() as u64;
+            if produced > LAZY_RATIO_FLOOR && produced > entry.compressed.max(1).saturating_mul(LAZY_MAX_RATIO) {
+                return Err(OpcError::Limit("expansion ratio"));
+            }
+        }
+    }
+}
+
+fn parse_content_types(bytes: &[u8], xml: &Limits) -> Result<ContentTypes, OpcError> {
+    let ct = dom::parse(bytes, xml)?;
+    if ct.name != "Types" {
+        return Err(OpcError::Invalid("content types root".into()));
+    }
+    let mut content_types = ContentTypes::default();
+    for node in ct.children("Default") {
+        if let (Some(ext), Some(kind)) = (node.attr("Extension"), node.attr("ContentType")) {
+            content_types.defaults.insert(ext.to_ascii_lowercase(), kind.to_string());
+        }
+    }
+    for node in ct.children("Override") {
+        if let (Some(name), Some(kind)) = (node.attr("PartName"), node.attr("ContentType")) {
+            content_types.overrides.insert(checked_part(name)?.to_ascii_lowercase(), kind.to_string());
+        }
+    }
+    Ok(content_types)
 }
 
 fn checked_part(name: &str) -> Result<&str, OpcError> {
