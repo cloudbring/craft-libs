@@ -1,0 +1,300 @@
+name = "pngsuite"
+description = "PNG decoder conformance images: the PngSuite subset shipped in libpng contrib/pngsuite (basic colour types, interlaced, free replacements for the transparency set)."
+
+# Pinned to a libpng commit, fetched over HTTPS from raw.githubusercontent.com. The full PngSuite
+# is only published over http://www.schaik.com, which craft-corpus refuses.
+# Moving the pin: change `commit`, re-hash with `craft-corpus sha256`, review the diff.
+
+[[git]]
+repo = "pnggroup/libpng"
+commit = "ac0c3532476fa4876a83a279127840741cf216f2"
+paths = ["contrib/pngsuite/**"]
+strip_prefix = "contrib/pngsuite/"
+licence = "PngSuite (Willem van Schaik, 1999-2012; Glenn Randers-Pehrson, 2012): permission to use, copy, modify and distribute for any purpose without fee; see README"
+provenance = "https://github.com/pnggroup/libpng/tree/ac0c3532476fa4876a83a279127840741cf216f2/contrib/pngsuite"
+tags = ["png"]
+
+[[git.file]]
+path = "contrib/pngsuite/README"
+sha256 = "0b8b3ace979daa00b182a3972e82523ec4701635add93a959422b9013c125439"
+
+[[git.file]]
+path = "contrib/pngsuite/basn0g01.png"
+sha256 = "c23c1848002082e128f533dc3c24a49fc57329293cc1468cc9dc36339b1abcac"
+
+[[git.file]]
+path = "contrib/pngsuite/basn0g02.png"
+sha256 = "833dd137ab757d1aaa138148d82f3ee8109efb423a80918f47c7889b56fd8e83"
+
+[[git.file]]
+path = "contrib/pngsuite/basn0g04.png"
+sha256 = "4e0cc6742bb06cfa379323266f699a54dc483bf735288e68527d94b4f97c1f30"
+
+[[git.file]]
+path = "contrib/pngsuite/basn0g08.png"
+sha256 = "85b19fcda452d6cbf02f570c353cfa9e47c29237f2fc8f0114deb6cd0b23f97a"
+
+[[git.file]]
+path = "contrib/pngsuite/basn0g16.png"
+sha256 = "f26eb27e99300829c42c0832acd26fa499e0f317cb4d6f165e6663024b16bf6c"
+tags = ["16bit"]
+
+[[git.file]]
+path = "contrib/pngsuite/basn2c08.png"
+sha256 = "ecea1ef4a001a999ce9b82d18abf47401eb92998708b306b6c9a8ac3a6a9a2c8"
+
+[[git.file]]
+path = "contrib/pngsuite/basn2c16.png"
+sha256 = "71179d2905aadb86adc25de7f737869b52e80e154c5335f5e6b614942515b2d4"
+tags = ["16bit"]
+
+[[git.file]]
+path = "contrib/pngsuite/basn3p01.png"
+sha256 = "d3831ba7c495e0fb20ebf03bd7cf02766c1dc5f1a09dd1f3336e536ac9f1cd42"
+
+[[git.file]]
+path = "contrib/pngsuite/basn3p02.png"
+sha256 = "784508d49be8187c6e0126f942cce65202616384f7d0a3a112d8ce01c6c8a413"
+
+[[git.file]]
+path = "contrib/pngsuite/basn3p04.png"
+sha256 = "96e34367290e1776aa4b5971272d6df136cf530baced82c63569b56adc021b16"
+
+[[git.file]]
+path = "contrib/pngsuite/basn3p08.png"
+sha256 = "eca1db90338a8481e4d3f2469befa06d7564534e9323b6a8040ed0cdd281d952"
+
+[[git.file]]
+path = "contrib/pngsuite/basn4a08.png"
+sha256 = "377a67510b4ccc74cdcce14847b02035e75ccab36e9d8e00586c4c24d1ae385a"
+
+[[git.file]]
+path = "contrib/pngsuite/basn4a16.png"
+sha256 = "51896523625b1ffea7464e954e13cfff1c596c8e2c46925270dc408315e7fe71"
+tags = ["16bit"]
+
+[[git.file]]
+path = "contrib/pngsuite/basn6a08.png"
+sha256 = "756a03364c02e3c9f85d6f4029eb3cef2488c081dc537d46e102bebcb9e02732"
+
+[[git.file]]
+path = "contrib/pngsuite/basn6a16.png"
+sha256 = "569040d3237a5552935a44b8bbe165cf02afe0d71caf30fba81955922ac9373f"
+tags = ["16bit"]
+
+[[git.file]]
+path = "contrib/pngsuite/ftbbn0g01.png"
+sha256 = "401b527775e56254434ba0acbdf25111823b2c8812665665e36b420f4532831f"
+
+[[git.file]]
+path = "contrib/pngsuite/ftbbn0g02.png"
+sha256 = "7f75074fb427b8b2342b504012f272c52e82a27474cf65c2f6b19b05cd67b2e6"
+
+[[git.file]]
+path = "contrib/pngsuite/ftbbn0g04.png"
+sha256 = "c5e7eeaffa677bfac002ee968a0423e0fea3be7701d39ccd6a015df1d2d85e40"
+
+[[git.file]]
+path = "contrib/pngsuite/ftbbn2c16.png"
+sha256 = "8fcfd031a5b716201854fdab25691feed6cd3ed7b713a51b94e1f43fc63fe0c1"
+tags = ["16bit"]
+
+[[git.file]]
+path = "contrib/pngsuite/ftbbn3p08.png"
+sha256 = "8eb43a6020fda8ed7c8c9b88b974ef794ee8452db29212ae7e5c11003bfd76a3"
+
+[[git.file]]
+path = "contrib/pngsuite/ftbgn2c16.png"
+sha256 = "49711ee271f96099521b83b75d58ed2f76d42ed46cb3c06656fde2cad697cf59"
+tags = ["16bit"]
+
+[[git.file]]
+path = "contrib/pngsuite/ftbgn3p08.png"
+sha256 = "6f798628935a021fe446dce3d62861d1f7369aaf01bad10daa4917c5abccad7d"
+
+[[git.file]]
+path = "contrib/pngsuite/ftbrn2c08.png"
+sha256 = "8223d8b0c5f84b149f0c1f0e1f658346e07fcbd03ffc02b2e9eeea1481eb19bf"
+
+[[git.file]]
+path = "contrib/pngsuite/ftbwn0g16.png"
+sha256 = "01e86f108b244bdee4d72e384aced8a62369965ca2993ee6ef88f131c647f7d1"
+tags = ["16bit"]
+
+[[git.file]]
+path = "contrib/pngsuite/ftbwn3p08.png"
+sha256 = "978b28cec43bd219517083b63661bb30a7b9cdf9fd4476ab4e70844565980d51"
+
+[[git.file]]
+path = "contrib/pngsuite/ftbyn3p08.png"
+sha256 = "7b4eb64b4bd7eb36417752873ddaca027ce77a07f474b2af569f4eea1e984111"
+
+[[git.file]]
+path = "contrib/pngsuite/ftp0n0g08.png"
+sha256 = "a253e055d8cd94049cd95e9392e7aa60f3d5c922a8f0cccb84762b0c5f547545"
+
+[[git.file]]
+path = "contrib/pngsuite/ftp0n2c08.png"
+sha256 = "5dced3fde56b950e61ce86f4ad54458336f66389ce8ca68524d4fd8ec546ff5b"
+
+[[git.file]]
+path = "contrib/pngsuite/ftp0n3p08.png"
+sha256 = "da40ddb18bd45db32ed03dc89e2250b096d808efe975a88477e4f5a91a4677c9"
+
+[[git.file]]
+path = "contrib/pngsuite/ftp1n3p08.png"
+sha256 = "50bc927fe6cf1816454a7c27f8c743734be8db45e37e5ee3ede540f4e895e6c5"
+
+[[git.file]]
+path = "contrib/pngsuite/ibasn0g08.png"
+sha256 = "75387bec61ea3fe41cd25045378683ed9bcd34a5a02f7dd77da60235b28dac3b"
+tags = ["interlaced"]
+
+[[git.file]]
+path = "contrib/pngsuite/ibasn0g16.png"
+sha256 = "dbd3442baced21b4a8fedfbb6aff4092c3ca9130c5d08ec89ce7dd8d02166139"
+tags = ["interlaced", "16bit"]
+
+[[git.file]]
+path = "contrib/pngsuite/ibasn2c08.png"
+sha256 = "67ac80581c63559889a9f5d5ba8f70ab1e77d304a2e54b916dd23953bf7d3fc7"
+tags = ["interlaced"]
+
+[[git.file]]
+path = "contrib/pngsuite/ibasn2c16.png"
+sha256 = "7dcf933f1920c4564756596a8b2b7118d0dd4394f95173e32a79c5275e3c9d0e"
+tags = ["interlaced", "16bit"]
+
+[[git.file]]
+path = "contrib/pngsuite/ibasn3p08.png"
+sha256 = "b91d91eeee3efef90bf9a4730422c3e39a07d163afba8567ab870ab91418d1c8"
+tags = ["interlaced"]
+
+[[git.file]]
+path = "contrib/pngsuite/ibasn4a08.png"
+sha256 = "cf7543f7077d3fab986e03b73808fe68173a56d20cf1457b50d0e4ef05391694"
+tags = ["interlaced"]
+
+[[git.file]]
+path = "contrib/pngsuite/ibasn4a16.png"
+sha256 = "11b160d4ec5b43b430f7587bee0f01a6ec5a9087b0f611d90805dff4f9e25b8d"
+tags = ["interlaced", "16bit"]
+
+[[git.file]]
+path = "contrib/pngsuite/ibasn6a08.png"
+sha256 = "30e559de4768346e8f55b340b0f29ca17b259e2da2de614f1fb21d4f747dd396"
+tags = ["interlaced"]
+
+[[git.file]]
+path = "contrib/pngsuite/ibasn6a16.png"
+sha256 = "35eea9e75f8a4abb003a5f6c265078ef779856c75f5d68fda26ec55f322f497d"
+tags = ["interlaced", "16bit"]
+
+[[git.file]]
+path = "contrib/pngsuite/iftbbn2c16.png"
+sha256 = "733a3f940d41b320ae884ba74339bc94ec8ad5f5a37479ea23b19c1e7b0d0274"
+tags = ["interlaced", "16bit"]
+
+[[git.file]]
+path = "contrib/pngsuite/iftbbn3p08.png"
+sha256 = "4dd0ef44d942aa43fdd57a4a56c794201d27b2f6228008927db0a4f3d469bffb"
+tags = ["interlaced"]
+
+[[git.file]]
+path = "contrib/pngsuite/iftbgn2c16.png"
+sha256 = "733a3f940d41b320ae884ba74339bc94ec8ad5f5a37479ea23b19c1e7b0d0274"
+tags = ["interlaced", "16bit"]
+
+[[git.file]]
+path = "contrib/pngsuite/iftbgn3p08.png"
+sha256 = "4dd0ef44d942aa43fdd57a4a56c794201d27b2f6228008927db0a4f3d469bffb"
+tags = ["interlaced"]
+
+[[git.file]]
+path = "contrib/pngsuite/iftbrn2c08.png"
+sha256 = "d98223a9a3084f34609bb5dbf55b5ca156559743240bef3406466775a9950e9d"
+tags = ["interlaced"]
+
+[[git.file]]
+path = "contrib/pngsuite/iftbwn0g16.png"
+sha256 = "8367d01b7d0f926f6c89d6e545735a50cd35815ba7c13367ad5b0489069bd735"
+tags = ["interlaced", "16bit"]
+
+[[git.file]]
+path = "contrib/pngsuite/iftbwn3p08.png"
+sha256 = "4dd0ef44d942aa43fdd57a4a56c794201d27b2f6228008927db0a4f3d469bffb"
+tags = ["interlaced"]
+
+[[git.file]]
+path = "contrib/pngsuite/iftbyn3p08.png"
+sha256 = "4dd0ef44d942aa43fdd57a4a56c794201d27b2f6228008927db0a4f3d469bffb"
+tags = ["interlaced"]
+
+[[git.file]]
+path = "contrib/pngsuite/iftp0n0g08.png"
+sha256 = "497c7e4babca68371b11291bdbb4d682e397dc586d0dabad5cd349da76cf2bb7"
+tags = ["interlaced"]
+
+[[git.file]]
+path = "contrib/pngsuite/iftp0n2c08.png"
+sha256 = "da119c4c2c4aa520ae32473d6f789d5f0602ae9f39c033971cdc6a95a29bfbaa"
+tags = ["interlaced"]
+
+[[git.file]]
+path = "contrib/pngsuite/iftp0n3p08.png"
+sha256 = "c3d318f544fe2a54bd252bffffd1c4c5f79cb3d0f863b9bd12052d88fbf1bf3b"
+tags = ["interlaced"]
+
+[[git.file]]
+path = "contrib/pngsuite/iftp1n3p08.png"
+sha256 = "4dd0ef44d942aa43fdd57a4a56c794201d27b2f6228008927db0a4f3d469bffb"
+tags = ["interlaced"]
+
+[[git.file]]
+path = "contrib/pngsuite/interlaced/README"
+sha256 = "32c4f3b966e662ecc7e551e89db3b6e7e67ac16aa521445467460048609d836b"
+
+[[git.file]]
+path = "contrib/pngsuite/interlaced/ibasn0g01.png"
+sha256 = "03c0c52fb162aa247817b982a4378220be36543c5249c5953b4981bb44376a0d"
+tags = ["interlaced"]
+
+[[git.file]]
+path = "contrib/pngsuite/interlaced/ibasn0g02.png"
+sha256 = "8dcbb64630b4d8950dfa915b633fcc86abc152fe110938c0d2ea3c3468e6e630"
+tags = ["interlaced"]
+
+[[git.file]]
+path = "contrib/pngsuite/interlaced/ibasn0g04.png"
+sha256 = "a6162cd894d3bda80dab0e20ce256ebb60457757b7d28159a1584ce7d12cd4d0"
+tags = ["interlaced"]
+
+[[git.file]]
+path = "contrib/pngsuite/interlaced/ibasn3p01.png"
+sha256 = "6283a61b1f7344c0cfa741076d6aed4a16a6bc5582e81db8dd7374a34230b0df"
+tags = ["interlaced"]
+
+[[git.file]]
+path = "contrib/pngsuite/interlaced/ibasn3p02.png"
+sha256 = "8818c654faafbd3c19a9584bfc93fa45bd413e550b513d2ba8b57e907b2acc72"
+tags = ["interlaced"]
+
+[[git.file]]
+path = "contrib/pngsuite/interlaced/ibasn3p04.png"
+sha256 = "7a7331a28190b89aafef3c8e41d9d65659b1939fa87a14446570373b1832c865"
+tags = ["interlaced"]
+
+[[git.file]]
+path = "contrib/pngsuite/interlaced/iftbbn0g01.png"
+sha256 = "1eea6f2448e9d3f4365b34d1f849c057c7199564f18cecad07c3a362926b11db"
+tags = ["interlaced"]
+
+[[git.file]]
+path = "contrib/pngsuite/interlaced/iftbbn0g02.png"
+sha256 = "82324d48b769628d4d8a4b6e7830c6d7dc778e5656d6e1e7556f4e53737a1dfc"
+tags = ["interlaced"]
+
+[[git.file]]
+path = "contrib/pngsuite/interlaced/iftbbn0g04.png"
+sha256 = "47d393150de4cec7152f1ed61ea25bca9de628865e37ad735e7f162c58340916"
+tags = ["interlaced"]
