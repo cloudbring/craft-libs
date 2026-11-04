@@ -4,7 +4,7 @@
 //! craft-compare: shared comparison metrics, so a verdict means the same thing in every app.
 //!
 //! One module per output kind ([`bytes`], [`image`], [`audio`], [`xml`], [`text`],
-//! [`numbers`]); each returns plain metric values. [`verdict`] turns those into a uniform
+//! [`numbers`], [`package`], [`loudness`], [`layout`]); each returns plain metric values. [`verdict`] turns those into a uniform
 //! [`Verdict`] against a limit, which is what an oracle harness consumes.
 //!
 //! Provenance (ported, not depended on): image error metrics from vectorcraft
@@ -14,7 +14,10 @@
 pub mod audio;
 pub mod bytes;
 pub mod image;
+pub mod layout;
+pub mod loudness;
 pub mod numbers;
+pub mod package;
 pub mod text;
 pub mod verdict;
 pub mod xml;
@@ -34,6 +37,8 @@ pub enum CompareError {
     Xml(String),
     /// PNG encoding failed.
     Png(String),
+    /// A package (ZIP/CFB) could not be read.
+    Package(String),
 }
 
 impl std::fmt::Display for CompareError {
@@ -43,6 +48,7 @@ impl std::fmt::Display for CompareError {
             Self::Length { a, b } => write!(f, "length mismatch: {a} vs {b}"),
             Self::Xml(s) => write!(f, "invalid XML: {s}"),
             Self::Png(s) => write!(f, "PNG error: {s}"),
+            Self::Package(s) => write!(f, "package error: {s}"),
         }
     }
 }
