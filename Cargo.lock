@@ -1181,6 +1181,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "craft-oracle"
+version = "0.1.0"
+dependencies = [
+ "craft-compare",
+ "craft-corpus",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "toml 1.1.8+spec-1.1.0",
+]
+
+[[package]]
 name = "craft-pcraft-format"
 version = "0.1.0"
 dependencies = [

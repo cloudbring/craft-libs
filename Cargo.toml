@@ -53,6 +53,7 @@ craft-media-testkit = { path = "crates/media-testkit" }
 craft-menu = { path = "crates/menu" }
 craft-metafile = { path = "crates/metafile" }
 craft-opus = { path = "crates/opus" }
+craft-oracle = { path = "crates/oracle" }
 craft-ooxml = { path = "crates/ooxml" }
 craft-pcraft-format = { path = "crates/pcraft-format" }
 craft-pdf = { path = "crates/pdf", version = "=0.1.0" }
