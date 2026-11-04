@@ -227,3 +227,33 @@ fn png_crc_length_and_truncation() -> Result<(), Box<dyn std::error::Error>> {
     assert!(matches!(PngChunks::new(&bytes[..12], 0).ok().and_then(|mut chunks| chunks.next()), Some(Err(PngError::Truncated))));
     Ok(())
 }
+
+#[test]
+fn backslash_names_normalise_only_when_opted_in() {
+    let placeholder = "xl_workbook.xml";
+    let mut bytes = zip_bytes(&[(placeholder, b"wb"), ("ok.xml", b"ok")]);
+    rename_zip(&mut bytes, placeholder, "xl\\workbook.xml");
+    assert!(matches!(guard(&bytes, zip_limits()), Err(ZipError::UnsafePath(_))));
+    let archive = zip::ZipArchive::new(Cursor::new(&bytes[..])).expect("archive");
+    let mut tolerant = ZipGuard::new_with_names(archive, zip_limits(), NameMode::NormalizeBackslash).expect("guard");
+    assert_eq!(tolerant.entry_name(0).ok().as_deref(), Some("xl/workbook.xml"));
+    assert_eq!(tolerant.entry(0).map(|entry| entry.name).ok().as_deref(), Some("xl/workbook.xml"));
+    assert_eq!(tolerant.read_entry(0).ok().as_deref(), Some(&b"wb"[..]));
+    let mut reader = ZipReader::open_with_names(&bytes, zip_limits(), NameMode::NormalizeBackslash).expect("reader");
+    assert!(reader.contains("xl/workbook.xml"));
+    assert_eq!(reader.read("xl/workbook.xml").ok().flatten().as_deref(), Some(&b"wb"[..]));
+    assert!(ZipReader::open(&bytes, zip_limits()).is_err());
+}
+
+#[test]
+fn normalised_backslash_names_still_checked_and_deduplicated() {
+    for path in ["..\\x", "a\\..\\b", "\\abs", "a\\\\b"] {
+        let placeholder = "x".repeat(path.len());
+        let mut bytes = zip_bytes(&[(&placeholder, b"x")]);
+        rename_zip(&mut bytes, &placeholder, path);
+        assert!(matches!(ZipReader::open_with_names(&bytes, zip_limits(), NameMode::NormalizeBackslash), Err(ZipError::UnsafePath(_))), "{path}");
+    }
+    let mut bytes = zip_bytes(&[("a/b", b"x"), ("a_b", b"y")]);
+    rename_zip(&mut bytes, "a_b", "a\\b");
+    assert!(matches!(ZipReader::open_with_names(&bytes, zip_limits(), NameMode::NormalizeBackslash), Err(ZipError::Duplicate)));
+}

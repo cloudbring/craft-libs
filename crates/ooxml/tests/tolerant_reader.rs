@@ -326,3 +326,97 @@ fn lazy_ratio_guard_can_be_disabled() {
     let mut open = LazyPackage::open_with(&bytes[..], &OpcLimits::default(), lim).unwrap();
     assert_eq!(open.read("big.xml", 8 << 20).unwrap().len(), 4 << 20);
 }
+
+const WB_RELS: &str = r#"<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="t" Target="worksheets\sheet1.xml"/></Relationships>"#;
+
+#[test]
+fn backslash_entry_names_and_targets_are_opt_in() {
+    let bytes = zip_of(&[
+        ("[Content_Types].xml", CT.as_bytes()),
+        ("xl\\workbook.xml", b"<workbook/>"),
+        ("xl\\_rels\\workbook.xml.rels", WB_RELS.as_bytes()),
+        ("xl\\worksheets\\sheet1.xml", b"<s/>"),
+    ]);
+    assert!(Package::open_with(&bytes, &OpcLimits::default(), &Tolerance::default()).is_err());
+    let package = Package::open_with(&bytes, &OpcLimits::default(), &lenient()).expect("lenient");
+    assert!(package.part("xl/workbook.xml").is_some());
+    let rels = package.rels_of("xl/workbook.xml").expect("rels");
+    assert_eq!(rels.iter().next().map(|rel| rel.target.as_str()), Some("xl/worksheets/sheet1.xml"));
+    assert!(package.part("xl/worksheets/sheet1.xml").is_some());
+
+    let only = Tolerance { normalize_backslash_names: true, merge_case_duplicates: false, ..Tolerance::default() };
+    assert!(Package::open_with(&bytes, &OpcLimits::default(), &only).is_ok());
+
+    assert!(LazyPackage::open(bytes.clone(), &OpcLimits::default()).expect("strict lazy").find("xl/workbook.xml").is_none());
+    let mut lazy = LazyPackage::open_with(bytes, &OpcLimits::default(), LazyLimits::lenient()).expect("lazy");
+    assert_eq!(lazy.find("xl/workbook.xml"), Some("xl/workbook.xml"));
+    assert_eq!(lazy.find("xl\\workbook.xml"), Some("xl/workbook.xml"));
+    let rels = lazy.rels_of("xl/workbook.xml", 1 << 20).expect("lazy rels");
+    assert_eq!(rels[0].target, "xl/worksheets/sheet1.xml");
+}
+
+#[test]
+fn normalised_backslash_collision_is_reported() {
+    let bytes = zip_of(&[("a/b.xml", b"first"), ("a\\b.xml", b"second")]);
+    let lazy = LazyPackage::open_with(bytes.clone(), &OpcLimits::default(), LazyLimits::lenient()).expect("lazy");
+    assert!(lazy.warnings().iter().any(|warning| warning.contains("duplicate")));
+    assert!(Package::open_with(&bytes, &OpcLimits::default(), &lenient()).is_err());
+}
+
+fn ct_with_doctype(extra: &str, body: &str) -> String {
+    format!(
+        r#"<?xml version="1.0"?><!DOCTYPE Types [<!ENTITY lol "lol"><!ENTITY xxe SYSTEM "file:///etc/passwd">{extra}]><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">{body}<Default Extension="xml" ContentType="application/xml"/></Types>"#
+    )
+}
+
+#[test]
+fn doctype_in_content_types_is_skipped_only_when_tolerant() {
+    let ct = ct_with_doctype("", "");
+    let bytes = zip_of(&[("[Content_Types].xml", ct.as_bytes()), ("a.xml", b"<a/>")]);
+    assert!(Package::open_with(&bytes, &OpcLimits::default(), &Tolerance::default()).is_err());
+    let package = Package::open_with(&bytes, &OpcLimits::default(), &lenient()).expect("lenient");
+    assert_eq!(package.content_types.of("a.xml"), Some("application/xml"));
+
+    let lazy = LazyPackage::open_with(bytes.clone(), &OpcLimits::default(), LazyLimits::lenient()).expect("lazy");
+    assert_eq!(lazy.content_types.of("a.xml"), Some("application/xml"));
+    let strict = LazyPackage::open(bytes, &OpcLimits::default()).expect("strict lazy");
+    assert!(strict.content_types.defaults.is_empty());
+}
+
+#[test]
+fn doctype_entities_are_never_expanded() {
+    // A reference to a declared entity must not resolve to its (external or internal) value.
+    let ct = ct_with_doctype("", r#"<Override PartName="/a.xml" ContentType="&xxe;"/><Override PartName="/b.xml" ContentType="x&lol;y"/>"#);
+    let bytes = zip_of(&[("[Content_Types].xml", ct.as_bytes()), ("a.xml", b"<a/>")]);
+    let package = Package::open_with(&bytes, &OpcLimits::default(), &lenient()).expect("lenient");
+    for kind in package.content_types.overrides.values().chain(package.content_types.defaults.values()) {
+        assert!(!kind.contains("root:") && kind != "xloly", "expanded: {kind}");
+    }
+    assert_eq!(package.content_types.overrides.get("/b.xml").or(package.content_types.overrides.get("b.xml")).map(String::as_str), Some("x&lol;y"));
+    // Text content likewise: the DOM never resolves non-predefined entities.
+    let xml = r#"<!DOCTYPE r [<!ENTITY lol "lol">]><r>a&lol;b</r>"#;
+    let limits = craft_ooxml::dom::Limits::default();
+    assert!(craft_ooxml::dom::parse(xml.as_bytes(), &limits).is_err());
+    let strict = craft_ooxml::dom::parse_skipping_doctype(xml.as_bytes(), &limits);
+    assert!(strict.is_err(), "entity reference must stay an error in strict mode");
+    let lenient_limits = craft_ooxml::dom::Limits { read_mode: ReadMode::Lenient, ..limits };
+    let el = craft_ooxml::dom::parse_skipping_doctype(xml.as_bytes(), &lenient_limits).expect("lenient parse");
+    assert!(!el.to_xml().contains("lol"), "{}", el.to_xml());
+}
+
+#[test]
+fn exact_case_lookup_wins_over_case_insensitive() {
+    let bytes = zip_of(&[("xl/Sheet1.xml", b"upper"), ("xl/sheet1.xml", b"lower")]);
+    let lazy = LazyPackage::open(bytes, &OpcLimits::default()).expect("lazy");
+    assert_eq!(lazy.find("xl/sheet1.xml"), Some("xl/sheet1.xml"));
+    assert_eq!(lazy.find("xl/Sheet1.xml"), Some("xl/Sheet1.xml"));
+    assert_eq!(lazy.find("XL/SHEET1.XML"), Some("xl/Sheet1.xml"));
+}
+
+#[test]
+fn lenient_lazy_finds_lowercase_content_types_part() {
+    let bytes = zip_of(&[("[content_types].xml", CT.as_bytes()), ("a.xml", b"<a/>")]);
+    let lazy = LazyPackage::open_with(bytes.clone(), &OpcLimits::default(), LazyLimits::lenient()).expect("lazy");
+    assert_eq!(lazy.content_types.of("a.xml"), Some("application/xml"));
+    assert!(LazyPackage::open(bytes, &OpcLimits::default()).expect("strict").content_types.defaults.is_empty());
+}

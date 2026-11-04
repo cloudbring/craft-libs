@@ -2,7 +2,7 @@
 
 use std::io::Cursor;
 
-use crate::{ZipEntry, ZipError, ZipGuard, ZipLimits};
+use crate::{NameMode, ZipEntry, ZipError, ZipGuard, ZipLimits};
 
 /// Validated in-memory ZIP entries in central-directory order.
 pub struct ZipReader<'a> {
@@ -14,8 +14,13 @@ pub struct ZipReader<'a> {
 impl<'a> ZipReader<'a> {
     /// Rejects unsafe names, duplicates, symlinks and declared size violations.
     pub fn open(bytes: &'a [u8], limits: ZipLimits) -> Result<Self, ZipError> {
+        Self::open_with_names(bytes, limits, NameMode::Strict)
+    }
+
+    /// Like [`open`](Self::open) with an explicit [`NameMode`].
+    pub fn open_with_names(bytes: &'a [u8], limits: ZipLimits, mode: NameMode) -> Result<Self, ZipError> {
         let archive = zip::ZipArchive::new(Cursor::new(bytes))?;
-        let mut guard = ZipGuard::new(archive, limits)?;
+        let mut guard = ZipGuard::new_with_names(archive, limits, mode)?;
         let mut names = Vec::new();
         let mut entries = Vec::new();
         names.try_reserve(guard.len()).map_err(|_| ZipError::EntryCount)?;

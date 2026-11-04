@@ -9,6 +9,28 @@ pub struct ZipLimits {
     pub max_total_bytes: u64,
 }
 
+/// How entry names are treated before validation. The default is strict.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum NameMode {
+    /// Names containing `\` are rejected as unsafe.
+    #[default]
+    Strict,
+    /// `\` is mapped to `/` before validation (some writers emit Windows separators).
+    /// Duplicate detection and the unsafe-name checks then apply to the normalised name.
+    NormalizeBackslash,
+}
+
+impl NameMode {
+    /// Returns the name as exposed by the guard under this mode.
+    pub fn apply<'a>(self, name: &'a str) -> std::borrow::Cow<'a, str> {
+        if self == Self::NormalizeBackslash && name.contains('\\') {
+            std::borrow::Cow::Owned(name.replace('\\', "/"))
+        } else {
+            std::borrow::Cow::Borrowed(name)
+        }
+    }
+}
+
 /// Metadata for a validated central-directory entry.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ZipEntry {
@@ -43,12 +65,18 @@ pub enum ZipError {
 pub struct ZipGuard<R: Read + Seek> {
     archive: zip::ZipArchive<R>,
     limits: ZipLimits,
+    names: NameMode,
     total_read: u64,
 }
 
 impl<R: Read + Seek> ZipGuard<R> {
     /// Validates all central-directory names and declared sizes before exposing entries.
     pub fn new(archive: zip::ZipArchive<R>, limits: ZipLimits) -> Result<Self, ZipError> {
+        Self::new_with_names(archive, limits, NameMode::Strict)
+    }
+
+    /// Like [`new`](Self::new) with an explicit [`NameMode`].
+    pub fn new_with_names(archive: zip::ZipArchive<R>, limits: ZipLimits, names: NameMode) -> Result<Self, ZipError> {
         if archive.has_duplicate_names() {
             return Err(ZipError::Duplicate);
         }
@@ -56,11 +84,15 @@ impl<R: Read + Seek> ZipGuard<R> {
             return Err(ZipError::EntryCount);
         }
         let mut total = 0u64;
+        let mut seen = std::collections::BTreeSet::new();
         for index in 0..archive.len() {
             let entry = archive.by_index_data(index)?;
-            let name = entry.name()?;
+            let name = names.apply(&entry.name()?).into_owned();
             if !safe_name(&name) {
-                return Err(ZipError::UnsafePath(name.to_string()));
+                return Err(ZipError::UnsafePath(name));
+            }
+            if names != NameMode::Strict && !seen.insert(name.clone()) {
+                return Err(ZipError::Duplicate);
             }
             if entry.unix_mode().is_some_and(|mode| mode & 0o170000 == 0o120000) {
                 return Err(ZipError::Symlink(name.to_string()));
@@ -73,7 +105,7 @@ impl<R: Read + Seek> ZipGuard<R> {
                 return Err(ZipError::TotalLimit);
             }
         }
-        Ok(Self { archive, limits, total_read: 0 })
+        Ok(Self { archive, limits, names, total_read: 0 })
     }
 
     pub fn len(&self) -> usize {
@@ -88,7 +120,7 @@ impl<R: Read + Seek> ZipGuard<R> {
 
     /// Returns the validated name of an entry in central-directory order.
     pub fn entry_name(&mut self, index: usize) -> Result<String, ZipError> {
-        Ok(self.archive.by_index_data(index)?.name()?.into_owned())
+        Ok(self.names.apply(&self.archive.by_index_data(index)?.name()?).into_owned())
     }
 
     /// Returns validated metadata for one entry without reading its contents.
@@ -97,7 +129,7 @@ impl<R: Read + Seek> ZipGuard<R> {
         #[allow(deprecated)]
         let compression_method = entry.compression().to_u16();
         Ok(ZipEntry {
-            name: entry.name()?.into_owned(),
+            name: self.names.apply(&entry.name()?).into_owned(),
             compressed_size: entry.compressed_size(),
             size: entry.size(),
             compression_method,

@@ -456,6 +456,18 @@ fn repair_ampersands(bytes: &[u8], limit: usize) -> Result<Vec<u8>, XmlError> {
 
 /// Parses a whole XML part. Rejects malformed end tags, unknown entities, and over-budget input.
 pub fn parse(bytes: &[u8], limits: &Limits) -> Result<El, XmlError> {
+    parse_impl(bytes, limits, false)
+}
+
+/// Like [`parse`] but a `<!DOCTYPE ...>` declaration is skipped instead of rejected. Nothing in
+/// the declaration is interpreted: no internal or external entity is defined, loaded or
+/// expanded, so a reference to a declared entity is still an unknown-entity error (strict) or
+/// dropped (lenient).
+pub fn parse_skipping_doctype(bytes: &[u8], limits: &Limits) -> Result<El, XmlError> {
+    parse_impl(bytes, limits, true)
+}
+
+fn parse_impl(bytes: &[u8], limits: &Limits, skip_doctype: bool) -> Result<El, XmlError> {
     if bytes.len() > limits.max_total_bytes {
         return Err(XmlError::Limit("input bytes"));
     }
@@ -559,6 +571,7 @@ pub fn parse(bytes: &[u8], limits: &Limits) -> Result<El, XmlError> {
                 add_text(&mut stack, &value, &mut text_bytes, limits.max_text_bytes)?;
             }
             Event::Eof => break,
+            Event::DocType(_) if skip_doctype => {}
             Event::DocType(_) => return Err(XmlError::Invalid("DTD is not supported".into())),
             _ => {}
         }

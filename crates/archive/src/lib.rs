@@ -11,7 +11,7 @@ mod zip_writer;
 
 pub use inflate::{Accounting, BoundedInflate, InflateError, Limits, Wrapper, inflate_bounded};
 pub use png::{PngChunk, PngChunks, PngError};
-pub use zip_guard::{ZipEntry, ZipError, ZipGuard, ZipLimits};
+pub use zip_guard::{NameMode, ZipEntry, ZipError, ZipGuard, ZipLimits};
 pub use zip_reader::ZipReader;
 pub use zip_writer::{DosTime, Method, ZipWriteLimits, ZipWriter};
 

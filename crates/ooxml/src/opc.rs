@@ -6,7 +6,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::io::{Cursor, Read, Write};
 use std::sync::Arc;
 
-use craft_archive::{ZipError, ZipGuard, ZipLimits};
+use craft_archive::{NameMode, ZipError, ZipGuard, ZipLimits};
 
 use crate::dom::{self, Limits, XmlError};
 use crate::write::XmlWriter;
@@ -238,6 +238,9 @@ pub struct Tolerance {
     pub lenient_content_types: bool,
     /// Relationship targets escaping the root with `..` clamp at the root instead of being skipped.
     pub clamp_targets: bool,
+    /// Entry names and relationship targets written with `\` separators are read as `/`.
+    /// A DOCTYPE in `[Content_Types].xml` is covered by `lenient_content_types`.
+    pub normalize_backslash_names: bool,
 }
 
 impl Tolerance {
@@ -250,6 +253,7 @@ impl Tolerance {
             lenient_part_names: true,
             lenient_content_types: true,
             clamp_targets: true,
+            normalize_backslash_names: true,
         }
     }
 }
@@ -279,16 +283,17 @@ impl Package {
             return Err(OpcError::Limit("archive bytes"));
         }
         let archive = zip::ZipArchive::new(Cursor::new(bytes))?;
+        let name_mode = if tolerance.normalize_backslash_names { NameMode::NormalizeBackslash } else { NameMode::Strict };
         let names: Vec<_> = (0..archive.len())
             .map(|index| {
                 archive
                     .name_for_index(index)
                     .ok_or_else(|| OpcError::Invalid("missing entry name".into()))?
-                    .map(|name| name.into_owned())
+                    .map(|name| name_mode.apply(&name).into_owned())
                     .map_err(OpcError::from)
             })
             .collect::<Result<_, _>>()?;
-        let mut guard = ZipGuard::new(archive, limits.zip)?;
+        let mut guard = ZipGuard::new_with_names(archive, limits.zip, name_mode)?;
         let mut groups = Groups::new();
         let mut warnings = Vec::new();
         // Declared bytes of skipped entries that the guard did not see decoded.
@@ -511,6 +516,13 @@ fn parse_rels(
         } else {
             TargetMode::Internal
         };
+        let normalized;
+        let raw = if tolerance.normalize_backslash_names && mode == TargetMode::Internal && raw.contains('\\') {
+            normalized = raw.replace('\\', "/");
+            normalized.as_str()
+        } else {
+            raw
+        };
         let target = if mode == TargetMode::External {
             raw.to_string()
         } else if tolerance.clamp_targets {
@@ -541,6 +553,19 @@ pub struct LazyLimits {
     /// Skip the per-read expansion-ratio guard and rely on the size caps in [`OpcLimits`] alone.
     /// For formats whose legitimate parts compress far beyond 500:1 (e.g. repetitive sheet XML).
     pub no_expansion_ratio_guard: bool,
+    /// Entry names with `\` separators are indexed (and looked up) under `/`. When two entries
+    /// collapse to one name the first is kept and a warning is recorded.
+    pub normalize_backslash_names: bool,
+    /// `[Content_Types].xml` is read with [`Tolerance::lenient_content_types`] (e.g. a DOCTYPE
+    /// is skipped without expanding entities).
+    pub lenient_content_types: bool,
+}
+
+impl LazyLimits {
+    /// Every opt-in tolerance on; budget behaviour left at its default.
+    pub fn lenient() -> Self {
+        Self { normalize_backslash_names: true, lenient_content_types: true, ..Self::default() }
+    }
 }
 
 /// Index-only reader for large archives (spreadsheets, ODS). Parts are decompressed one at a time
@@ -591,21 +616,33 @@ impl<D: AsRef<[u8]>> LazyPackage<D> {
                     continue;
                 }
             };
+            let name = if lazy.normalize_backslash_names { name.replace('\\', "/") } else { name };
             if name.ends_with('/') {
                 continue;
             }
             match archive.by_index_data(position) {
                 Ok(entry) => {
+                    if index.contains_key(&name) {
+                        warnings.push(format!("{name}: duplicate entry after name normalisation skipped"));
+                        continue;
+                    }
                     index.insert(name, LazyEntry { index: position, size: entry.size(), compressed: entry.compressed_size() });
                 }
                 Err(error) => warnings.push(format!("{name}: unreadable entry skipped: {error}")),
             }
         }
         let mut package = Self { archive, index, limits: *limits, lazy, total_read: 0, content_types: ContentTypes::default(), warnings };
-        match package.read_optional("[Content_Types].xml", package.limits.xml.max_total_bytes as u64) {
+        // Tolerant opens find the part case-insensitively (real files write `[content_types].xml`).
+        let ct_name = if lazy.lenient_content_types {
+            package.find("[Content_Types].xml").unwrap_or("[Content_Types].xml").to_string()
+        } else {
+            "[Content_Types].xml".to_string()
+        };
+        match package.read_optional(&ct_name, package.limits.xml.max_total_bytes as u64) {
             Ok(Some(bytes)) => {
                 let mut ignored = Vec::new();
-                match parse_content_types(&bytes, &package.limits.xml, &Tolerance::default(), &mut ignored) {
+                let tolerance = Tolerance { lenient_content_types: lazy.lenient_content_types, ..Tolerance::default() };
+                match parse_content_types(&bytes, &package.limits.xml, &tolerance, &mut ignored) {
                     Ok(content_types) => package.content_types = content_types,
                     Err(error) => package.warnings.push(format!("[Content_Types].xml ignored: {error}")),
                 }
@@ -625,10 +662,21 @@ impl<D: AsRef<[u8]>> LazyPackage<D> {
         self.index.keys().map(String::as_str)
     }
 
-    /// Case-insensitive lookup; returns the spelling stored in the archive.
+    /// Exact-case match first, then case-insensitive; returns the spelling stored in the archive.
     pub fn find(&self, name: &str) -> Option<&str> {
         let name = name.trim_start_matches('/');
-        self.index.keys().map(String::as_str).find(|stored| stored.eq_ignore_ascii_case(name))
+        if let Some((stored, _)) = self.index.get_key_value(name) {
+            return Some(stored.as_str());
+        }
+        let name = if self.lazy.normalize_backslash_names && name.contains('\\') {
+            std::borrow::Cow::Owned(name.replace('\\', "/"))
+        } else {
+            std::borrow::Cow::Borrowed(name)
+        };
+        if let Some((stored, _)) = self.index.get_key_value(name.as_ref()) {
+            return Some(stored.as_str());
+        }
+        self.index.keys().map(String::as_str).find(|stored| stored.eq_ignore_ascii_case(&name))
     }
 
     /// Uncompressed size claimed by the ZIP index (untrusted; reads are still bounded).
@@ -733,7 +781,14 @@ impl<D: AsRef<[u8]>> LazyPackage<D> {
 
 fn parse_content_types(bytes: &[u8], xml: &Limits, tolerance: &Tolerance, warnings: &mut Vec<String>) -> Result<ContentTypes, OpcError> {
     let tolerant = tolerance.lenient_content_types;
-    let ct = match dom::parse(bytes, xml) {
+    let parsed = if tolerant {
+        // A DOCTYPE is skipped without expanding entities. A reference to a declared entity is
+        // an error in strict XML, so retry leniently: it then stays as literal, unexpanded text.
+        dom::parse_skipping_doctype(bytes, xml).or_else(|_| dom::parse_skipping_doctype(bytes, &Limits { read_mode: dom::ReadMode::Lenient, ..*xml }))
+    } else {
+        dom::parse(bytes, xml)
+    };
+    let ct = match parsed {
         Ok(ct) => ct,
         Err(error) if tolerant => {
             warnings.push(format!("[Content_Types].xml ignored: {error}"));
