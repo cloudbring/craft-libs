@@ -261,13 +261,30 @@ fn git_entry(g: &GitSource, f: &GitFile) -> Entry {
     });
     Entry {
         path: dest,
-        url: format!("https://raw.githubusercontent.com/{}/{}/{}", g.repo, g.commit, f.path),
+        url: format!("https://raw.githubusercontent.com/{}/{}/{}", g.repo, g.commit, encode_url_path(&f.path)),
         sha256: f.sha256.clone(),
         licence: f.licence.clone().unwrap_or_else(|| g.licence.clone()),
         provenance: f.provenance.clone().unwrap_or_else(|| g.provenance.clone()),
         tags: norm_tags(g.tags.iter().chain(f.tags.iter())),
         redistributable: f.redistributable.unwrap_or(g.redistributable),
     }
+}
+
+/// Percent-encode a repository path for a URL (RFC 3986): every byte except the unreserved set
+/// `A-Za-z0-9-._~` is written as `%XX` (UTF-8 bytes for non-ASCII); `/` separators are kept.
+pub fn encode_url_path(path: &str) -> String {
+    const HEX: &[u8; 16] = b"0123456789ABCDEF";
+    let mut out = String::with_capacity(path.len());
+    for b in path.bytes() {
+        if b.is_ascii_alphanumeric() || matches!(b, b'-' | b'.' | b'_' | b'~' | b'/') {
+            out.push(char::from(b));
+        } else {
+            out.push('%');
+            out.push(char::from(HEX[usize::from(b >> 4)]));
+            out.push(char::from(HEX[usize::from(b & 15)]));
+        }
+    }
+    out
 }
 
 fn norm_tags<'a>(tags: impl Iterator<Item = &'a String>) -> Vec<String> {
@@ -441,6 +458,24 @@ tags = ["rtl"]
         assert_ne!(a, Manifest::parse(&moved).unwrap().cache_key());
         let relicensed = sample().replace("CC0-1.0", "MIT");
         assert_ne!(a, Manifest::parse(&relicensed).unwrap().cache_key());
+    }
+
+    #[test]
+    fn url_path_encoding_classes() {
+        assert_eq!(encode_url_path("a/b-c_d.e~f/G9"), "a/b-c_d.e~f/G9", "unreserved and separators kept");
+        assert_eq!(encode_url_path("my file.doc"), "my%20file.doc", "space");
+        assert_eq!(encode_url_path("100%.doc"), "100%25.doc", "percent");
+        assert_eq!(encode_url_path("a&b=c+d?e#f.doc"), "a%26b%3Dc%2Bd%3Fe%23f.doc", "reserved");
+        assert_eq!(encode_url_path("caf\u{e9}/\u{65e5}.docx"), "caf%C3%A9/%E6%97%A5.docx", "non-ASCII as UTF-8");
+        assert_eq!(encode_url_path("a(1)[2]'x'!*@:;,$.xls"), "a%281%29%5B2%5D%27x%27%21%2A%40%3A%3B%2C%24.xls", "sub-delims and gen-delims");
+    }
+
+    #[test]
+    fn git_entry_urls_are_encoded() {
+        let text = sample().replace("data/x/two.png", "data/x/t w&o%.png");
+        let m = Manifest::parse(&text).unwrap();
+        assert_eq!(m.entries()[1].url, format!("https://raw.githubusercontent.com/owner/repo/{C}/data/x/t%20w%26o%25.png"));
+        assert_eq!(m.entries()[1].path, "x/t w&o%.png");
     }
 
     #[test]
