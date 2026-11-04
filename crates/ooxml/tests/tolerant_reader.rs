@@ -286,7 +286,8 @@ fn lazy_failed_reads_charge_budget_and_report_corrupt() {
     assert!(matches!(plain.read_optional("bad.xml", 10_000), Err(OpcError::Corrupt(_))));
     assert!(plain.total_read() - before < 10_000);
 
-    let mut strict = LazyPackage::open_with(bytes, &OpcLimits::default(), LazyLimits { charge_failed_reads_full_cap: true }).expect("open");
+    let mut strict = LazyPackage::open_with(bytes, &OpcLimits::default(), LazyLimits { charge_failed_reads_full_cap: true, ..LazyLimits::default() })
+        .expect("open");
     let before = strict.total_read();
     assert!(matches!(strict.read_optional("bad.xml", 10_000), Err(OpcError::Corrupt(_))));
     assert_eq!(strict.total_read() - before, 10_000);
@@ -305,4 +306,23 @@ fn lazy_charge_consumes_budget() {
     assert_eq!(lazy.remaining_budget(), 40);
     assert!(matches!(lazy.charge(41), Err(OpcError::Limit("package bytes"))));
     assert_eq!(lazy.remaining_budget(), 0);
+}
+
+#[test]
+fn lazy_ratio_guard_can_be_disabled() {
+    use craft_ooxml::opc::{LazyLimits, LazyPackage, OpcLimits};
+    use std::io::Write;
+    let mut buf = std::io::Cursor::new(Vec::new());
+    {
+        let mut z = zip::ZipWriter::new(&mut buf);
+        z.start_file("big.xml", zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated)).unwrap();
+        z.write_all(&vec![b'%'; 4 << 20]).unwrap();
+        z.finish().unwrap();
+    }
+    let bytes = buf.into_inner();
+    let mut guarded = LazyPackage::open(&bytes[..], &OpcLimits::default()).unwrap();
+    assert!(guarded.read("big.xml", 8 << 20).is_err());
+    let lim = LazyLimits { no_expansion_ratio_guard: true, ..LazyLimits::default() };
+    let mut open = LazyPackage::open_with(&bytes[..], &OpcLimits::default(), lim).unwrap();
+    assert_eq!(open.read("big.xml", 8 << 20).unwrap().len(), 4 << 20);
 }

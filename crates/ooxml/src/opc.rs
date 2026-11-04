@@ -538,6 +538,9 @@ pub struct LazyLimits {
     /// A read that fails with [`OpcError::Corrupt`] is charged its full cap (`read_optional`) or
     /// exhausts the remaining budget (`read`), so damaged entries cannot be retried for free.
     pub charge_failed_reads_full_cap: bool,
+    /// Skip the per-read expansion-ratio guard and rely on the size caps in [`OpcLimits`] alone.
+    /// For formats whose legitimate parts compress far beyond 500:1 (e.g. repetitive sheet XML).
+    pub no_expansion_ratio_guard: bool,
 }
 
 /// Index-only reader for large archives (spreadsheets, ODS). Parts are decompressed one at a time
@@ -720,7 +723,8 @@ impl<D: AsRef<[u8]>> LazyPackage<D> {
             output.try_reserve_exact(count).map_err(|_| OpcError::Limit("part bytes"))?;
             output.extend_from_slice(&buffer[..count]);
             let produced = output.len() as u64;
-            if produced > LAZY_RATIO_FLOOR && produced > entry.compressed.max(1).saturating_mul(LAZY_MAX_RATIO) {
+            if !self.lazy.no_expansion_ratio_guard && produced > LAZY_RATIO_FLOOR && produced > entry.compressed.max(1).saturating_mul(LAZY_MAX_RATIO)
+            {
                 return Err(OpcError::Limit("expansion ratio"));
             }
         }
