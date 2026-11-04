@@ -1,0 +1,16 @@
+# craft-jpeg original kernel-only timing (the ticket's 1.77x form), repeated 12 times
+# NOT a paired old/new run: the ignored unit test times the serial and lookahead decoders inside the NEW build (480f201e7acc9c5ada9ea0bf81370f238ba138de), serial first, then lookahead, 200 iterations each.
+# cmd: cargo test -p craft-jpeg --release --lib --no-run; <test binary> huffman_lookahead_timing --ignored --nocapture  (x12 separate processes)
+# machine: Apple M6, 12 cores, load about 3.6-4.5 of 12, 2026-11-04 evening US Eastern
+13107000 symbols, prefix-span weighted: serial 63.223875ms, lookahead 28.451625ms, 2.22x
+13107000 symbols, prefix-span weighted: serial 57.787667ms, lookahead 29.043625ms, 1.99x
+13107000 symbols, prefix-span weighted: serial 57.34475ms, lookahead 28.427875ms, 2.02x
+13107000 symbols, prefix-span weighted: serial 58.054958ms, lookahead 28.605042ms, 2.03x
+13107000 symbols, prefix-span weighted: serial 57.448917ms, lookahead 28.570042ms, 2.01x
+13107000 symbols, prefix-span weighted: serial 58.639708ms, lookahead 28.394458ms, 2.07x
+13107000 symbols, prefix-span weighted: serial 57.493083ms, lookahead 28.156541ms, 2.04x
+13107000 symbols, prefix-span weighted: serial 57.379792ms, lookahead 28.601417ms, 2.01x
+13107000 symbols, prefix-span weighted: serial 56.518083ms, lookahead 28.315042ms, 2.00x
+13107000 symbols, prefix-span weighted: serial 58.627208ms, lookahead 28.812541ms, 2.03x
+13107000 symbols, prefix-span weighted: serial 57.456208ms, lookahead 28.08525ms, 2.05x
+13107000 symbols, prefix-span weighted: serial 57.732166ms, lookahead 28.253167ms, 2.04x

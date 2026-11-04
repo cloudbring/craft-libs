@@ -1,0 +1,3482 @@
+{
+  "craft_bench_report": {
+    "aggregate": {
+      "cpu": {
+        "ci_hi": 0.9935150636202664,
+        "ci_lo": 0.9742949849291886,
+        "point": 0.9810287048119557
+      },
+      "inputs": 10,
+      "wall": {
+        "ci_hi": 0.9926787631527707,
+        "ci_lo": 0.9743522025615386,
+        "point": 0.9816664558761117
+      }
+    },
+    "config": {
+      "cpu_time": "process",
+      "output_checked": true,
+      "requested_repetitions": 20,
+      "resamples": 2000,
+      "runs_per_side": 20,
+      "seed": 12648430,
+      "warmup_runs": 2
+    },
+    "contended": false,
+    "fingerprint": {
+      "arch": "aarch64",
+      "cpu_model": "Apple M6",
+      "date": "2026-11-04T23:31:11+00:00",
+      "debug_assertions": false,
+      "kernel": "Darwin 27.0.0",
+      "logical_cores": 12,
+      "opt_level": "3",
+      "os": "macos",
+      "physical_cores": 12,
+      "profile": "release",
+      "ram_bytes": 34359738368,
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28) (Homebrew)"
+    },
+    "guard": {
+      "contended": false,
+      "load_after": 4.41,
+      "load_before": 4.41,
+      "load_threshold": 6.0,
+      "logical_cores": 12,
+      "max_load_per_core": 0.5,
+      "reasons": [],
+      "throttle_after": {
+        "speed_limit_pct": null,
+        "throttle_count": null
+      },
+      "throttle_before": {
+        "speed_limit_pct": null,
+        "throttle_count": null
+      }
+    },
+    "inputs": [
+      {
+        "cpu": {
+          "new": {
+            "mad_ns": 3500.0,
+            "max_ns": 408000.0,
+            "median_ns": 401500.0,
+            "min_ns": 387000.0,
+            "n": 20
+          },
+          "old": {
+            "mad_ns": 15500.0,
+            "max_ns": 463000.0,
+            "median_ns": 433000.0,
+            "min_ns": 404000.0,
+            "n": 20
+          },
+          "ratio": {
+            "ci_hi": 0.9604790419161676,
+            "ci_lo": 0.908675799086758,
+            "point": 0.9272517321016166
+          }
+        },
+        "name": "testimgari-huffman.jpg",
+        "wall": {
+          "new": {
+            "mad_ns": 3250.5,
+            "max_ns": 407792.0,
+            "median_ns": 400916.5,
+            "min_ns": 386083.0,
+            "n": 20
+          },
+          "old": {
+            "mad_ns": 15979.5,
+            "max_ns": 461917.0,
+            "median_ns": 432437.5,
+            "min_ns": 403334.0,
+            "n": 20
+          },
+          "ratio": {
+            "ci_hi": 0.9593390776005126,
+            "ci_lo": 0.9088560333025179,
+            "point": 0.927108541696777
+          }
+        }
+      },
+      {
+        "cpu": {
+          "new": {
+            "mad_ns": 19000.0,
+            "max_ns": 669000.0,
+            "median_ns": 637000.0,
+            "min_ns": 596000.0,
+            "n": 20
+          },
+          "old": {
+            "mad_ns": 14000.0,
+            "max_ns": 683000.0,
+            "median_ns": 652000.0,
+            "min_ns": 580000.0,
+            "n": 20
+          },
+          "ratio": {
+            "ci_hi": 1.0055205047318612,
+            "ci_lo": 0.9476082004555809,
+            "point": 0.9769938650306749
+          }
+        },
+        "name": "testimgari.jpg",
+        "wall": {
+          "new": {
+            "mad_ns": 19187.0,
+            "max_ns": 667959.0,
+            "median_ns": 636500.0,
+            "min_ns": 596667.0,
+            "n": 20
+          },
+          "old": {
+            "mad_ns": 13458.5,
+            "max_ns": 682292.0,
+            "median_ns": 651166.5,
+            "min_ns": 579042.0,
+            "n": 20
+          },
+          "ratio": {
+            "ci_hi": 1.0058869966434205,
+            "ci_lo": 0.9480102801225395,
+            "point": 0.9774765747316546
+          }
+        }
+      },
+      {
+        "cpu": {
+          "new": {
+            "mad_ns": 23500.0,
+            "max_ns": 773000.0,
+            "median_ns": 723500.0,
+            "min_ns": 651000.0,
+            "n": 20
+          },
+          "old": {
+            "mad_ns": 18000.0,
+            "max_ns": 755000.0,
+            "median_ns": 719000.0,
+            "min_ns": 636000.0,
+            "n": 20
+          },
+          "ratio": {
+            "ci_hi": 1.0498194945848376,
+            "ci_lo": 0.9737206085753803,
+            "point": 1.006258692628651
+          }
+        },
+        "name": "testorig-ari-progressive-restart.jpg",
+        "wall": {
+          "new": {
+            "mad_ns": 26167.0,
+            "max_ns": 780791.0,
+            "median_ns": 722583.0,
+            "min_ns": 650667.0,
+            "n": 20
+          },
+          "old": {
+            "mad_ns": 18562.5,
+            "max_ns": 754417.0,
+            "median_ns": 719396.0,
+            "min_ns": 636666.0,
+            "n": 20
+          },
+          "ratio": {
+            "ci_hi": 1.0491817764552094,
+            "ci_lo": 0.9767254541467311,
+            "point": 1.0044301052549638
+          }
+        }
+      },
+      {
+        "cpu": {
+          "new": {
+            "mad_ns": 33500.0,
+            "max_ns": 731000.0,
+            "median_ns": 676000.0,
+            "min_ns": 606000.0,
+            "n": 20
+          },
+          "old": {
+            "mad_ns": 23000.0,
+            "max_ns": 744000.0,
+            "median_ns": 691000.0,
+            "min_ns": 599000.0,
+            "n": 20
+          },
+          "ratio": {
+            "ci_hi": 1.044798941915331,
+            "ci_lo": 0.9435320778785692,
+            "point": 0.9782923299565847
+          }
+        },
+        "name": "testorig-ari-progressive.jpg",
+        "wall": {
+          "new": {
+            "mad_ns": 39312.0,
+            "max_ns": 739250.0,
+            "median_ns": 676062.5,
+            "min_ns": 605959.0,
+            "n": 20
+          },
+          "old": {
+            "mad_ns": 23979.0,
+            "max_ns": 753667.0,
+            "median_ns": 690812.5,
+            "min_ns": 599042.0,
+            "n": 20
+          },
+          "ratio": {
+            "ci_hi": 1.0455332495433003,
+            "ci_lo": 0.9438330021918317,
+            "point": 0.9786483307699267
+          }
+        }
+      },
+      {
+        "cpu": {
+          "new": {
+            "mad_ns": 9500.0,
+            "max_ns": 434000.0,
+            "median_ns": 396500.0,
+            "min_ns": 379000.0,
+            "n": 20
+          },
+          "old": {
+            "mad_ns": 8500.0,
+            "max_ns": 451000.0,
+            "median_ns": 421000.0,
+            "min_ns": 399000.0,
+            "n": 20
+          },
+          "ratio": {
+            "ci_hi": 0.9689737470167065,
+            "ci_lo": 0.9070847851335656,
+            "point": 0.9418052256532067
+          }
+        },
+        "name": "testorig.jpg",
+        "wall": {
+          "new": {
+            "mad_ns": 10458.0,
+            "max_ns": 446583.0,
+            "median_ns": 396166.5,
+            "min_ns": 379875.0,
+            "n": 20
+          },
+          "old": {
+            "mad_ns": 7750.5,
+            "max_ns": 451333.0,
+            "median_ns": 422353.5,
+            "min_ns": 399833.0,
+            "n": 20
+          },
+          "ratio": {
+            "ci_hi": 0.9686251242056202,
+            "ci_lo": 0.907583646288815,
+            "point": 0.9379974357972646
+          }
+        }
+      },
+      {
+        "cpu": {
+          "new": {
+            "mad_ns": 27000.0,
+            "max_ns": 1160000.0,
+            "median_ns": 1111500.0,
+            "min_ns": 1052000.0,
+            "n": 20
+          },
+          "old": {
+            "mad_ns": 24000.0,
+            "max_ns": 1163000.0,
+            "median_ns": 1103000.0,
+            "min_ns": 1020000.0,
+            "n": 20
+          },
+          "ratio": {
+            "ci_hi": 1.0373746581586143,
+            "ci_lo": 0.9901940965065271,
+            "point": 1.0077062556663645
+          }
+        },
+        "name": "testorig12-ari-progressive.jpg",
+        "wall": {
+          "new": {
+            "mad_ns": 24312.5,
+            "max_ns": 1165709.0,
+            "median_ns": 1113312.5,
+            "min_ns": 1052625.0,
+            "n": 20
+          },
+          "old": {
+            "mad_ns": 24270.5,
+            "max_ns": 1169375.0,
+            "median_ns": 1102563.0,
+            "min_ns": 1019500.0,
+            "n": 20
+          },
+          "ratio": {
+            "ci_hi": 1.0374495470998772,
+            "ci_lo": 0.9903269230854923,
+            "point": 1.0097495562611842
+          }
+        }
+      },
+      {
+        "cpu": {
+          "new": {
+            "mad_ns": 12000.0,
+            "max_ns": 1113000.0,
+            "median_ns": 1079500.0,
+            "min_ns": 1036000.0,
+            "n": 20
+          },
+          "old": {
+            "mad_ns": 26000.0,
+            "max_ns": 1152000.0,
+            "median_ns": 1087000.0,
+            "min_ns": 1007000.0,
+            "n": 20
+          },
+          "ratio": {
+            "ci_hi": 1.0115628512567445,
+            "ci_lo": 0.9750315147692716,
+            "point": 0.9931002759889604
+          }
+        },
+        "name": "testorig12-ari.jpg",
+        "wall": {
+          "new": {
+            "mad_ns": 16271.0,
+            "max_ns": 1113167.0,
+            "median_ns": 1086208.0,
+            "min_ns": 1035667.0,
+            "n": 20
+          },
+          "old": {
+            "mad_ns": 25750.0,
+            "max_ns": 1163875.0,
+            "median_ns": 1086854.5,
+            "min_ns": 1007041.0,
+            "n": 20
+          },
+          "ratio": {
+            "ci_hi": 1.0122741409531113,
+            "ci_lo": 0.9760834970904052,
+            "point": 0.9994051641687088
+          }
+        }
+      },
+      {
+        "cpu": {
+          "new": {
+            "mad_ns": 4500.0,
+            "max_ns": 461000.0,
+            "median_ns": 442000.0,
+            "min_ns": 426000.0,
+            "n": 20
+          },
+          "old": {
+            "mad_ns": 15000.0,
+            "max_ns": 547000.0,
+            "median_ns": 503000.0,
+            "min_ns": 459000.0,
+            "n": 20
+          },
+          "ratio": {
+            "ci_hi": 0.9077868852459017,
+            "ci_lo": 0.8692135326665619,
+            "point": 0.878727634194831
+          }
+        },
+        "name": "testorig12.jpg",
+        "wall": {
+          "new": {
+            "mad_ns": 3687.5,
+            "max_ns": 468291.0,
+            "median_ns": 442083.0,
+            "min_ns": 426125.0,
+            "n": 20
+          },
+          "old": {
+            "mad_ns": 15208.5,
+            "max_ns": 547208.0,
+            "median_ns": 503458.5,
+            "min_ns": 457500.0,
+            "n": 20
+          },
+          "ratio": {
+            "ci_hi": 0.9064223254939515,
+            "ci_lo": 0.8695221523603288,
+            "point": 0.8780922360035633
+          }
+        }
+      },
+      {
+        "cpu": {
+          "new": {
+            "mad_ns": 19500.0,
+            "max_ns": 1147000.0,
+            "median_ns": 1032000.0,
+            "min_ns": 980000.0,
+            "n": 20
+          },
+          "old": {
+            "mad_ns": 13000.0,
+            "max_ns": 1013000.0,
+            "median_ns": 980500.0,
+            "min_ns": 925000.0,
+            "n": 20
+          },
+          "ratio": {
+            "ci_hi": 1.0895264346074915,
+            "ci_lo": 1.0380088625812751,
+            "point": 1.052524222335543
+          }
+        },
+        "name": "whitetail-ari.jpg",
+        "wall": {
+          "new": {
+            "mad_ns": 25729.0,
+            "max_ns": 1180375.0,
+            "median_ns": 1037396.0,
+            "min_ns": 979583.0,
+            "n": 20
+          },
+          "old": {
+            "mad_ns": 12042.5,
+            "max_ns": 1012291.0,
+            "median_ns": 980979.0,
+            "min_ns": 923792.0,
+            "n": 20
+          },
+          "ratio": {
+            "ci_hi": 1.0902059038642276,
+            "ci_lo": 1.039518540929225,
+            "point": 1.0575109151164297
+          }
+        }
+      },
+      {
+        "cpu": {
+          "new": {
+            "mad_ns": 3500.0,
+            "max_ns": 893000.0,
+            "median_ns": 880500.0,
+            "min_ns": 824000.0,
+            "n": 20
+          },
+          "old": {
+            "mad_ns": 9000.0,
+            "max_ns": 856000.0,
+            "median_ns": 829000.0,
+            "min_ns": 799000.0,
+            "n": 20
+          },
+          "ratio": {
+            "ci_hi": 1.0747277456263133,
+            "ci_lo": 1.0507462686567164,
+            "point": 1.0621230398069963
+          }
+        },
+        "name": "whitetail-huffman.jpg",
+        "wall": {
+          "new": {
+            "mad_ns": 3750.0,
+            "max_ns": 900208.0,
+            "median_ns": 879979.5,
+            "min_ns": 823500.0,
+            "n": 20
+          },
+          "old": {
+            "mad_ns": 9625.0,
+            "max_ns": 856833.0,
+            "median_ns": 829083.5,
+            "min_ns": 798875.0,
+            "n": 20
+          },
+          "ratio": {
+            "ci_hi": 1.0745467115246992,
+            "ci_lo": 1.0497572952831375,
+            "point": 1.0613882678885782
+          }
+        }
+      }
+    ],
+    "name": "craft-jpeg decode: libjpeg-turbo 3.0.0 test images (crates/jpeg/tests/data)",
+    "publishable": true,
+    "revs": {
+      "new": "480f201e7acc9c5ada9ea0bf81370f238ba138de",
+      "old": "47c9f62530db72bc5c3831c86653b47b20c640be"
+    },
+    "runs": [
+      {
+        "cpu_ns": 390000,
+        "input": "testorig.jpg",
+        "order": 0,
+        "side": "new",
+        "wall_ns": 388666
+      },
+      {
+        "cpu_ns": 439000,
+        "input": "testorig.jpg",
+        "order": 1,
+        "side": "old",
+        "wall_ns": 438750
+      },
+      {
+        "cpu_ns": 418000,
+        "input": "testorig.jpg",
+        "order": 2,
+        "side": "old",
+        "wall_ns": 417750
+      },
+      {
+        "cpu_ns": 386000,
+        "input": "testorig.jpg",
+        "order": 3,
+        "side": "new",
+        "wall_ns": 385250
+      },
+      {
+        "cpu_ns": 805000,
+        "input": "whitetail-huffman.jpg",
+        "order": 4,
+        "side": "old",
+        "wall_ns": 805167
+      },
+      {
+        "cpu_ns": 824000,
+        "input": "whitetail-huffman.jpg",
+        "order": 5,
+        "side": "new",
+        "wall_ns": 823500
+      },
+      {
+        "cpu_ns": 830000,
+        "input": "whitetail-huffman.jpg",
+        "order": 6,
+        "side": "new",
+        "wall_ns": 829792
+      },
+      {
+        "cpu_ns": 799000,
+        "input": "whitetail-huffman.jpg",
+        "order": 7,
+        "side": "old",
+        "wall_ns": 798875
+      },
+      {
+        "cpu_ns": 391000,
+        "input": "testorig.jpg",
+        "order": 8,
+        "side": "new",
+        "wall_ns": 390375
+      },
+      {
+        "cpu_ns": 413000,
+        "input": "testorig.jpg",
+        "order": 9,
+        "side": "old",
+        "wall_ns": 413291
+      },
+      {
+        "cpu_ns": 399000,
+        "input": "testorig.jpg",
+        "order": 10,
+        "side": "old",
+        "wall_ns": 399833
+      },
+      {
+        "cpu_ns": 387000,
+        "input": "testorig.jpg",
+        "order": 11,
+        "side": "new",
+        "wall_ns": 386416
+      },
+      {
+        "cpu_ns": 1110000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 12,
+        "side": "old",
+        "wall_ns": 1110333
+      },
+      {
+        "cpu_ns": 1141000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 13,
+        "side": "new",
+        "wall_ns": 1150791
+      },
+      {
+        "cpu_ns": 1079000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 14,
+        "side": "new",
+        "wall_ns": 1079875
+      },
+      {
+        "cpu_ns": 1080000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 15,
+        "side": "old",
+        "wall_ns": 1080167
+      },
+      {
+        "cpu_ns": 663000,
+        "input": "testimgari.jpg",
+        "order": 16,
+        "side": "new",
+        "wall_ns": 662334
+      },
+      {
+        "cpu_ns": 675000,
+        "input": "testimgari.jpg",
+        "order": 17,
+        "side": "old",
+        "wall_ns": 675125
+      },
+      {
+        "cpu_ns": 637000,
+        "input": "testimgari.jpg",
+        "order": 18,
+        "side": "old",
+        "wall_ns": 636916
+      },
+      {
+        "cpu_ns": 646000,
+        "input": "testimgari.jpg",
+        "order": 19,
+        "side": "new",
+        "wall_ns": 646292
+      },
+      {
+        "cpu_ns": 510000,
+        "input": "testorig12.jpg",
+        "order": 20,
+        "side": "old",
+        "wall_ns": 510209
+      },
+      {
+        "cpu_ns": 428000,
+        "input": "testorig12.jpg",
+        "order": 21,
+        "side": "new",
+        "wall_ns": 426709
+      },
+      {
+        "cpu_ns": 426000,
+        "input": "testorig12.jpg",
+        "order": 22,
+        "side": "new",
+        "wall_ns": 426125
+      },
+      {
+        "cpu_ns": 488000,
+        "input": "testorig12.jpg",
+        "order": 23,
+        "side": "old",
+        "wall_ns": 488375
+      },
+      {
+        "cpu_ns": 1013000,
+        "input": "whitetail-ari.jpg",
+        "order": 24,
+        "side": "new",
+        "wall_ns": 1011917
+      },
+      {
+        "cpu_ns": 995000,
+        "input": "whitetail-ari.jpg",
+        "order": 25,
+        "side": "old",
+        "wall_ns": 994375
+      },
+      {
+        "cpu_ns": 968000,
+        "input": "whitetail-ari.jpg",
+        "order": 26,
+        "side": "old",
+        "wall_ns": 980750
+      },
+      {
+        "cpu_ns": 1030000,
+        "input": "whitetail-ari.jpg",
+        "order": 27,
+        "side": "new",
+        "wall_ns": 1029834
+      },
+      {
+        "cpu_ns": 385000,
+        "input": "testorig.jpg",
+        "order": 28,
+        "side": "new",
+        "wall_ns": 384292
+      },
+      {
+        "cpu_ns": 439000,
+        "input": "testorig.jpg",
+        "order": 29,
+        "side": "old",
+        "wall_ns": 438666
+      },
+      {
+        "cpu_ns": 435000,
+        "input": "testorig.jpg",
+        "order": 30,
+        "side": "old",
+        "wall_ns": 434417
+      },
+      {
+        "cpu_ns": 394000,
+        "input": "testorig.jpg",
+        "order": 31,
+        "side": "new",
+        "wall_ns": 394125
+      },
+      {
+        "cpu_ns": 1078000,
+        "input": "testorig12-ari.jpg",
+        "order": 32,
+        "side": "old",
+        "wall_ns": 1078833
+      },
+      {
+        "cpu_ns": 1089000,
+        "input": "testorig12-ari.jpg",
+        "order": 33,
+        "side": "new",
+        "wall_ns": 1088916
+      },
+      {
+        "cpu_ns": 1067000,
+        "input": "testorig12-ari.jpg",
+        "order": 34,
+        "side": "new",
+        "wall_ns": 1067208
+      },
+      {
+        "cpu_ns": 1095000,
+        "input": "testorig12-ari.jpg",
+        "order": 35,
+        "side": "old",
+        "wall_ns": 1095417
+      },
+      {
+        "cpu_ns": 724000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 36,
+        "side": "old",
+        "wall_ns": 722875
+      },
+      {
+        "cpu_ns": 731000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 37,
+        "side": "new",
+        "wall_ns": 739250
+      },
+      {
+        "cpu_ns": 679000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 38,
+        "side": "new",
+        "wall_ns": 678875
+      },
+      {
+        "cpu_ns": 686000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 39,
+        "side": "old",
+        "wall_ns": 685917
+      },
+      {
+        "cpu_ns": 656000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 40,
+        "side": "new",
+        "wall_ns": 656250
+      },
+      {
+        "cpu_ns": 669000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 41,
+        "side": "old",
+        "wall_ns": 669333
+      },
+      {
+        "cpu_ns": 644000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 42,
+        "side": "old",
+        "wall_ns": 644333
+      },
+      {
+        "cpu_ns": 667000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 43,
+        "side": "new",
+        "wall_ns": 667083
+      },
+      {
+        "cpu_ns": 934000,
+        "input": "whitetail-ari.jpg",
+        "order": 44,
+        "side": "old",
+        "wall_ns": 933458
+      },
+      {
+        "cpu_ns": 1013000,
+        "input": "whitetail-ari.jpg",
+        "order": 45,
+        "side": "new",
+        "wall_ns": 1013125
+      },
+      {
+        "cpu_ns": 980000,
+        "input": "whitetail-ari.jpg",
+        "order": 46,
+        "side": "new",
+        "wall_ns": 979583
+      },
+      {
+        "cpu_ns": 925000,
+        "input": "whitetail-ari.jpg",
+        "order": 47,
+        "side": "old",
+        "wall_ns": 923792
+      },
+      {
+        "cpu_ns": 655000,
+        "input": "testimgari.jpg",
+        "order": 48,
+        "side": "old",
+        "wall_ns": 655000
+      },
+      {
+        "cpu_ns": 669000,
+        "input": "testimgari.jpg",
+        "order": 49,
+        "side": "new",
+        "wall_ns": 667959
+      },
+      {
+        "cpu_ns": 638000,
+        "input": "testimgari.jpg",
+        "order": 50,
+        "side": "new",
+        "wall_ns": 638000
+      },
+      {
+        "cpu_ns": 639000,
+        "input": "testimgari.jpg",
+        "order": 51,
+        "side": "old",
+        "wall_ns": 640250
+      },
+      {
+        "cpu_ns": 430000,
+        "input": "testorig.jpg",
+        "order": 52,
+        "side": "old",
+        "wall_ns": 430250
+      },
+      {
+        "cpu_ns": 404000,
+        "input": "testorig.jpg",
+        "order": 53,
+        "side": "new",
+        "wall_ns": 414584
+      },
+      {
+        "cpu_ns": 390000,
+        "input": "testorig.jpg",
+        "order": 54,
+        "side": "new",
+        "wall_ns": 390000
+      },
+      {
+        "cpu_ns": 426000,
+        "input": "testorig.jpg",
+        "order": 55,
+        "side": "old",
+        "wall_ns": 425417
+      },
+      {
+        "cpu_ns": 649000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 56,
+        "side": "old",
+        "wall_ns": 649500
+      },
+      {
+        "cpu_ns": 693000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 57,
+        "side": "new",
+        "wall_ns": 692292
+      },
+      {
+        "cpu_ns": 631000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 58,
+        "side": "new",
+        "wall_ns": 630583
+      },
+      {
+        "cpu_ns": 643000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 59,
+        "side": "old",
+        "wall_ns": 643000
+      },
+      {
+        "cpu_ns": 618000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 60,
+        "side": "new",
+        "wall_ns": 618750
+      },
+      {
+        "cpu_ns": 634000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 61,
+        "side": "old",
+        "wall_ns": 633291
+      },
+      {
+        "cpu_ns": 599000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 62,
+        "side": "old",
+        "wall_ns": 599042
+      },
+      {
+        "cpu_ns": 608000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 63,
+        "side": "new",
+        "wall_ns": 608792
+      },
+      {
+        "cpu_ns": 387000,
+        "input": "testimgari-huffman.jpg",
+        "order": 64,
+        "side": "new",
+        "wall_ns": 386083
+      },
+      {
+        "cpu_ns": 438000,
+        "input": "testimgari-huffman.jpg",
+        "order": 65,
+        "side": "old",
+        "wall_ns": 437375
+      },
+      {
+        "cpu_ns": 419000,
+        "input": "testimgari-huffman.jpg",
+        "order": 66,
+        "side": "old",
+        "wall_ns": 418542
+      },
+      {
+        "cpu_ns": 396000,
+        "input": "testimgari-huffman.jpg",
+        "order": 67,
+        "side": "new",
+        "wall_ns": 395291
+      },
+      {
+        "cpu_ns": 983000,
+        "input": "whitetail-ari.jpg",
+        "order": 68,
+        "side": "old",
+        "wall_ns": 983041
+      },
+      {
+        "cpu_ns": 1012000,
+        "input": "whitetail-ari.jpg",
+        "order": 69,
+        "side": "new",
+        "wall_ns": 1011417
+      },
+      {
+        "cpu_ns": 1081000,
+        "input": "whitetail-ari.jpg",
+        "order": 70,
+        "side": "new",
+        "wall_ns": 1093125
+      },
+      {
+        "cpu_ns": 991000,
+        "input": "whitetail-ari.jpg",
+        "order": 71,
+        "side": "old",
+        "wall_ns": 990625
+      },
+      {
+        "cpu_ns": 838000,
+        "input": "whitetail-huffman.jpg",
+        "order": 72,
+        "side": "old",
+        "wall_ns": 838542
+      },
+      {
+        "cpu_ns": 879000,
+        "input": "whitetail-huffman.jpg",
+        "order": 73,
+        "side": "new",
+        "wall_ns": 877958
+      },
+      {
+        "cpu_ns": 878000,
+        "input": "whitetail-huffman.jpg",
+        "order": 74,
+        "side": "new",
+        "wall_ns": 878417
+      },
+      {
+        "cpu_ns": 837000,
+        "input": "whitetail-huffman.jpg",
+        "order": 75,
+        "side": "old",
+        "wall_ns": 837375
+      },
+      {
+        "cpu_ns": 1095000,
+        "input": "testorig12-ari.jpg",
+        "order": 76,
+        "side": "new",
+        "wall_ns": 1095500
+      },
+      {
+        "cpu_ns": 1144000,
+        "input": "testorig12-ari.jpg",
+        "order": 77,
+        "side": "old",
+        "wall_ns": 1143667
+      },
+      {
+        "cpu_ns": 1090000,
+        "input": "testorig12-ari.jpg",
+        "order": 78,
+        "side": "old",
+        "wall_ns": 1088584
+      },
+      {
+        "cpu_ns": 1073000,
+        "input": "testorig12-ari.jpg",
+        "order": 79,
+        "side": "new",
+        "wall_ns": 1073166
+      },
+      {
+        "cpu_ns": 461000,
+        "input": "testorig12.jpg",
+        "order": 80,
+        "side": "new",
+        "wall_ns": 468291
+      },
+      {
+        "cpu_ns": 547000,
+        "input": "testorig12.jpg",
+        "order": 81,
+        "side": "old",
+        "wall_ns": 547208
+      },
+      {
+        "cpu_ns": 507000,
+        "input": "testorig12.jpg",
+        "order": 82,
+        "side": "old",
+        "wall_ns": 507542
+      },
+      {
+        "cpu_ns": 450000,
+        "input": "testorig12.jpg",
+        "order": 83,
+        "side": "new",
+        "wall_ns": 449916
+      },
+      {
+        "cpu_ns": 683000,
+        "input": "testimgari.jpg",
+        "order": 84,
+        "side": "old",
+        "wall_ns": 682292
+      },
+      {
+        "cpu_ns": 666000,
+        "input": "testimgari.jpg",
+        "order": 85,
+        "side": "new",
+        "wall_ns": 665958
+      },
+      {
+        "cpu_ns": 637000,
+        "input": "testimgari.jpg",
+        "order": 86,
+        "side": "new",
+        "wall_ns": 636667
+      },
+      {
+        "cpu_ns": 665000,
+        "input": "testimgari.jpg",
+        "order": 87,
+        "side": "old",
+        "wall_ns": 663833
+      },
+      {
+        "cpu_ns": 755000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 88,
+        "side": "old",
+        "wall_ns": 754417
+      },
+      {
+        "cpu_ns": 750000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 89,
+        "side": "new",
+        "wall_ns": 750459
+      },
+      {
+        "cpu_ns": 725000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 90,
+        "side": "new",
+        "wall_ns": 724333
+      },
+      {
+        "cpu_ns": 737000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 91,
+        "side": "old",
+        "wall_ns": 737666
+      },
+      {
+        "cpu_ns": 628000,
+        "input": "testimgari.jpg",
+        "order": 92,
+        "side": "new",
+        "wall_ns": 627584
+      },
+      {
+        "cpu_ns": 662000,
+        "input": "testimgari.jpg",
+        "order": 93,
+        "side": "old",
+        "wall_ns": 662000
+      },
+      {
+        "cpu_ns": 656000,
+        "input": "testimgari.jpg",
+        "order": 94,
+        "side": "old",
+        "wall_ns": 654958
+      },
+      {
+        "cpu_ns": 615000,
+        "input": "testimgari.jpg",
+        "order": 95,
+        "side": "new",
+        "wall_ns": 615959
+      },
+      {
+        "cpu_ns": 891000,
+        "input": "whitetail-huffman.jpg",
+        "order": 96,
+        "side": "new",
+        "wall_ns": 900208
+      },
+      {
+        "cpu_ns": 856000,
+        "input": "whitetail-huffman.jpg",
+        "order": 97,
+        "side": "old",
+        "wall_ns": 856833
+      },
+      {
+        "cpu_ns": 845000,
+        "input": "whitetail-huffman.jpg",
+        "order": 98,
+        "side": "old",
+        "wall_ns": 845459
+      },
+      {
+        "cpu_ns": 888000,
+        "input": "whitetail-huffman.jpg",
+        "order": 99,
+        "side": "new",
+        "wall_ns": 887750
+      },
+      {
+        "cpu_ns": 402000,
+        "input": "testimgari-huffman.jpg",
+        "order": 100,
+        "side": "new",
+        "wall_ns": 400875
+      },
+      {
+        "cpu_ns": 452000,
+        "input": "testimgari-huffman.jpg",
+        "order": 101,
+        "side": "old",
+        "wall_ns": 452334
+      },
+      {
+        "cpu_ns": 432000,
+        "input": "testimgari-huffman.jpg",
+        "order": 102,
+        "side": "old",
+        "wall_ns": 432625
+      },
+      {
+        "cpu_ns": 402000,
+        "input": "testimgari-huffman.jpg",
+        "order": 103,
+        "side": "new",
+        "wall_ns": 401750
+      },
+      {
+        "cpu_ns": 661000,
+        "input": "testimgari.jpg",
+        "order": 104,
+        "side": "old",
+        "wall_ns": 659875
+      },
+      {
+        "cpu_ns": 640000,
+        "input": "testimgari.jpg",
+        "order": 105,
+        "side": "new",
+        "wall_ns": 638958
+      },
+      {
+        "cpu_ns": 596000,
+        "input": "testimgari.jpg",
+        "order": 106,
+        "side": "new",
+        "wall_ns": 596667
+      },
+      {
+        "cpu_ns": 649000,
+        "input": "testimgari.jpg",
+        "order": 107,
+        "side": "old",
+        "wall_ns": 648291
+      },
+      {
+        "cpu_ns": 856000,
+        "input": "whitetail-huffman.jpg",
+        "order": 108,
+        "side": "old",
+        "wall_ns": 856000
+      },
+      {
+        "cpu_ns": 887000,
+        "input": "whitetail-huffman.jpg",
+        "order": 109,
+        "side": "new",
+        "wall_ns": 887000
+      },
+      {
+        "cpu_ns": 893000,
+        "input": "whitetail-huffman.jpg",
+        "order": 110,
+        "side": "new",
+        "wall_ns": 899625
+      },
+      {
+        "cpu_ns": 833000,
+        "input": "whitetail-huffman.jpg",
+        "order": 111,
+        "side": "old",
+        "wall_ns": 832084
+      },
+      {
+        "cpu_ns": 1159000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 112,
+        "side": "old",
+        "wall_ns": 1158875
+      },
+      {
+        "cpu_ns": 1153000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 113,
+        "side": "new",
+        "wall_ns": 1153000
+      },
+      {
+        "cpu_ns": 1130000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 114,
+        "side": "new",
+        "wall_ns": 1129542
+      },
+      {
+        "cpu_ns": 1128000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 115,
+        "side": "old",
+        "wall_ns": 1127625
+      },
+      {
+        "cpu_ns": 604000,
+        "input": "testimgari.jpg",
+        "order": 116,
+        "side": "new",
+        "wall_ns": 603375
+      },
+      {
+        "cpu_ns": 661000,
+        "input": "testimgari.jpg",
+        "order": 117,
+        "side": "old",
+        "wall_ns": 659334
+      },
+      {
+        "cpu_ns": 622000,
+        "input": "testimgari.jpg",
+        "order": 118,
+        "side": "old",
+        "wall_ns": 622166
+      },
+      {
+        "cpu_ns": 599000,
+        "input": "testimgari.jpg",
+        "order": 119,
+        "side": "new",
+        "wall_ns": 597667
+      },
+      {
+        "cpu_ns": 731000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 120,
+        "side": "new",
+        "wall_ns": 730458
+      },
+      {
+        "cpu_ns": 739000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 121,
+        "side": "old",
+        "wall_ns": 739042
+      },
+      {
+        "cpu_ns": 713000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 122,
+        "side": "old",
+        "wall_ns": 722708
+      },
+      {
+        "cpu_ns": 606000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 123,
+        "side": "new",
+        "wall_ns": 605959
+      },
+      {
+        "cpu_ns": 637000,
+        "input": "testimgari.jpg",
+        "order": 124,
+        "side": "new",
+        "wall_ns": 637042
+      },
+      {
+        "cpu_ns": 634000,
+        "input": "testimgari.jpg",
+        "order": 125,
+        "side": "old",
+        "wall_ns": 634292
+      },
+      {
+        "cpu_ns": 608000,
+        "input": "testimgari.jpg",
+        "order": 126,
+        "side": "old",
+        "wall_ns": 607750
+      },
+      {
+        "cpu_ns": 657000,
+        "input": "testimgari.jpg",
+        "order": 127,
+        "side": "new",
+        "wall_ns": 657167
+      },
+      {
+        "cpu_ns": 1070000,
+        "input": "testorig12-ari.jpg",
+        "order": 128,
+        "side": "new",
+        "wall_ns": 1069166
+      },
+      {
+        "cpu_ns": 1097000,
+        "input": "testorig12-ari.jpg",
+        "order": 129,
+        "side": "old",
+        "wall_ns": 1097584
+      },
+      {
+        "cpu_ns": 1056000,
+        "input": "testorig12-ari.jpg",
+        "order": 130,
+        "side": "old",
+        "wall_ns": 1054834
+      },
+      {
+        "cpu_ns": 1061000,
+        "input": "testorig12-ari.jpg",
+        "order": 131,
+        "side": "new",
+        "wall_ns": 1059875
+      },
+      {
+        "cpu_ns": 443000,
+        "input": "testorig12.jpg",
+        "order": 132,
+        "side": "new",
+        "wall_ns": 443292
+      },
+      {
+        "cpu_ns": 507000,
+        "input": "testorig12.jpg",
+        "order": 133,
+        "side": "old",
+        "wall_ns": 505792
+      },
+      {
+        "cpu_ns": 483000,
+        "input": "testorig12.jpg",
+        "order": 134,
+        "side": "old",
+        "wall_ns": 483709
+      },
+      {
+        "cpu_ns": 444000,
+        "input": "testorig12.jpg",
+        "order": 135,
+        "side": "new",
+        "wall_ns": 443167
+      },
+      {
+        "cpu_ns": 639000,
+        "input": "testimgari.jpg",
+        "order": 136,
+        "side": "old",
+        "wall_ns": 646417
+      },
+      {
+        "cpu_ns": 659000,
+        "input": "testimgari.jpg",
+        "order": 137,
+        "side": "new",
+        "wall_ns": 658667
+      },
+      {
+        "cpu_ns": 628000,
+        "input": "testimgari.jpg",
+        "order": 138,
+        "side": "new",
+        "wall_ns": 627458
+      },
+      {
+        "cpu_ns": 617000,
+        "input": "testimgari.jpg",
+        "order": 139,
+        "side": "old",
+        "wall_ns": 616542
+      },
+      {
+        "cpu_ns": 599000,
+        "input": "testimgari.jpg",
+        "order": 140,
+        "side": "old",
+        "wall_ns": 599083
+      },
+      {
+        "cpu_ns": 620000,
+        "input": "testimgari.jpg",
+        "order": 141,
+        "side": "new",
+        "wall_ns": 618667
+      },
+      {
+        "cpu_ns": 607000,
+        "input": "testimgari.jpg",
+        "order": 142,
+        "side": "new",
+        "wall_ns": 606917
+      },
+      {
+        "cpu_ns": 580000,
+        "input": "testimgari.jpg",
+        "order": 143,
+        "side": "old",
+        "wall_ns": 579042
+      },
+      {
+        "cpu_ns": 1155000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 144,
+        "side": "old",
+        "wall_ns": 1154917
+      },
+      {
+        "cpu_ns": 1135000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 145,
+        "side": "new",
+        "wall_ns": 1135834
+      },
+      {
+        "cpu_ns": 1112000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 146,
+        "side": "new",
+        "wall_ns": 1111250
+      },
+      {
+        "cpu_ns": 1116000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 147,
+        "side": "old",
+        "wall_ns": 1116542
+      },
+      {
+        "cpu_ns": 729000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 148,
+        "side": "old",
+        "wall_ns": 727541
+      },
+      {
+        "cpu_ns": 752000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 149,
+        "side": "new",
+        "wall_ns": 760250
+      },
+      {
+        "cpu_ns": 689000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 150,
+        "side": "new",
+        "wall_ns": 688000
+      },
+      {
+        "cpu_ns": 710000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 151,
+        "side": "old",
+        "wall_ns": 710041
+      },
+      {
+        "cpu_ns": 529000,
+        "input": "testorig12.jpg",
+        "order": 152,
+        "side": "old",
+        "wall_ns": 529084
+      },
+      {
+        "cpu_ns": 442000,
+        "input": "testorig12.jpg",
+        "order": 153,
+        "side": "new",
+        "wall_ns": 440709
+      },
+      {
+        "cpu_ns": 440000,
+        "input": "testorig12.jpg",
+        "order": 154,
+        "side": "new",
+        "wall_ns": 439875
+      },
+      {
+        "cpu_ns": 504000,
+        "input": "testorig12.jpg",
+        "order": 155,
+        "side": "old",
+        "wall_ns": 505000
+      },
+      {
+        "cpu_ns": 410000,
+        "input": "testorig.jpg",
+        "order": 156,
+        "side": "new",
+        "wall_ns": 409375
+      },
+      {
+        "cpu_ns": 441000,
+        "input": "testorig.jpg",
+        "order": 157,
+        "side": "old",
+        "wall_ns": 440250
+      },
+      {
+        "cpu_ns": 417000,
+        "input": "testorig.jpg",
+        "order": 158,
+        "side": "old",
+        "wall_ns": 417125
+      },
+      {
+        "cpu_ns": 406000,
+        "input": "testorig.jpg",
+        "order": 159,
+        "side": "new",
+        "wall_ns": 405417
+      },
+      {
+        "cpu_ns": 1104000,
+        "input": "testorig12-ari.jpg",
+        "order": 160,
+        "side": "new",
+        "wall_ns": 1103792
+      },
+      {
+        "cpu_ns": 1120000,
+        "input": "testorig12-ari.jpg",
+        "order": 161,
+        "side": "old",
+        "wall_ns": 1119625
+      },
+      {
+        "cpu_ns": 1082000,
+        "input": "testorig12-ari.jpg",
+        "order": 162,
+        "side": "old",
+        "wall_ns": 1081417
+      },
+      {
+        "cpu_ns": 1089000,
+        "input": "testorig12-ari.jpg",
+        "order": 163,
+        "side": "new",
+        "wall_ns": 1089000
+      },
+      {
+        "cpu_ns": 773000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 164,
+        "side": "new",
+        "wall_ns": 780791
+      },
+      {
+        "cpu_ns": 753000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 165,
+        "side": "old",
+        "wall_ns": 753083
+      },
+      {
+        "cpu_ns": 679000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 166,
+        "side": "old",
+        "wall_ns": 678833
+      },
+      {
+        "cpu_ns": 715000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 167,
+        "side": "new",
+        "wall_ns": 714750
+      },
+      {
+        "cpu_ns": 408000,
+        "input": "testimgari-huffman.jpg",
+        "order": 168,
+        "side": "new",
+        "wall_ns": 407792
+      },
+      {
+        "cpu_ns": 439000,
+        "input": "testimgari-huffman.jpg",
+        "order": 169,
+        "side": "old",
+        "wall_ns": 438875
+      },
+      {
+        "cpu_ns": 413000,
+        "input": "testimgari-huffman.jpg",
+        "order": 170,
+        "side": "old",
+        "wall_ns": 412917
+      },
+      {
+        "cpu_ns": 405000,
+        "input": "testimgari-huffman.jpg",
+        "order": 171,
+        "side": "new",
+        "wall_ns": 404250
+      },
+      {
+        "cpu_ns": 880000,
+        "input": "whitetail-huffman.jpg",
+        "order": 172,
+        "side": "new",
+        "wall_ns": 880167
+      },
+      {
+        "cpu_ns": 822000,
+        "input": "whitetail-huffman.jpg",
+        "order": 173,
+        "side": "old",
+        "wall_ns": 822292
+      },
+      {
+        "cpu_ns": 805000,
+        "input": "whitetail-huffman.jpg",
+        "order": 174,
+        "side": "old",
+        "wall_ns": 804333
+      },
+      {
+        "cpu_ns": 877000,
+        "input": "whitetail-huffman.jpg",
+        "order": 175,
+        "side": "new",
+        "wall_ns": 877958
+      },
+      {
+        "cpu_ns": 670000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 176,
+        "side": "old",
+        "wall_ns": 669750
+      },
+      {
+        "cpu_ns": 722000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 177,
+        "side": "new",
+        "wall_ns": 720833
+      },
+      {
+        "cpu_ns": 698000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 178,
+        "side": "new",
+        "wall_ns": 698125
+      },
+      {
+        "cpu_ns": 677000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 179,
+        "side": "old",
+        "wall_ns": 684959
+      },
+      {
+        "cpu_ns": 414000,
+        "input": "testimgari-huffman.jpg",
+        "order": 180,
+        "side": "old",
+        "wall_ns": 413958
+      },
+      {
+        "cpu_ns": 405000,
+        "input": "testimgari-huffman.jpg",
+        "order": 181,
+        "side": "new",
+        "wall_ns": 404084
+      },
+      {
+        "cpu_ns": 401000,
+        "input": "testimgari-huffman.jpg",
+        "order": 182,
+        "side": "new",
+        "wall_ns": 400500
+      },
+      {
+        "cpu_ns": 404000,
+        "input": "testimgari-huffman.jpg",
+        "order": 183,
+        "side": "old",
+        "wall_ns": 403334
+      },
+      {
+        "cpu_ns": 714000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 184,
+        "side": "old",
+        "wall_ns": 713500
+      },
+      {
+        "cpu_ns": 719000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 185,
+        "side": "new",
+        "wall_ns": 719084
+      },
+      {
+        "cpu_ns": 700000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 186,
+        "side": "new",
+        "wall_ns": 698959
+      },
+      {
+        "cpu_ns": 704000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 187,
+        "side": "old",
+        "wall_ns": 704208
+      },
+      {
+        "cpu_ns": 983000,
+        "input": "whitetail-ari.jpg",
+        "order": 188,
+        "side": "old",
+        "wall_ns": 982417
+      },
+      {
+        "cpu_ns": 1067000,
+        "input": "whitetail-ari.jpg",
+        "order": 189,
+        "side": "new",
+        "wall_ns": 1067125
+      },
+      {
+        "cpu_ns": 1018000,
+        "input": "whitetail-ari.jpg",
+        "order": 190,
+        "side": "new",
+        "wall_ns": 1018750
+      },
+      {
+        "cpu_ns": 962000,
+        "input": "whitetail-ari.jpg",
+        "order": 191,
+        "side": "old",
+        "wall_ns": 961916
+      },
+      {
+        "cpu_ns": 431000,
+        "input": "testorig.jpg",
+        "order": 192,
+        "side": "old",
+        "wall_ns": 429958
+      },
+      {
+        "cpu_ns": 406000,
+        "input": "testorig.jpg",
+        "order": 193,
+        "side": "new",
+        "wall_ns": 406500
+      },
+      {
+        "cpu_ns": 412000,
+        "input": "testorig.jpg",
+        "order": 194,
+        "side": "new",
+        "wall_ns": 418250
+      },
+      {
+        "cpu_ns": 419000,
+        "input": "testorig.jpg",
+        "order": 195,
+        "side": "old",
+        "wall_ns": 418292
+      },
+      {
+        "cpu_ns": 717000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 196,
+        "side": "old",
+        "wall_ns": 717625
+      },
+      {
+        "cpu_ns": 729000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 197,
+        "side": "new",
+        "wall_ns": 729209
+      },
+      {
+        "cpu_ns": 693000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 198,
+        "side": "new",
+        "wall_ns": 691709
+      },
+      {
+        "cpu_ns": 715000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 199,
+        "side": "old",
+        "wall_ns": 715666
+      },
+      {
+        "cpu_ns": 1117000,
+        "input": "testorig12-ari.jpg",
+        "order": 200,
+        "side": "old",
+        "wall_ns": 1117000
+      },
+      {
+        "cpu_ns": 1107000,
+        "input": "testorig12-ari.jpg",
+        "order": 201,
+        "side": "new",
+        "wall_ns": 1105708
+      },
+      {
+        "cpu_ns": 1075000,
+        "input": "testorig12-ari.jpg",
+        "order": 202,
+        "side": "new",
+        "wall_ns": 1075833
+      },
+      {
+        "cpu_ns": 1064000,
+        "input": "testorig12-ari.jpg",
+        "order": 203,
+        "side": "old",
+        "wall_ns": 1064333
+      },
+      {
+        "cpu_ns": 408000,
+        "input": "testorig.jpg",
+        "order": 204,
+        "side": "new",
+        "wall_ns": 407750
+      },
+      {
+        "cpu_ns": 419000,
+        "input": "testorig.jpg",
+        "order": 205,
+        "side": "old",
+        "wall_ns": 419667
+      },
+      {
+        "cpu_ns": 406000,
+        "input": "testorig.jpg",
+        "order": 206,
+        "side": "old",
+        "wall_ns": 405708
+      },
+      {
+        "cpu_ns": 401000,
+        "input": "testorig.jpg",
+        "order": 207,
+        "side": "new",
+        "wall_ns": 399875
+      },
+      {
+        "cpu_ns": 416000,
+        "input": "testorig.jpg",
+        "order": 208,
+        "side": "old",
+        "wall_ns": 421541
+      },
+      {
+        "cpu_ns": 392000,
+        "input": "testorig.jpg",
+        "order": 209,
+        "side": "new",
+        "wall_ns": 391167
+      },
+      {
+        "cpu_ns": 379000,
+        "input": "testorig.jpg",
+        "order": 210,
+        "side": "new",
+        "wall_ns": 379875
+      },
+      {
+        "cpu_ns": 451000,
+        "input": "testorig.jpg",
+        "order": 211,
+        "side": "old",
+        "wall_ns": 451333
+      },
+      {
+        "cpu_ns": 399000,
+        "input": "testorig.jpg",
+        "order": 212,
+        "side": "new",
+        "wall_ns": 398208
+      },
+      {
+        "cpu_ns": 419000,
+        "input": "testorig.jpg",
+        "order": 213,
+        "side": "old",
+        "wall_ns": 419458
+      },
+      {
+        "cpu_ns": 423000,
+        "input": "testorig.jpg",
+        "order": 214,
+        "side": "old",
+        "wall_ns": 423166
+      },
+      {
+        "cpu_ns": 386000,
+        "input": "testorig.jpg",
+        "order": 215,
+        "side": "new",
+        "wall_ns": 385584
+      },
+      {
+        "cpu_ns": 447000,
+        "input": "testimgari-huffman.jpg",
+        "order": 216,
+        "side": "old",
+        "wall_ns": 447250
+      },
+      {
+        "cpu_ns": 398000,
+        "input": "testimgari-huffman.jpg",
+        "order": 217,
+        "side": "new",
+        "wall_ns": 397959
+      },
+      {
+        "cpu_ns": 395000,
+        "input": "testimgari-huffman.jpg",
+        "order": 218,
+        "side": "new",
+        "wall_ns": 394459
+      },
+      {
+        "cpu_ns": 438000,
+        "input": "testimgari-huffman.jpg",
+        "order": 219,
+        "side": "old",
+        "wall_ns": 438833
+      },
+      {
+        "cpu_ns": 637000,
+        "input": "testimgari.jpg",
+        "order": 220,
+        "side": "new",
+        "wall_ns": 636333
+      },
+      {
+        "cpu_ns": 675000,
+        "input": "testimgari.jpg",
+        "order": 221,
+        "side": "old",
+        "wall_ns": 675708
+      },
+      {
+        "cpu_ns": 655000,
+        "input": "testimgari.jpg",
+        "order": 222,
+        "side": "old",
+        "wall_ns": 654042
+      },
+      {
+        "cpu_ns": 619000,
+        "input": "testimgari.jpg",
+        "order": 223,
+        "side": "new",
+        "wall_ns": 619459
+      },
+      {
+        "cpu_ns": 1013000,
+        "input": "whitetail-ari.jpg",
+        "order": 224,
+        "side": "old",
+        "wall_ns": 1012291
+      },
+      {
+        "cpu_ns": 1073000,
+        "input": "whitetail-ari.jpg",
+        "order": 225,
+        "side": "new",
+        "wall_ns": 1073125
+      },
+      {
+        "cpu_ns": 1052000,
+        "input": "whitetail-ari.jpg",
+        "order": 226,
+        "side": "new",
+        "wall_ns": 1065792
+      },
+      {
+        "cpu_ns": 994000,
+        "input": "whitetail-ari.jpg",
+        "order": 227,
+        "side": "old",
+        "wall_ns": 993834
+      },
+      {
+        "cpu_ns": 750000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 228,
+        "side": "old",
+        "wall_ns": 749208
+      },
+      {
+        "cpu_ns": 738000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 229,
+        "side": "new",
+        "wall_ns": 738250
+      },
+      {
+        "cpu_ns": 714000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 230,
+        "side": "new",
+        "wall_ns": 712959
+      },
+      {
+        "cpu_ns": 730000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 231,
+        "side": "old",
+        "wall_ns": 730208
+      },
+      {
+        "cpu_ns": 1031000,
+        "input": "whitetail-ari.jpg",
+        "order": 232,
+        "side": "new",
+        "wall_ns": 1031250
+      },
+      {
+        "cpu_ns": 993000,
+        "input": "whitetail-ari.jpg",
+        "order": 233,
+        "side": "old",
+        "wall_ns": 992209
+      },
+      {
+        "cpu_ns": 977000,
+        "input": "whitetail-ari.jpg",
+        "order": 234,
+        "side": "old",
+        "wall_ns": 977250
+      },
+      {
+        "cpu_ns": 1024000,
+        "input": "whitetail-ari.jpg",
+        "order": 235,
+        "side": "new",
+        "wall_ns": 1024416
+      },
+      {
+        "cpu_ns": 1139000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 236,
+        "side": "new",
+        "wall_ns": 1137500
+      },
+      {
+        "cpu_ns": 1163000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 237,
+        "side": "old",
+        "wall_ns": 1169375
+      },
+      {
+        "cpu_ns": 1107000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 238,
+        "side": "old",
+        "wall_ns": 1106042
+      },
+      {
+        "cpu_ns": 1110000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 239,
+        "side": "new",
+        "wall_ns": 1110167
+      },
+      {
+        "cpu_ns": 407000,
+        "input": "testimgari-huffman.jpg",
+        "order": 240,
+        "side": "new",
+        "wall_ns": 407000
+      },
+      {
+        "cpu_ns": 463000,
+        "input": "testimgari-huffman.jpg",
+        "order": 241,
+        "side": "old",
+        "wall_ns": 461917
+      },
+      {
+        "cpu_ns": 431000,
+        "input": "testimgari-huffman.jpg",
+        "order": 242,
+        "side": "old",
+        "wall_ns": 431292
+      },
+      {
+        "cpu_ns": 401000,
+        "input": "testimgari-huffman.jpg",
+        "order": 243,
+        "side": "new",
+        "wall_ns": 400958
+      },
+      {
+        "cpu_ns": 416000,
+        "input": "testimgari-huffman.jpg",
+        "order": 244,
+        "side": "old",
+        "wall_ns": 415291
+      },
+      {
+        "cpu_ns": 395000,
+        "input": "testimgari-huffman.jpg",
+        "order": 245,
+        "side": "new",
+        "wall_ns": 393875
+      },
+      {
+        "cpu_ns": 390000,
+        "input": "testimgari-huffman.jpg",
+        "order": 246,
+        "side": "new",
+        "wall_ns": 390416
+      },
+      {
+        "cpu_ns": 410000,
+        "input": "testimgari-huffman.jpg",
+        "order": 247,
+        "side": "old",
+        "wall_ns": 410292
+      },
+      {
+        "cpu_ns": 852000,
+        "input": "whitetail-huffman.jpg",
+        "order": 248,
+        "side": "old",
+        "wall_ns": 851167
+      },
+      {
+        "cpu_ns": 883000,
+        "input": "whitetail-huffman.jpg",
+        "order": 249,
+        "side": "new",
+        "wall_ns": 882667
+      },
+      {
+        "cpu_ns": 878000,
+        "input": "whitetail-huffman.jpg",
+        "order": 250,
+        "side": "new",
+        "wall_ns": 877250
+      },
+      {
+        "cpu_ns": 837000,
+        "input": "whitetail-huffman.jpg",
+        "order": 251,
+        "side": "old",
+        "wall_ns": 836083
+      },
+      {
+        "cpu_ns": 744000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 252,
+        "side": "old",
+        "wall_ns": 753667
+      },
+      {
+        "cpu_ns": 720000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 253,
+        "side": "new",
+        "wall_ns": 719458
+      },
+      {
+        "cpu_ns": 665000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 254,
+        "side": "new",
+        "wall_ns": 664292
+      },
+      {
+        "cpu_ns": 711000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 255,
+        "side": "old",
+        "wall_ns": 711084
+      },
+      {
+        "cpu_ns": 1143000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 256,
+        "side": "old",
+        "wall_ns": 1141916
+      },
+      {
+        "cpu_ns": 1138000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 257,
+        "side": "new",
+        "wall_ns": 1136958
+      },
+      {
+        "cpu_ns": 1096000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 258,
+        "side": "new",
+        "wall_ns": 1096542
+      },
+      {
+        "cpu_ns": 1105000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 259,
+        "side": "old",
+        "wall_ns": 1103834
+      },
+      {
+        "cpu_ns": 403000,
+        "input": "testimgari-huffman.jpg",
+        "order": 260,
+        "side": "new",
+        "wall_ns": 402750
+      },
+      {
+        "cpu_ns": 460000,
+        "input": "testimgari-huffman.jpg",
+        "order": 261,
+        "side": "old",
+        "wall_ns": 460458
+      },
+      {
+        "cpu_ns": 433000,
+        "input": "testimgari-huffman.jpg",
+        "order": 262,
+        "side": "old",
+        "wall_ns": 432167
+      },
+      {
+        "cpu_ns": 398000,
+        "input": "testimgari-huffman.jpg",
+        "order": 263,
+        "side": "new",
+        "wall_ns": 398500
+      },
+      {
+        "cpu_ns": 1093000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 264,
+        "side": "old",
+        "wall_ns": 1091667
+      },
+      {
+        "cpu_ns": 1110000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 265,
+        "side": "new",
+        "wall_ns": 1115375
+      },
+      {
+        "cpu_ns": 1075000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 266,
+        "side": "new",
+        "wall_ns": 1075792
+      },
+      {
+        "cpu_ns": 1096000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 267,
+        "side": "old",
+        "wall_ns": 1094833
+      },
+      {
+        "cpu_ns": 880000,
+        "input": "whitetail-huffman.jpg",
+        "order": 268,
+        "side": "new",
+        "wall_ns": 878917
+      },
+      {
+        "cpu_ns": 838000,
+        "input": "whitetail-huffman.jpg",
+        "order": 269,
+        "side": "old",
+        "wall_ns": 838875
+      },
+      {
+        "cpu_ns": 825000,
+        "input": "whitetail-huffman.jpg",
+        "order": 270,
+        "side": "old",
+        "wall_ns": 826083
+      },
+      {
+        "cpu_ns": 877000,
+        "input": "whitetail-huffman.jpg",
+        "order": 271,
+        "side": "new",
+        "wall_ns": 876667
+      },
+      {
+        "cpu_ns": 881000,
+        "input": "whitetail-huffman.jpg",
+        "order": 272,
+        "side": "new",
+        "wall_ns": 879792
+      },
+      {
+        "cpu_ns": 825000,
+        "input": "whitetail-huffman.jpg",
+        "order": 273,
+        "side": "old",
+        "wall_ns": 825125
+      },
+      {
+        "cpu_ns": 834000,
+        "input": "whitetail-huffman.jpg",
+        "order": 274,
+        "side": "old",
+        "wall_ns": 833750
+      },
+      {
+        "cpu_ns": 885000,
+        "input": "whitetail-huffman.jpg",
+        "order": 275,
+        "side": "new",
+        "wall_ns": 884167
+      },
+      {
+        "cpu_ns": 740000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 276,
+        "side": "new",
+        "wall_ns": 751584
+      },
+      {
+        "cpu_ns": 684000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 277,
+        "side": "old",
+        "wall_ns": 683292
+      },
+      {
+        "cpu_ns": 636000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 278,
+        "side": "old",
+        "wall_ns": 636666
+      },
+      {
+        "cpu_ns": 674000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 279,
+        "side": "new",
+        "wall_ns": 673875
+      },
+      {
+        "cpu_ns": 437000,
+        "input": "testimgari-huffman.jpg",
+        "order": 280,
+        "side": "old",
+        "wall_ns": 435959
+      },
+      {
+        "cpu_ns": 407000,
+        "input": "testimgari-huffman.jpg",
+        "order": 281,
+        "side": "new",
+        "wall_ns": 407166
+      },
+      {
+        "cpu_ns": 402000,
+        "input": "testimgari-huffman.jpg",
+        "order": 282,
+        "side": "new",
+        "wall_ns": 401292
+      },
+      {
+        "cpu_ns": 414000,
+        "input": "testimgari-huffman.jpg",
+        "order": 283,
+        "side": "old",
+        "wall_ns": 414708
+      },
+      {
+        "cpu_ns": 441000,
+        "input": "testorig12.jpg",
+        "order": 284,
+        "side": "new",
+        "wall_ns": 441792
+      },
+      {
+        "cpu_ns": 506000,
+        "input": "testorig12.jpg",
+        "order": 285,
+        "side": "old",
+        "wall_ns": 504625
+      },
+      {
+        "cpu_ns": 477000,
+        "input": "testorig12.jpg",
+        "order": 286,
+        "side": "old",
+        "wall_ns": 477541
+      },
+      {
+        "cpu_ns": 447000,
+        "input": "testorig12.jpg",
+        "order": 287,
+        "side": "new",
+        "wall_ns": 445833
+      },
+      {
+        "cpu_ns": 465000,
+        "input": "testorig12.jpg",
+        "order": 288,
+        "side": "old",
+        "wall_ns": 464792
+      },
+      {
+        "cpu_ns": 437000,
+        "input": "testorig12.jpg",
+        "order": 289,
+        "side": "new",
+        "wall_ns": 436458
+      },
+      {
+        "cpu_ns": 429000,
+        "input": "testorig12.jpg",
+        "order": 290,
+        "side": "new",
+        "wall_ns": 429625
+      },
+      {
+        "cpu_ns": 459000,
+        "input": "testorig12.jpg",
+        "order": 291,
+        "side": "old",
+        "wall_ns": 457500
+      },
+      {
+        "cpu_ns": 701000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 292,
+        "side": "old",
+        "wall_ns": 701375
+      },
+      {
+        "cpu_ns": 713000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 293,
+        "side": "new",
+        "wall_ns": 712708
+      },
+      {
+        "cpu_ns": 706000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 294,
+        "side": "new",
+        "wall_ns": 718041
+      },
+      {
+        "cpu_ns": 691000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 295,
+        "side": "old",
+        "wall_ns": 690375
+      },
+      {
+        "cpu_ns": 673000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 296,
+        "side": "new",
+        "wall_ns": 673250
+      },
+      {
+        "cpu_ns": 671000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 297,
+        "side": "old",
+        "wall_ns": 670500
+      },
+      {
+        "cpu_ns": 666000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 298,
+        "side": "old",
+        "wall_ns": 665542
+      },
+      {
+        "cpu_ns": 669000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 299,
+        "side": "new",
+        "wall_ns": 667708
+      },
+      {
+        "cpu_ns": 1102000,
+        "input": "testorig12-ari.jpg",
+        "order": 300,
+        "side": "new",
+        "wall_ns": 1102167
+      },
+      {
+        "cpu_ns": 1087000,
+        "input": "testorig12-ari.jpg",
+        "order": 301,
+        "side": "old",
+        "wall_ns": 1086875
+      },
+      {
+        "cpu_ns": 1041000,
+        "input": "testorig12-ari.jpg",
+        "order": 302,
+        "side": "old",
+        "wall_ns": 1041125
+      },
+      {
+        "cpu_ns": 1070000,
+        "input": "testorig12-ari.jpg",
+        "order": 303,
+        "side": "new",
+        "wall_ns": 1069625
+      },
+      {
+        "cpu_ns": 999000,
+        "input": "whitetail-ari.jpg",
+        "order": 304,
+        "side": "old",
+        "wall_ns": 998375
+      },
+      {
+        "cpu_ns": 1068000,
+        "input": "whitetail-ari.jpg",
+        "order": 305,
+        "side": "new",
+        "wall_ns": 1067625
+      },
+      {
+        "cpu_ns": 1027000,
+        "input": "whitetail-ari.jpg",
+        "order": 306,
+        "side": "new",
+        "wall_ns": 1034000
+      },
+      {
+        "cpu_ns": 964000,
+        "input": "whitetail-ari.jpg",
+        "order": 307,
+        "side": "old",
+        "wall_ns": 963333
+      },
+      {
+        "cpu_ns": 1025000,
+        "input": "testorig12-ari.jpg",
+        "order": 308,
+        "side": "old",
+        "wall_ns": 1025833
+      },
+      {
+        "cpu_ns": 1071000,
+        "input": "testorig12-ari.jpg",
+        "order": 309,
+        "side": "new",
+        "wall_ns": 1071334
+      },
+      {
+        "cpu_ns": 1036000,
+        "input": "testorig12-ari.jpg",
+        "order": 310,
+        "side": "new",
+        "wall_ns": 1035667
+      },
+      {
+        "cpu_ns": 1007000,
+        "input": "testorig12-ari.jpg",
+        "order": 311,
+        "side": "old",
+        "wall_ns": 1007041
+      },
+      {
+        "cpu_ns": 823000,
+        "input": "whitetail-huffman.jpg",
+        "order": 312,
+        "side": "old",
+        "wall_ns": 823041
+      },
+      {
+        "cpu_ns": 884000,
+        "input": "whitetail-huffman.jpg",
+        "order": 313,
+        "side": "new",
+        "wall_ns": 884625
+      },
+      {
+        "cpu_ns": 879000,
+        "input": "whitetail-huffman.jpg",
+        "order": 314,
+        "side": "new",
+        "wall_ns": 879042
+      },
+      {
+        "cpu_ns": 806000,
+        "input": "whitetail-huffman.jpg",
+        "order": 315,
+        "side": "old",
+        "wall_ns": 805458
+      },
+      {
+        "cpu_ns": 1033000,
+        "input": "whitetail-ari.jpg",
+        "order": 316,
+        "side": "new",
+        "wall_ns": 1040792
+      },
+      {
+        "cpu_ns": 980000,
+        "input": "whitetail-ari.jpg",
+        "order": 317,
+        "side": "old",
+        "wall_ns": 979292
+      },
+      {
+        "cpu_ns": 936000,
+        "input": "whitetail-ari.jpg",
+        "order": 318,
+        "side": "old",
+        "wall_ns": 935292
+      },
+      {
+        "cpu_ns": 1018000,
+        "input": "whitetail-ari.jpg",
+        "order": 319,
+        "side": "new",
+        "wall_ns": 1017458
+      },
+      {
+        "cpu_ns": 1151000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 320,
+        "side": "new",
+        "wall_ns": 1151042
+      },
+      {
+        "cpu_ns": 1133000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 321,
+        "side": "old",
+        "wall_ns": 1132334
+      },
+      {
+        "cpu_ns": 1101000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 322,
+        "side": "old",
+        "wall_ns": 1101292
+      },
+      {
+        "cpu_ns": 1141000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 323,
+        "side": "new",
+        "wall_ns": 1139875
+      },
+      {
+        "cpu_ns": 823000,
+        "input": "whitetail-huffman.jpg",
+        "order": 324,
+        "side": "old",
+        "wall_ns": 822750
+      },
+      {
+        "cpu_ns": 886000,
+        "input": "whitetail-huffman.jpg",
+        "order": 325,
+        "side": "new",
+        "wall_ns": 885875
+      },
+      {
+        "cpu_ns": 885000,
+        "input": "whitetail-huffman.jpg",
+        "order": 326,
+        "side": "new",
+        "wall_ns": 892083
+      },
+      {
+        "cpu_ns": 802000,
+        "input": "whitetail-huffman.jpg",
+        "order": 327,
+        "side": "old",
+        "wall_ns": 802875
+      },
+      {
+        "cpu_ns": 1080000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 328,
+        "side": "old",
+        "wall_ns": 1079084
+      },
+      {
+        "cpu_ns": 1111000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 329,
+        "side": "new",
+        "wall_ns": 1111209
+      },
+      {
+        "cpu_ns": 1090000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 330,
+        "side": "new",
+        "wall_ns": 1088875
+      },
+      {
+        "cpu_ns": 1059000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 331,
+        "side": "old",
+        "wall_ns": 1058500
+      },
+      {
+        "cpu_ns": 1087000,
+        "input": "testorig12-ari.jpg",
+        "order": 332,
+        "side": "old",
+        "wall_ns": 1086834
+      },
+      {
+        "cpu_ns": 1113000,
+        "input": "testorig12-ari.jpg",
+        "order": 333,
+        "side": "new",
+        "wall_ns": 1113167
+      },
+      {
+        "cpu_ns": 1084000,
+        "input": "testorig12-ari.jpg",
+        "order": 334,
+        "side": "new",
+        "wall_ns": 1083500
+      },
+      {
+        "cpu_ns": 1152000,
+        "input": "testorig12-ari.jpg",
+        "order": 335,
+        "side": "old",
+        "wall_ns": 1163875
+      },
+      {
+        "cpu_ns": 1147000,
+        "input": "whitetail-ari.jpg",
+        "order": 336,
+        "side": "new",
+        "wall_ns": 1180375
+      },
+      {
+        "cpu_ns": 981000,
+        "input": "whitetail-ari.jpg",
+        "order": 337,
+        "side": "old",
+        "wall_ns": 981208
+      },
+      {
+        "cpu_ns": 977000,
+        "input": "whitetail-ari.jpg",
+        "order": 338,
+        "side": "old",
+        "wall_ns": 976667
+      },
+      {
+        "cpu_ns": 1071000,
+        "input": "whitetail-ari.jpg",
+        "order": 339,
+        "side": "new",
+        "wall_ns": 1070875
+      },
+      {
+        "cpu_ns": 442000,
+        "input": "testorig12.jpg",
+        "order": 340,
+        "side": "new",
+        "wall_ns": 442166
+      },
+      {
+        "cpu_ns": 525000,
+        "input": "testorig12.jpg",
+        "order": 341,
+        "side": "old",
+        "wall_ns": 525083
+      },
+      {
+        "cpu_ns": 493000,
+        "input": "testorig12.jpg",
+        "order": 342,
+        "side": "old",
+        "wall_ns": 492958
+      },
+      {
+        "cpu_ns": 440000,
+        "input": "testorig12.jpg",
+        "order": 343,
+        "side": "new",
+        "wall_ns": 439542
+      },
+      {
+        "cpu_ns": 1100000,
+        "input": "testorig12-ari.jpg",
+        "order": 344,
+        "side": "new",
+        "wall_ns": 1098791
+      },
+      {
+        "cpu_ns": 1124000,
+        "input": "testorig12-ari.jpg",
+        "order": 345,
+        "side": "old",
+        "wall_ns": 1124708
+      },
+      {
+        "cpu_ns": 1087000,
+        "input": "testorig12-ari.jpg",
+        "order": 346,
+        "side": "old",
+        "wall_ns": 1086000
+      },
+      {
+        "cpu_ns": 1071000,
+        "input": "testorig12-ari.jpg",
+        "order": 347,
+        "side": "new",
+        "wall_ns": 1090583
+      },
+      {
+        "cpu_ns": 1020000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 348,
+        "side": "old",
+        "wall_ns": 1019500
+      },
+      {
+        "cpu_ns": 1052000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 349,
+        "side": "new",
+        "wall_ns": 1052625
+      },
+      {
+        "cpu_ns": 1077000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 350,
+        "side": "new",
+        "wall_ns": 1077250
+      },
+      {
+        "cpu_ns": 1053000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 351,
+        "side": "old",
+        "wall_ns": 1052959
+      },
+      {
+        "cpu_ns": 507000,
+        "input": "testorig12.jpg",
+        "order": 352,
+        "side": "old",
+        "wall_ns": 506084
+      },
+      {
+        "cpu_ns": 452000,
+        "input": "testorig12.jpg",
+        "order": 353,
+        "side": "new",
+        "wall_ns": 452041
+      },
+      {
+        "cpu_ns": 446000,
+        "input": "testorig12.jpg",
+        "order": 354,
+        "side": "new",
+        "wall_ns": 445708
+      },
+      {
+        "cpu_ns": 488000,
+        "input": "testorig12.jpg",
+        "order": 355,
+        "side": "old",
+        "wall_ns": 488125
+      },
+      {
+        "cpu_ns": 714000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 356,
+        "side": "old",
+        "wall_ns": 713375
+      },
+      {
+        "cpu_ns": 720000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 357,
+        "side": "new",
+        "wall_ns": 720292
+      },
+      {
+        "cpu_ns": 670000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 358,
+        "side": "new",
+        "wall_ns": 669042
+      },
+      {
+        "cpu_ns": 691000,
+        "input": "testorig-ari-progressive.jpg",
+        "order": 359,
+        "side": "old",
+        "wall_ns": 691250
+      },
+      {
+        "cpu_ns": 438000,
+        "input": "testorig.jpg",
+        "order": 360,
+        "side": "old",
+        "wall_ns": 437750
+      },
+      {
+        "cpu_ns": 434000,
+        "input": "testorig.jpg",
+        "order": 361,
+        "side": "new",
+        "wall_ns": 446583
+      },
+      {
+        "cpu_ns": 418000,
+        "input": "testorig.jpg",
+        "order": 362,
+        "side": "new",
+        "wall_ns": 417584
+      },
+      {
+        "cpu_ns": 416000,
+        "input": "testorig.jpg",
+        "order": 363,
+        "side": "old",
+        "wall_ns": 416041
+      },
+      {
+        "cpu_ns": 442000,
+        "input": "testorig12.jpg",
+        "order": 364,
+        "side": "new",
+        "wall_ns": 442000
+      },
+      {
+        "cpu_ns": 531000,
+        "input": "testorig12.jpg",
+        "order": 365,
+        "side": "old",
+        "wall_ns": 530667
+      },
+      {
+        "cpu_ns": 497000,
+        "input": "testorig12.jpg",
+        "order": 366,
+        "side": "old",
+        "wall_ns": 497042
+      },
+      {
+        "cpu_ns": 453000,
+        "input": "testorig12.jpg",
+        "order": 367,
+        "side": "new",
+        "wall_ns": 451750
+      },
+      {
+        "cpu_ns": 1116000,
+        "input": "testorig12-ari.jpg",
+        "order": 368,
+        "side": "old",
+        "wall_ns": 1115833
+      },
+      {
+        "cpu_ns": 1104000,
+        "input": "testorig12-ari.jpg",
+        "order": 369,
+        "side": "new",
+        "wall_ns": 1103375
+      },
+      {
+        "cpu_ns": 1068000,
+        "input": "testorig12-ari.jpg",
+        "order": 370,
+        "side": "new",
+        "wall_ns": 1068000
+      },
+      {
+        "cpu_ns": 1080000,
+        "input": "testorig12-ari.jpg",
+        "order": 371,
+        "side": "old",
+        "wall_ns": 1078917
+      },
+      {
+        "cpu_ns": 735000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 372,
+        "side": "new",
+        "wall_ns": 734583
+      },
+      {
+        "cpu_ns": 726000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 373,
+        "side": "old",
+        "wall_ns": 725833
+      },
+      {
+        "cpu_ns": 701000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 374,
+        "side": "old",
+        "wall_ns": 700541
+      },
+      {
+        "cpu_ns": 747000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 375,
+        "side": "new",
+        "wall_ns": 766458
+      },
+      {
+        "cpu_ns": 734000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 376,
+        "side": "old",
+        "wall_ns": 733167
+      },
+      {
+        "cpu_ns": 700000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 377,
+        "side": "new",
+        "wall_ns": 700500
+      },
+      {
+        "cpu_ns": 651000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 378,
+        "side": "new",
+        "wall_ns": 650667
+      },
+      {
+        "cpu_ns": 721000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 379,
+        "side": "old",
+        "wall_ns": 721167
+      },
+      {
+        "cpu_ns": 402000,
+        "input": "testimgari-huffman.jpg",
+        "order": 380,
+        "side": "new",
+        "wall_ns": 401250
+      },
+      {
+        "cpu_ns": 458000,
+        "input": "testimgari-huffman.jpg",
+        "order": 381,
+        "side": "old",
+        "wall_ns": 458458
+      },
+      {
+        "cpu_ns": 433000,
+        "input": "testimgari-huffman.jpg",
+        "order": 382,
+        "side": "old",
+        "wall_ns": 432250
+      },
+      {
+        "cpu_ns": 398000,
+        "input": "testimgari-huffman.jpg",
+        "order": 383,
+        "side": "new",
+        "wall_ns": 397583
+      },
+      {
+        "cpu_ns": 1069000,
+        "input": "whitetail-ari.jpg",
+        "order": 384,
+        "side": "new",
+        "wall_ns": 1069125
+      },
+      {
+        "cpu_ns": 1008000,
+        "input": "whitetail-ari.jpg",
+        "order": 385,
+        "side": "old",
+        "wall_ns": 1007833
+      },
+      {
+        "cpu_ns": 971000,
+        "input": "whitetail-ari.jpg",
+        "order": 386,
+        "side": "old",
+        "wall_ns": 970625
+      },
+      {
+        "cpu_ns": 1051000,
+        "input": "whitetail-ari.jpg",
+        "order": 387,
+        "side": "new",
+        "wall_ns": 1049750
+      },
+      {
+        "cpu_ns": 1160000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 388,
+        "side": "new",
+        "wall_ns": 1165709
+      },
+      {
+        "cpu_ns": 1098000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 389,
+        "side": "old",
+        "wall_ns": 1098417
+      },
+      {
+        "cpu_ns": 1076000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 390,
+        "side": "old",
+        "wall_ns": 1074834
+      },
+      {
+        "cpu_ns": 1108000,
+        "input": "testorig12-ari-progressive.jpg",
+        "order": 391,
+        "side": "new",
+        "wall_ns": 1108208
+      },
+      {
+        "cpu_ns": 762000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 392,
+        "side": "new",
+        "wall_ns": 761042
+      },
+      {
+        "cpu_ns": 725000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 393,
+        "side": "old",
+        "wall_ns": 725041
+      },
+      {
+        "cpu_ns": 668000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 394,
+        "side": "old",
+        "wall_ns": 667209
+      },
+      {
+        "cpu_ns": 708000,
+        "input": "testorig-ari-progressive-restart.jpg",
+        "order": 395,
+        "side": "new",
+        "wall_ns": 708166
+      },
+      {
+        "cpu_ns": 502000,
+        "input": "testorig12.jpg",
+        "order": 396,
+        "side": "old",
+        "wall_ns": 502292
+      },
+      {
+        "cpu_ns": 445000,
+        "input": "testorig12.jpg",
+        "order": 397,
+        "side": "new",
+        "wall_ns": 444750
+      },
+      {
+        "cpu_ns": 433000,
+        "input": "testorig12.jpg",
+        "order": 398,
+        "side": "new",
+        "wall_ns": 432750
+      },
+      {
+        "cpu_ns": 478000,
+        "input": "testorig12.jpg",
+        "order": 399,
+        "side": "old",
+        "wall_ns": 478083
+      }
+    ],
+    "schema_version": 1
+  },
+  "label": "C10-jpeg-libjpeg-turbo",
+  "meta": {
+    "claim": "C10 craft-jpeg Huffman 1.77x (kernel-only, 13,107,000 symbols, prefix-span weighted; the ticket says it is not an image-decode benchmark)",
+    "equality": "decoded samples, dimensions, components and damaged flag identical (bit-for-bit), or identical error",
+    "excluded_output_differs": [],
+    "failed_identically_on_both_excluded": [],
+    "input_set": "libjpeg-turbo 3.0.0 test images (crates/jpeg/tests/data)",
+    "n_inputs": 10,
+    "operation": "craft_jpeg::decode(bytes, Limits::default(), None)",
+    "total_input_bytes": 73070
+  },
+  "summary": {
+    "ci_excludes_1": true,
+    "contended": false,
+    "cpu_speedup_geomean": {
+      "ci_hi": 1.026383195508986,
+      "ci_lo": 1.0065272652798067,
+      "point": 1.0193381652289988
+    },
+    "direction": "faster",
+    "inputs": 10,
+    "load_after": 4.41,
+    "load_before": 4.41,
+    "logical_cores": 12,
+    "per_input": [
+      {
+        "cpu_speedup": {
+          "ci_hi": 1.100502512562814,
+          "ci_lo": 1.0411471321695762,
+          "point": 1.078455790784558
+        },
+        "input": "testimgari-huffman.jpg",
+        "wall_speedup": {
+          "ci_hi": 1.1002842731497215,
+          "ci_lo": 1.0423843074350603,
+          "point": 1.0786223565256106
+        }
+      },
+      {
+        "cpu_speedup": {
+          "ci_hi": 1.0552884615384615,
+          "ci_lo": 0.9945098039215686,
+          "point": 1.0235478806907379
+        },
+        "input": "testimgari.jpg",
+        "wall_speedup": {
+          "ci_hi": 1.0548408819688542,
+          "ci_lo": 0.9941474572560685,
+          "point": 1.0230424194815397
+        }
+      },
+      {
+        "cpu_speedup": {
+          "ci_hi": 1.0269886363636365,
+          "ci_lo": 0.952544704264099,
+          "point": 0.9937802349689011
+        },
+        "input": "testorig-ari-progressive-restart.jpg",
+        "wall_speedup": {
+          "ci_hi": 1.0238291587000787,
+          "ci_lo": 0.9531236840375019,
+          "point": 0.9955894340165767
+        }
+      },
+      {
+        "cpu_speedup": {
+          "ci_hi": 1.0598473792734138,
+          "ci_lo": 0.9571219493836726,
+          "point": 1.022189349112426
+        },
+        "input": "testorig-ari-progressive.jpg",
+        "wall_speedup": {
+          "ci_hi": 1.0595094658459001,
+          "ci_lo": 0.9564497355170773,
+          "point": 1.021817509475825
+        }
+      },
+      {
+        "cpu_speedup": {
+          "ci_hi": 1.1024327784891166,
+          "ci_lo": 1.0320197044334976,
+          "point": 1.0617906683480454
+        },
+        "input": "testorig.jpg",
+        "wall_speedup": {
+          "ci_hi": 1.1018268168328982,
+          "ci_lo": 1.032391143911439,
+          "point": 1.0661009954148066
+        }
+      },
+      {
+        "cpu_speedup": {
+          "ci_hi": 1.009903011468225,
+          "ci_lo": 0.9639718804920915,
+          "point": 0.9923526765632028
+        },
+        "input": "testorig12-ari-progressive.jpg",
+        "wall_speedup": {
+          "ci_hi": 1.00976755926656,
+          "ci_lo": 0.9639022955819249,
+          "point": 0.9903445798012687
+        }
+      },
+      {
+        "cpu_speedup": {
+          "ci_hi": 1.025607875081491,
+          "ci_lo": 0.9885693199959062,
+          "point": 1.0069476609541455
+        },
+        "input": "testorig12-ari.jpg",
+        "wall_speedup": {
+          "ci_hi": 1.0245025174392224,
+          "ci_lo": 0.9878746868495973,
+          "point": 1.0005951898715533
+        }
+      },
+      {
+        "cpu_speedup": {
+          "ci_hi": 1.1504652912296627,
+          "ci_lo": 1.1015801354401806,
+          "point": 1.1380090497737556
+        },
+        "input": "testorig12.jpg",
+        "wall_speedup": {
+          "ci_hi": 1.150056956324215,
+          "ci_lo": 1.1032384925592533,
+          "point": 1.1388325269236772
+        }
+      },
+      {
+        "cpu_speedup": {
+          "ci_hi": 0.9633829113108376,
+          "ci_lo": 0.9178299564252941,
+          "point": 0.9500968992248062
+        },
+        "input": "whitetail-ari.jpg",
+        "wall_speedup": {
+          "ci_hi": 0.9619838036809817,
+          "ci_lo": 0.9172579202291115,
+          "point": 0.9456167172420175
+        }
+      },
+      {
+        "cpu_speedup": {
+          "ci_hi": 0.9517045454545455,
+          "ci_lo": 0.9304682084086657,
+          "point": 0.9415105053946622
+        },
+        "input": "whitetail-huffman.jpg",
+        "wall_speedup": {
+          "ci_hi": 0.9526011436103264,
+          "ci_lo": 0.9306249689053321,
+          "point": 0.9421622890078689
+        }
+      }
+    ],
+    "publishable": true,
+    "wall_speedup_geomean": {
+      "ci_hi": 1.0263229224206958,
+      "ci_lo": 1.0073752326724275,
+      "point": 1.018675940299423
+    }
+  }
+}
