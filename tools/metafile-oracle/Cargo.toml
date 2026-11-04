@@ -1,0 +1,44 @@
+[package]
+name = "metafile-oracle"
+version = "0.0.0"
+edition = "2024"
+publish = false
+description = "Old-vs-new differential for the craft-metafile swaps (#92: deckcraft, wordcraft) over metafiles embedded in the Office corpus; see docs/verification/metafile-oracle.md"
+
+# Its own workspace and lock: the pre-swap app crates are git dependencies that share names with
+# each other's later revisions and would make `-p` ambiguous in the main workspace.
+[workspace]
+
+[dependencies]
+craft-metafile = { path = "../../crates/metafile" }
+craft-cfb = { path = "../../crates/cfb" }
+craft-oracle = { path = "../../crates/oracle" }
+craft-compare = { path = "../../crates/compare" }
+zip = { version = "3", default-features = false, features = ["deflate"] }
+flate2 = "1"
+sha2 = "0.10"
+serde_json = "1"
+image = { version = "0.25", default-features = false, features = ["png"] }
+
+# DeckCraft: parser and renderer at the swap's merge-base (OLD) and at the swap branch (NEW).
+deckcraft_meta_old = { package = "deckcraft-metafile", git = "https://github.com/storytold/deckcraft", rev = "3e178d8f5a59c787a6a53a7ed0f052b3e4a1489f" }
+deckcraft_render_old = { package = "deckcraft-render", git = "https://github.com/storytold/deckcraft", rev = "3e178d8f5a59c787a6a53a7ed0f052b3e4a1489f" }
+deckcraft_render_new = { package = "deckcraft-render", git = "https://github.com/cloudbring/deckcraft", rev = "4c29ec9cbe83d5d9484c67fcf57188de6e41df1a" }
+
+# WordCraft likewise.
+wordcraft_meta_old = { package = "wordcraft-metafile", git = "https://github.com/storytold/wordcraft", rev = "b47079fc791595fd84bb499d64dcd3f0624ef35a" }
+wordcraft_render_old = { package = "wordcraft-render", git = "https://github.com/storytold/wordcraft", rev = "b47079fc791595fd84bb499d64dcd3f0624ef35a" }
+wordcraft_doc_old = { package = "wordcraft-doc", git = "https://github.com/storytold/wordcraft", rev = "b47079fc791595fd84bb499d64dcd3f0624ef35a" }
+wordcraft_layout_old = { package = "wordcraft-layout", git = "https://github.com/storytold/wordcraft", rev = "b47079fc791595fd84bb499d64dcd3f0624ef35a" }
+wordcraft_geom_old = { package = "wordcraft-geom", git = "https://github.com/storytold/wordcraft", rev = "b47079fc791595fd84bb499d64dcd3f0624ef35a" }
+wordcraft_render_new = { package = "wordcraft-render", git = "https://github.com/cloudbring/wordcraft", rev = "02a7f13d4cdd17340a850dc5652773a6afa9a820" }
+wordcraft_doc_new = { package = "wordcraft-doc", git = "https://github.com/cloudbring/wordcraft", rev = "02a7f13d4cdd17340a850dc5652773a6afa9a820" }
+wordcraft_layout_new = { package = "wordcraft-layout", git = "https://github.com/cloudbring/wordcraft", rev = "02a7f13d4cdd17340a850dc5652773a6afa9a820" }
+wordcraft_geom_new = { package = "wordcraft-geom", git = "https://github.com/cloudbring/wordcraft", rev = "02a7f13d4cdd17340a850dc5652773a6afa9a820" }
+
+# The swap branches name craft-metafile by branch (`algo/integration`); NEW must be this tree.
+[patch."https://github.com/cloudbring/craft-libs"]
+craft-metafile = { path = "../../crates/metafile" }
+
+[dev-dependencies]
+sha2 = "0.10"

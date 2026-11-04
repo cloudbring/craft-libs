@@ -127,6 +127,13 @@ fn record(cv: &mut Canvas, func: u16, r: Bytes) {
                 cv.shape(&geom::round_rect(l, t, rr, b, f64::from(ew), f64::from(eh)), true, true);
             })
         }
+        // META_SELECTCLIPREGION: Office writes it with the null region after each clipped run, to
+        // restore the default clip. Regions themselves (META_CREATEREGION) are object slots only, so
+        // any selection ends the rectangle clip: the picture is drawn, not lost.
+        0x012C => {
+            cv.reset_clip();
+            Some(())
+        }
         0x0415 => rect16(r, 6).map(|rect| cv.exclude_clip_rect(rect)),
         0x0416 => rect16(r, 6).map(|rect| cv.intersect_clip_rect(rect)),
         0x0418 => rect16(r, 6).map(|[l, t, rr, b]| cv.shape(&geom::ellipse(l, t, rr, b), true, true)),

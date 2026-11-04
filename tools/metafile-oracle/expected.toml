@@ -1,0 +1,65 @@
+# Intended old-vs-new differences of the craft-metafile swaps (#92), over the Office corpus.
+# DeckCraft entries match by file; WordCraft entries match by the class the masking ladder
+# attributes the difference to (the `metric`), see `attribute` in tests/metafile_oracle.rs.
+# An entry that matches nothing is reported as stale. Counts, root causes and the evidence behind
+# each entry: docs/verification/metafile-oracle.md.
+
+[[expected]]
+id = "deckcraft-extent-scaling"
+metric = "deckcraft/extent-scaling"
+reason = "1 file (office-poi spreadsheet/60460.xls, Workbook stream) scales its viewport with EMR_SCALEVIEWPORTEXTEX (700/3456, 250/844) after setting the window extent. The shared reader honours records 31/32 (added from VectorCraft, #92); the pre-swap DeckCraft reader ignored them and placed every later text run 4.9x too far right (x = 1691 pt in a 490 pt wide picture). The device bounds the writer stored in EMR_EXTTEXTOUTW (387..396 px for logical x = 290) fit the scaled mapping (290 x 4/3 = 387)."
+evidence = "cloudbring/artcraft-algorithms#92 (extent scaling 31/32); MS-EMF 2.3.11 EMR_SCALEVIEWPORTEXTEX; docs/verification/metafile-oracle.md section 'DeckCraft'"
+
+[[expected]]
+id = "deckcraft-select-clip-region"
+metric = "deckcraft/select-clip-region"
+reason = "6 WMF files. META_SELECTCLIPREGION (0x012C) with the null region restores the default clip after each INTERSECTCLIPRECT (Office writes it around every clipped text run). Neither the pre-swap DeckCraft reader nor the first draft of craft-metafile handled it, so the clip rectangle of the first clipped run stayed in force and dropped later shapes. This oracle found it; craft-metafile now resets the clip (red-then-green test wmf_select_clip_region_restores_the_default_clip), and the old DeckCraft output was the bug. With the 0x012C records masked, old and new are identical."
+evidence = "MS-WMF 2.3.5.? META_SELECTCLIPREGION; crates/metafile/src/tests.rs wmf_select_clip_region_restores_the_default_clip; docs/verification/metafile-oracle.md section 'DeckCraft'"
+
+[[expected]]
+id = "wordcraft-gap-records"
+metric = "gap-records"
+reason = "WMF files only. The pre-swap WordCraft reader skipped records the shared reader plays: WMF text (TEXTOUT, EXTTEXTOUT with font, colour and alignment state), PATBLT fills, clip rectangles. Replacing those records by no-ops in the input of both sides makes old and new identical (850 files); no other record family is involved."
+evidence = "crates/metafile/COVERAGE.md (WordCraft column: `-` for 0x0521, 0x0A32, 0x061D, 0x0415/6, 0x012E, 0x0209); #92 comment 'Consumer implemented: wordcraft'"
+
+[[expected]]
+id = "wordcraft-xorpen-mix"
+metric = "gap-records+rop2"
+reason = "KNOWN LIMITATION, not an improvement. Files written by LibreOffice draw a gradient in R2_XORPEN, then a shape in R2_COPYPEN, then the same gradient again in R2_XORPEN, so the gradient shows through the shape only. The shared reader (DeckCraft's rule: an XOR pair cancels) skips every XOR-mixed shape and so draws only the middle shape (a black arrow); the pre-swap WordCraft reader drew the XOR shapes as copies (gradient also outside the shape). Neither is the GDI result, which needs per-pixel XOR. 3 files; the DeckCraft reader already behaved this way."
+evidence = "docs/verification/metafile-oracle.md section 'R2_XORPEN'; follow-up: per-pixel raster ops or an XOR-mask idiom in craft-metafile"
+
+[[expected]]
+id = "wordcraft-text-opaque-cell"
+metric = "gap-records+rop2+text-drawing/opaque-cell-fill"
+reason = "EXTTEXTOUT with ETO_OPAQUE fills the text rectangle with the background colour (Excel ActiveX control images: a white text box). The shared reader emits that fill (SETBKCOLOR and SETBKMODE are now honoured); the pre-swap reader drew nothing, so the control showed through transparent."
+evidence = "MS-EMF 2.2.5 EMR_EXTTEXTOUTW options ETO_OPAQUE; crates/metafile COVERAGE.md rows 18, 25"
+
+[[expected]]
+id = "wordcraft-text-face-name-nul"
+metric = "gap-records+rop2+text-drawing/face-name-nul"
+reason = "The pre-swap reader kept the whole 32-character LOGFONT face name, including the bytes after the terminating NUL, so the name was 'Arial<garbage>' and no font resolved (fallback face). The shared reader trims at the NUL. The records are otherwise equal."
+evidence = "MS-EMF 2.2.13 LogFont: FaceName is a NUL-terminated string in a 32-element array; docs/verification/metafile-oracle.md section 'Text'"
+
+[[expected]]
+id = "wordcraft-text-affine-over-1pct"
+metric = "gap-records+rop2+text-drawing/affine-scale-over-1pct"
+reason = "Text runs of files whose logical-to-picture scale differs by more than 1% between x and y. The pre-swap text model had one isotropic size (the y scale) and positioned glyphs by the dx array scaled in x, so glyphs ran into each other when x < y and spread when x > y. The shared model carries the full affine, so the glyphs scale with their advances. Both the records (position, size, dx, angle in the projection) and the dx are equal; only the glyph x scale differs."
+evidence = "#92 ('shared text font/affine fields mapped'); COVERAGE.md 'DeckCraft's richer text transformations ... remain'; docs/verification/metafile-oracle.md section 'Text'"
+
+[[expected]]
+id = "wordcraft-text-affine-up-to-1pct"
+metric = "gap-records+rop2+text-drawing/affine-scale-up-to-1pct"
+reason = "As wordcraft-text-affine-over-1pct with x and y scales within 1% of each other: the glyph x scale now follows the file's own scale, shifting glyph edges by a fraction of a pixel (worst case 74/255 on one edge pixel of a very large glyph, SSIM >= 0.9996)."
+evidence = "docs/verification/metafile-oracle.md section 'Text'"
+
+[[expected]]
+id = "wordcraft-text-float-rounding"
+metric = "gap-records+rop2+text-drawing/float-rounding"
+reason = "Isotropic text (x and y scale equal to 1e-6) whose projected records are equal. The glyph transform is built in f64 from the logical font height and the affine (shared) instead of f32 from a pre-scaled size (pre-swap), so antialiased edge pixels differ by at most 1/255 on a handful of pixels (at most 1.3e-5 of the image, dE_max 0.86)."
+evidence = "docs/verification/metafile-oracle.md section 'Text'"
+
+[[expected]]
+id = "wordcraft-pattern-brushes"
+metric = "gap-records+rop2+text-drawing+pattern-brushes"
+reason = "Pattern, DIB-pattern and mono brushes: the pre-swap reader gave them no fill (outline only); the shared reader fills with the brush tile and the wordcraft renderer repeats it. These files also differ in text drawing (all of them carry text); masking the brush-creating records as well makes old and new identical."
+evidence = "COVERAGE.md rows 93, 94, 0x0142, 0x01F9; #92 comment 'render repeats tile patterns, PDF falls back to the first opaque tile colour'"

@@ -1661,6 +1661,20 @@ fn wmf_intersect_clip_rect_limits_later_records() {
     assert_eq!(item_region(&p.items[0]), Some(&[[10.0, 5.0, 40.0, 30.0]][..]));
 }
 
+/// META_SELECTCLIPREGION: Office writes `INTERSECTCLIPRECT .. text .. SELECTCLIPREGION(0)` around each
+/// clipped run, the null region restoring the default clip. A reader that keeps the rectangle clips
+/// every later shape (found by the #185 oracle: GeomLec1.pptx image5.wmf lost its arcs).
+#[test]
+fn wmf_select_clip_region_restores_the_default_clip() {
+    let clip = cat(vec![h16(30), h16(40), h16(5), h16(10)]);
+    let rect = cat(vec![h16(40), h16(80), h16(0), h16(0)]);
+    let p = parse(&wmf(&[wrec(0x0416, &clip), wrec(0x012C, &h16(0)), wrec(0x041B, &rect)], None)).unwrap();
+    assert_eq!(item_region(&p.items[0]), None);
+    // Without the reset the rectangle still applies.
+    let p = parse(&wmf(&[wrec(0x0416, &clip), wrec(0x041B, &rect)], None)).unwrap();
+    assert_eq!(item_region(&p.items[0]), Some(&[[10.0, 5.0, 40.0, 30.0]][..]));
+}
+
 // ---- EMF+ ----
 
 fn f32s(v: &[f32]) -> Vec<u8> {
