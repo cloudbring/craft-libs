@@ -1,0 +1,30 @@
+[package]
+name = "craft-corpus"
+description = "Pinned test-corpus manifests: HTTPS-only fetch, per-file sha256, verified trees, requirement gates, ratcheting floors and CI cache keys."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[lib]
+name = "craft_corpus"
+
+[[bin]]
+name = "craft-corpus"
+path = "src/main.rs"
+
+[dependencies]
+craft-hash = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+toml = { version = "1", default-features = false, features = ["parse", "serde", "std", "display"] }
+# Blocking HTTPS with rustls and webpki roots: no async runtime, no OpenSSL.
+ureq = { version = "3", default-features = false, features = ["rustls", "gzip"] }
+
+[dev-dependencies]
+tempfile = "3"

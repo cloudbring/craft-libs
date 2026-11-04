@@ -26,6 +26,7 @@ craft-cache-derive = { path = "crates/cache-derive" }
 craft-cfb = { path = "crates/cfb" }
 craft-cms = { path = "crates/cms" }
 craft-compare = { path = "crates/compare" }
+craft-corpus = { path = "crates/corpus" }
 craft-crw = { path = "crates/crw" }
 craft-dialogs = { path = "crates/dialogs" }
 craft-diff = { path = "crates/diff" }

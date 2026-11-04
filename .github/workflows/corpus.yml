@@ -1,0 +1,31 @@
+name: Corpus
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['crates/corpus/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/corpus.yml']
+  pull_request:
+    paths: ['crates/corpus/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/corpus.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  corpus:
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        # macOS runners are kept for releases: macOS runs only when started by hand.
+        os: ${{ github.event_name == 'workflow_dispatch' && fromJSON('["ubuntu-latest","windows-latest","macos-latest"]') || fromJSON('["ubuntu-latest","windows-latest"]') }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: "1.95"
+          components: rustfmt, clippy
+      - run: cargo fmt --check
+      - run: cargo clippy -p craft-corpus --all-targets --locked -- -D warnings
+      - run: cargo test -p craft-corpus --locked -- --nocapture
