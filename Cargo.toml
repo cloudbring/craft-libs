@@ -18,6 +18,7 @@ craft-atomic = { path = "crates/atomic" }
 craft-audio-rt = { path = "crates/audio-rt" }
 craft-av1 = { path = "crates/av1" }
 craft-bitstream = { path = "crates/bitstream" }
+craft-bench = { path = "crates/bench" }
 craft-blend = { path = "crates/blend" }
 craft-blur = { path = "crates/blur" }
 craft-bvh = { path = "crates/bvh" }

@@ -41,6 +41,7 @@ Its process/filesystem tooling is native-only and is not part of the per-crate w
 - [`craft-audio-rt`](crates/audio-rt/README.md): allocation-free SPSC queues, owned snapshot handoff, atomic parameter ramps, panic silencing and UI-side stall detection; device glue stays in apps.
 - [`craft-av1`](crates/av1/README.md): clean-room pure-Rust AV1 decoder from FilmCraft,
   including film grain and optional threading; ffmpeg/libsvtav1/libaom/libdav1d are test oracles only.
+- [`craft-bench`](crates/bench/README.md): paired old-vs-new benchmark harness (ABBA schedule, wall and CPU time, bootstrap CI of the ratio, quiet-machine guard, machine fingerprint, JSON report and `compare` CLI).
 - [`craft-bitstream`](crates/bitstream/README.md): shared bit-level reader/writer from `craft-media` and the allocation-free VP8/VP9 boolean decoder from FilmCraft.
 - [`craft-blend`](crates/blend/README.md): W3C separable blending and straight-alpha source-over, checked exact rationals, Lean 4 bounds and identity proofs, and Lean-generated conformance vectors (Lean is not run in CI yet).
 - [`craft-blur`](crates/blur/README.md): separable floating-point Gaussian and running-sum box filters with explicit exact, recursive and box approximation contracts, edge policies, cancellation and reusable worker scratch.

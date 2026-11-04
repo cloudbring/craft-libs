@@ -1,0 +1,29 @@
+name: Shared Bench
+
+on:
+  push:
+    branches: [main]
+    paths: ["crates/bench/**", "Cargo.toml", "Cargo.lock", ".github/workflows/bench.yml"]
+  pull_request:
+    paths: ["crates/bench/**", "Cargo.toml", "Cargo.lock", ".github/workflows/bench.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec
+        with:
+          components: rustfmt, clippy
+      - run: cargo fmt -p craft-bench --check
+      - run: cargo clippy -p craft-bench --all-targets --locked -- -D warnings
+      - run: cargo test -p craft-bench --locked

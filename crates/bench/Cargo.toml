@@ -1,0 +1,30 @@
+[package]
+name = "craft-bench"
+description = "Paired old-vs-new benchmark harness: alternating ABBA schedule, wall and CPU time, bootstrap CI of the ratio, quiet-machine guard, machine fingerprint, JSON report and compare CLI"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+build = "build.rs"
+
+[lints]
+workspace = true
+
+[lib]
+name = "craft_bench"
+
+[[bin]]
+name = "craft-bench"
+path = "src/main.rs"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true, features = ["float_roundtrip"] }
+chrono = { workspace = true }
+thiserror = { workspace = true }
+
+# Safe process CPU time (getrusage / clock_gettime on unix, GetProcessTimes on Windows).
+# The workspace forbids `unsafe`, so the syscall lives in this crate.
+[target.'cfg(any(unix, windows))'.dependencies]
+cpu-time = "1"
