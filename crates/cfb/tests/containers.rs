@@ -436,3 +436,110 @@ proptest! {
         }
     }
 }
+
+// -- Real-world files that older readers (gridcraft, deckcraft, filmcraft) opened and the first
+// -- craft-cfb rejected; found by tools/container-oracle (cloudbring/artcraft-algorithms#186).
+
+fn directory_offset(fixture: &Fixture, index: usize) -> usize {
+    (fixture.directory_sector + 1) * fixture.sector_size + index * 128
+}
+
+#[test]
+fn root_entry_name_is_not_validated() {
+    // 18 corpus files (Mac Excel `.xls`, several `.ppt`/`.doc`) carry a root name of length 2 whose
+    // first unit is not a NUL, or a path such as `Y:\Desktop`. Nothing reads the root's name.
+    for major in [3, 4] {
+        for (length, name) in [(2u16, "R"), (22, "Y:\\Desktop"), (0, "Root Entry"), (3, "Root Entry"), (200, "Root Entry")] {
+            let mut fixture = build(major, 1);
+            let root = directory_offset(&fixture, 0);
+            fixture.bytes[root..root + 64].fill(0);
+            for (index, unit) in name.encode_utf16().enumerate().take(31) {
+                put16(&mut fixture.bytes, root + index * 2, unit);
+            }
+            put16(&mut fixture.bytes, root + 64, length);
+            let cfb = Cfb::open(&fixture.bytes).unwrap_or_else(|e| panic!("root name {name:?} length {length}: {e}"));
+            assert_eq!(cfb.root().kind(), EntryKind::Root);
+            assert_eq!(cfb.read_stream("EncryptionInfo").unwrap(), b"hello");
+        }
+    }
+}
+
+#[test]
+fn unreachable_directory_entries_are_not_validated() {
+    // A used slot that no tree node points to (a stale entry) with a nonsense name length.
+    for major in [3, 4] {
+        let mut fixture = build(major, 1);
+        let stale = directory_offset(&fixture, 5);
+        fixture.bytes[stale + 66] = 2;
+        put16(&mut fixture.bytes, stale + 64, 3);
+        put16(&mut fixture.bytes, stale, 0x41);
+        let cfb = Cfb::open(&fixture.bytes).unwrap();
+        assert_eq!(cfb.entries().map(|item| item.path()).collect::<Vec<_>>(), ["", "Nested", "Nested/Inner", "EncryptionInfo", "EncryptedPackage"]);
+    }
+}
+
+#[test]
+fn a_free_sector_marker_in_place_of_a_difat_start_means_no_difat() {
+    // POI and others write FREESECT (not ENDOFCHAIN) as the first DIFAT sector when there is none:
+    // 56260.ppt, ppt_with_png_encrypted.ppt, WrongFormulaRecordType.xls in the corpus.
+    for major in [3, 4] {
+        let mut fixture = build(major, 1);
+        put32(&mut fixture.bytes, 68, FREE);
+        let cfb = Cfb::open(&fixture.bytes).unwrap();
+        assert_eq!(cfb.read_stream("EncryptedPackage").unwrap(), vec![0x42; 4096]);
+    }
+    // ...but not when the header says DIFAT sectors follow.
+    let mut fixture = build(3, 110);
+    put32(&mut fixture.bytes, 68, FREE);
+    assert!(Cfb::open(&fixture.bytes).is_err());
+}
+
+#[test]
+fn a_fat_list_longer_than_the_file_strictly_needs_is_accepted() {
+    // Encrypted OOXML packages written by Office/POI list more FAT sectors than the file's size
+    // needs (3 in 57 sectors, 9 in 542). Each listed sector must be a distinct sector of the file,
+    // so the FAT cannot outgrow the file.
+    for major in [3, 4] {
+        let mut fixture = build(major, 1);
+        let sector_size = fixture.sector_size;
+        let first_extra = fixture.bytes.len() / sector_size - 1;
+        fixture.bytes.extend(vec![0xff; 2 * sector_size]);
+        put32(&mut fixture.bytes, 44, 3);
+        put32(&mut fixture.bytes, 80, first_extra as u32);
+        put32(&mut fixture.bytes, 84, first_extra as u32 + 1);
+        let cfb = Cfb::open(&fixture.bytes).unwrap();
+        assert_eq!(cfb.read_stream("EncryptedPackage").unwrap(), vec![0x42; 4096]);
+        // The same sector listed twice stays refused.
+        let mut twice = fixture.bytes.clone();
+        put32(&mut twice, 84, first_extra as u32);
+        assert!(Cfb::open(&twice).is_err());
+    }
+}
+
+#[test]
+fn a_mini_fat_count_without_a_start_sector_is_ignored() {
+    // 46904.xls: the header says one mini-FAT sector but its start is ENDOFCHAIN; the workbook is
+    // a regular stream. A mini stream, if there were one, could not be read.
+    for major in [3, 4] {
+        let mut fixture = build(major, 1);
+        put32(&mut fixture.bytes, 60, END);
+        let cfb = Cfb::open(&fixture.bytes).unwrap();
+        assert_eq!(cfb.read_stream("EncryptedPackage").unwrap(), vec![0x42; 4096]);
+        assert!(cfb.read_stream("EncryptionInfo").is_err());
+    }
+}
+
+#[test]
+fn the_mini_fat_is_read_from_its_chain_not_from_the_declared_count() {
+    // Every older reader (gridcraft, filmcraft, the crates.io `cfb`) follows the mini-FAT chain from
+    // its start sector; a header whose mini-FAT sector count is 0 (or wrong) still has a readable one.
+    for major in [3, 4] {
+        for count in [0u32, 2] {
+            let mut fixture = build(major, 1);
+            put32(&mut fixture.bytes, 64, count);
+            let cfb = Cfb::open(&fixture.bytes).unwrap_or_else(|e| panic!("count {count}: {e}"));
+            assert_eq!(cfb.read_stream("EncryptionInfo").unwrap(), b"hello", "count {count}");
+            assert_eq!(cfb.read_stream("Nested/Inner").unwrap(), b"world", "count {count}");
+        }
+    }
+}

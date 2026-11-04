@@ -95,7 +95,8 @@ impl Entry {
 }
 
 struct Directory {
-    name: String,
+    /// Decoded only for entries the tree reaches (the root's and stale entries' names are never read).
+    name: Result<String, Error>,
     kind: u8,
     left: u32,
     right: u32,
@@ -159,7 +160,9 @@ impl<'a> Cfb<'a> {
         let per = sector_size / 4;
         let fat_count = usize::try_from(dword(bytes, 44)?).map_err(|_| Error("FAT count overflow"))?;
         let difat_count = usize::try_from(dword(bytes, 72)?).map_err(|_| Error("DIFAT count overflow"))?;
-        if fat_count == 0 || fat_count > sector_count.min(sector_count.div_ceil(per).saturating_add(1)) || difat_count > sector_count {
+        // Every listed FAT sector must be a distinct sector of this file (checked below), so the FAT
+        // cannot outgrow the file; writers list more FAT sectors than the file strictly needs.
+        if fat_count == 0 || fat_count > sector_count || difat_count > sector_count {
             return Err(Error("FAT/DIFAT count exceeds file"));
         }
         if dword(bytes, 56)? != 4096 {
@@ -176,6 +179,11 @@ impl<'a> Cfb<'a> {
             }
         }
         let mut next = dword(bytes, 68)?;
+        // Some writers (POI among them) store FREESECT, not ENDOFCHAIN, as the first DIFAT sector when
+        // the header's 109 entries are enough.
+        if next == FREE && difat_count == 0 {
+            next = END;
+        }
         let mut visited_difat = HashSet::new();
         for _ in 0..difat_count {
             if next >= MAX_SECTOR || !visited_difat.insert(next) {
@@ -243,10 +251,11 @@ impl<'a> Cfb<'a> {
                 stack.push((id, parent.clone(), true));
                 stack.push((item.left, parent, false));
             } else {
-                let path = if parent.is_empty() { item.name.clone() } else { format!("{parent}/{}", item.name) };
-                if item.name.is_empty() || item.name.contains('/') || item.name.contains('\\') {
+                let name = item.name.clone()?;
+                if name.is_empty() || name.contains('/') || name.contains('\\') {
                     return Err(Error("invalid directory name"));
                 }
+                let path = if parent.is_empty() { name } else { format!("{parent}/{name}") };
                 let kind = if item.kind == 1 { EntryKind::Storage } else { EntryKind::Stream };
                 cfb.entries.push(item.entry(path.clone(), kind));
                 if kind == EntryKind::Storage {
@@ -261,7 +270,10 @@ impl<'a> Cfb<'a> {
             return Err(Error("mini FAT exceeds file"));
         }
         let mini_start = dword(bytes, 60)?;
-        let mini_ids = cfb.chain(mini_start, &cfb.fat, Some(mini_count), sector_count, false)?;
+        // The mini FAT is read by following its chain from the start sector, as every older reader does;
+        // the header's sector count is only sanity-checked above. A count with no start sector
+        // (46904.xls) leaves no mini FAT: mini streams are then unreadable, regular ones are not.
+        let mini_ids = if mini_start == END || mini_start == FREE { Vec::new() } else { cfb.chain(mini_start, &cfb.fat, None, sector_count, false)? };
         for id in mini_ids {
             let sector = cfb.sector(id)?;
             for chunk in sector.as_chunks::<4>().0 {
@@ -399,11 +411,23 @@ fn raw_sector(bytes: &[u8], sector_size: usize, count: usize, id: u32) -> Result
     bytes.get(offset..offset + sector_size).ok_or(Error("truncated sector"))
 }
 
+/// A directory name: a UTF-16 string of at most 31 units plus its NUL, its length (bytes, NUL
+/// included) a multiple of two. Only the entries a tree walk reaches are held to this; writers in the
+/// wild leave nonsense in the root's name (18 corpus files) and in stale entries.
+fn directory_name(raw: &[u8]) -> Result<String, Error> {
+    let length = usize::from(word(raw, 64)?);
+    if !(2..=64).contains(&length) || length % 2 != 0 || word(raw, length - 2)? != 0 {
+        return Err(Error("invalid directory name length"));
+    }
+    let units: Result<Vec<u16>, Error> = (0..length - 2).step_by(2).map(|index| word(raw, index)).collect();
+    String::from_utf16(&units?).map_err(|_| Error("invalid directory UTF-16"))
+}
+
 fn parse_directory(raw: &[u8], major: u16) -> Result<Directory, Error> {
     let kind = raw[66];
     if kind == 0 {
         return Ok(Directory {
-            name: String::new(),
+            name: Ok(String::new()),
             kind,
             left: FREE,
             right: FREE,
@@ -416,12 +440,7 @@ fn parse_directory(raw: &[u8], major: u16) -> Result<Directory, Error> {
             modified: 0,
         });
     }
-    let length = usize::from(word(raw, 64)?);
-    if !(2..=64).contains(&length) || length % 2 != 0 || word(raw, length - 2)? != 0 {
-        return Err(Error("invalid directory name length"));
-    }
-    let units: Result<Vec<u16>, Error> = (0..length - 2).step_by(2).map(|index| word(raw, index)).collect();
-    let name = String::from_utf16(&units?).map_err(|_| Error("invalid directory UTF-16"))?;
+    let name = directory_name(raw);
     let size = u64::from(dword(raw, 120)?) | if major == 4 { u64::from(dword(raw, 124)?) << 32 } else { 0 };
     let clsid = raw.get(80..96).ok_or(Error("truncated CFB"))?.try_into().map_err(|_| Error("truncated CFB"))?;
     let created = u64::from(dword(raw, 100)?) | (u64::from(dword(raw, 104)?) << 32);

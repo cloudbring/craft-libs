@@ -257,3 +257,40 @@ fn normalised_backslash_names_still_checked_and_deduplicated() {
     rename_zip(&mut bytes, "a_b", "a\\b");
     assert!(matches!(ZipReader::open_with_names(&bytes, zip_limits(), NameMode::NormalizeBackslash), Err(ZipError::Duplicate)));
 }
+
+/// A deflated archive of one entry whose declared uncompressed size (local and central header) is
+/// `declared` while the stream and its CRC are those of `data`.
+fn lying_size_zip(data: &[u8], declared: u32) -> Vec<u8> {
+    let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
+    let options = zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+    assert!(writer.start_file("a", options).is_ok());
+    assert!(writer.write_all(data).is_ok());
+    let mut bytes = writer.finish().map(Cursor::into_inner).unwrap_or_default();
+    for offset in 0..bytes.len().saturating_sub(4) {
+        if bytes[offset..].starts_with(b"PK\x03\x04") {
+            bytes[offset + 22..offset + 26].copy_from_slice(&declared.to_le_bytes());
+        } else if bytes[offset..].starts_with(b"PK\x01\x02") {
+            bytes[offset + 24..offset + 28].copy_from_slice(&declared.to_le_bytes());
+        }
+    }
+    bytes
+}
+
+#[test]
+fn an_entry_that_decodes_to_other_than_its_declared_size_is_rejected() {
+    // The pre-swap readers (vectorcraft's, craft-doc's) refused an entry whose decoded length
+    // differs from its declared size; found by tools/container-oracle (zip/size-overstated-deflated).
+    let data = vec![b'x'; 1000];
+    let limits = ZipLimits { max_entries: 4, max_entry_bytes: 1 << 20, max_total_bytes: 1 << 20 };
+    let honest = lying_size_zip(&data, 1000);
+    assert_eq!(guard(&honest, limits).ok().and_then(|mut g| g.read_entry(0).ok()), Some(data.clone()));
+    for declared in [5u32, 999, 1001, 5000] {
+        let bytes = lying_size_zip(&data, declared);
+        let mut reader = guard(&bytes, limits).expect("declared sizes are within the limits");
+        assert!(reader.read_entry(0).is_err(), "declared {declared}, decoded 1000");
+        let mut reader = guard(&bytes, limits).expect("open");
+        assert!(reader.read_entry_bounded(0, 1 << 20).is_err(), "declared {declared}, decoded 1000 (bounded)");
+        let mut reader = ZipReader::open(&bytes, limits).expect("open");
+        assert!(reader.read("a").is_err(), "declared {declared}, decoded 1000 (ZipReader)");
+    }
+}

@@ -145,6 +145,7 @@ impl<R: Read + Seek> ZipGuard<R> {
     /// Reads an entry using a cap no larger than this guard's archive-wide cap.
     pub fn read_entry_bounded(&mut self, index: usize, max_entry_bytes: u64) -> Result<Vec<u8>, ZipError> {
         let mut entry = self.archive.by_index(index)?;
+        let declared = entry.size();
         let max_entry_bytes = max_entry_bytes.min(self.limits.max_entry_bytes);
         if entry.size() > max_entry_bytes {
             return Err(ZipError::EntryLimit);
@@ -157,6 +158,13 @@ impl<R: Read + Seek> ZipGuard<R> {
             let chunk = buffer.len().min(usize::try_from(remaining_entry.min(remaining_total).saturating_add(1)).unwrap_or(usize::MAX));
             let count = entry.read(&mut buffer[..chunk])?;
             if count == 0 {
+                // The CRC passed; the stream must also be as long as the directory says (the pre-swap
+                // readers refused an entry that decoded to another length).
+                if output.len() as u64 != declared {
+                    return Err(ZipError::Archive(zip::result::ZipError::InvalidArchive(
+                        "entry decodes to a different size than its declared size".into(),
+                    )));
+                }
                 return Ok(output);
             }
             if count as u64 > remaining_entry {

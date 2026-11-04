@@ -1,0 +1,1577 @@
+# Intended old-vs-new differences of the craft-archive zip swap (#120) and the craft-cfb swap (#123),
+# over the Office corpus and the hostile synthetic inputs of tools/container-oracle.
+#
+# Entries are matched per scenario: every `glob` starts with the scenario name (`<scenario>/...` for the
+# corpus, `<scenario>.hostile/...` for the generated hostile cases). Corpus differences are registered
+# one file at a time (except classes that cover most of the corpus); hostile ones per scenario and
+# metric. An entry that matches nothing is reported as stale. Root causes and counts per entry:
+# docs/verification/container-oracle.md. The file is generated from a reviewed run (no hand edits
+# should widen a glob without a root cause).
+
+[[expected]]
+id = "craftdoc-pcraft.hostile:info-err-variant-outline-err-variant-renditions-err-variant-sniff-err-variant"
+reason = "ZIP-layer differences on corrupted .pcraft bundles (byte flips and header-field sweeps over a valid bundle, truncations, trailing garbage). New is stricter: ZipGuard validates every entry name, declared size and the end record at open, so a bundle with one unsafe/NUL name or a flipped disk number in an entry the call never reads now fails (pc/zip-field/0930-zero: name \"\\0\\0umb.png\"; pc/zip-flip/1075: multi-disk), and a stream longer than its declared size fails (pc/zip-flip/0907). New is more tolerant: the zip crate finds the end record through trailing garbage and recovers from a damaged header the hand-written parser refused (pc/zip/trailing-garbage; pc/zip-flip/0059 keeps the sniff). No valid bundle differs: craftdoc-raw and craftdoc-wrapped agree on every corpus file but the three backslash-named ones."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md; crates/doc/tests/hostile.rs"
+glob = "craftdoc-pcraft.hostile/**"
+metric = "info_err_variant+outline_err_variant+renditions_err_variant+sniff_err_variant"
+
+[[expected]]
+id = "craftdoc-pcraft.hostile:info-old-err-new-ok-outline-old-err-new-ok"
+reason = "ZIP-layer differences on corrupted .pcraft bundles (byte flips and header-field sweeps over a valid bundle, truncations, trailing garbage). New is stricter: ZipGuard validates every entry name, declared size and the end record at open, so a bundle with one unsafe/NUL name or a flipped disk number in an entry the call never reads now fails (pc/zip-field/0930-zero: name \"\\0\\0umb.png\"; pc/zip-flip/1075: multi-disk), and a stream longer than its declared size fails (pc/zip-flip/0907). New is more tolerant: the zip crate finds the end record through trailing garbage and recovers from a damaged header the hand-written parser refused (pc/zip/trailing-garbage; pc/zip-flip/0059 keeps the sniff). No valid bundle differs: craftdoc-raw and craftdoc-wrapped agree on every corpus file but the three backslash-named ones."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md; crates/doc/tests/hostile.rs"
+glob = "craftdoc-pcraft.hostile/**"
+metric = "info_old_err_new_ok+outline_old_err_new_ok"
+
+[[expected]]
+id = "craftdoc-pcraft.hostile:info-old-err-new-ok-outline-old-err-new-ok-renditions-err-variant-sniff-err-variant"
+reason = "ZIP-layer differences on corrupted .pcraft bundles (byte flips and header-field sweeps over a valid bundle, truncations, trailing garbage). New is stricter: ZipGuard validates every entry name, declared size and the end record at open, so a bundle with one unsafe/NUL name or a flipped disk number in an entry the call never reads now fails (pc/zip-field/0930-zero: name \"\\0\\0umb.png\"; pc/zip-flip/1075: multi-disk), and a stream longer than its declared size fails (pc/zip-flip/0907). New is more tolerant: the zip crate finds the end record through trailing garbage and recovers from a damaged header the hand-written parser refused (pc/zip/trailing-garbage; pc/zip-flip/0059 keeps the sniff). No valid bundle differs: craftdoc-raw and craftdoc-wrapped agree on every corpus file but the three backslash-named ones."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md; crates/doc/tests/hostile.rs"
+glob = "craftdoc-pcraft.hostile/**"
+metric = "info_old_err_new_ok+outline_old_err_new_ok+renditions_err_variant+sniff_err_variant"
+
+[[expected]]
+id = "craftdoc-pcraft.hostile:info-old-err-new-ok-outline-old-err-new-ok-renditions-old-err-new-ok"
+reason = "ZIP-layer differences on corrupted .pcraft bundles (byte flips and header-field sweeps over a valid bundle, truncations, trailing garbage). New is stricter: ZipGuard validates every entry name, declared size and the end record at open, so a bundle with one unsafe/NUL name or a flipped disk number in an entry the call never reads now fails (pc/zip-field/0930-zero: name \"\\0\\0umb.png\"; pc/zip-flip/1075: multi-disk), and a stream longer than its declared size fails (pc/zip-flip/0907). New is more tolerant: the zip crate finds the end record through trailing garbage and recovers from a damaged header the hand-written parser refused (pc/zip/trailing-garbage; pc/zip-flip/0059 keeps the sniff). No valid bundle differs: craftdoc-raw and craftdoc-wrapped agree on every corpus file but the three backslash-named ones."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md; crates/doc/tests/hostile.rs"
+glob = "craftdoc-pcraft.hostile/**"
+metric = "info_old_err_new_ok+outline_old_err_new_ok+renditions_old_err_new_ok"
+
+[[expected]]
+id = "craftdoc-pcraft.hostile:info-old-err-new-ok-outline-old-err-new-ok-renditions-old-err-new-ok-sniff-err-variant"
+reason = "ZIP-layer differences on corrupted .pcraft bundles (byte flips and header-field sweeps over a valid bundle, truncations, trailing garbage). New is stricter: ZipGuard validates every entry name, declared size and the end record at open, so a bundle with one unsafe/NUL name or a flipped disk number in an entry the call never reads now fails (pc/zip-field/0930-zero: name \"\\0\\0umb.png\"; pc/zip-flip/1075: multi-disk), and a stream longer than its declared size fails (pc/zip-flip/0907). New is more tolerant: the zip crate finds the end record through trailing garbage and recovers from a damaged header the hand-written parser refused (pc/zip/trailing-garbage; pc/zip-flip/0059 keeps the sniff). No valid bundle differs: craftdoc-raw and craftdoc-wrapped agree on every corpus file but the three backslash-named ones."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md; crates/doc/tests/hostile.rs"
+glob = "craftdoc-pcraft.hostile/**"
+metric = "info_old_err_new_ok+outline_old_err_new_ok+renditions_old_err_new_ok+sniff_err_variant"
+
+[[expected]]
+id = "craftdoc-pcraft.hostile:info-old-ok-new-err-outline-old-ok-new-err"
+reason = "ZIP-layer differences on corrupted .pcraft bundles (byte flips and header-field sweeps over a valid bundle, truncations, trailing garbage). New is stricter: ZipGuard validates every entry name, declared size and the end record at open, so a bundle with one unsafe/NUL name or a flipped disk number in an entry the call never reads now fails (pc/zip-field/0930-zero: name \"\\0\\0umb.png\"; pc/zip-flip/1075: multi-disk), and a stream longer than its declared size fails (pc/zip-flip/0907). New is more tolerant: the zip crate finds the end record through trailing garbage and recovers from a damaged header the hand-written parser refused (pc/zip/trailing-garbage; pc/zip-flip/0059 keeps the sniff). No valid bundle differs: craftdoc-raw and craftdoc-wrapped agree on every corpus file but the three backslash-named ones."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md; crates/doc/tests/hostile.rs"
+glob = "craftdoc-pcraft.hostile/**"
+metric = "info_old_ok_new_err+outline_old_ok_new_err"
+
+[[expected]]
+id = "craftdoc-pcraft.hostile:info-old-ok-new-err-outline-old-ok-new-err-renditions-old-ok-new-err"
+reason = "ZIP-layer differences on corrupted .pcraft bundles (byte flips and header-field sweeps over a valid bundle, truncations, trailing garbage). New is stricter: ZipGuard validates every entry name, declared size and the end record at open, so a bundle with one unsafe/NUL name or a flipped disk number in an entry the call never reads now fails (pc/zip-field/0930-zero: name \"\\0\\0umb.png\"; pc/zip-flip/1075: multi-disk), and a stream longer than its declared size fails (pc/zip-flip/0907). New is more tolerant: the zip crate finds the end record through trailing garbage and recovers from a damaged header the hand-written parser refused (pc/zip/trailing-garbage; pc/zip-flip/0059 keeps the sniff). No valid bundle differs: craftdoc-raw and craftdoc-wrapped agree on every corpus file but the three backslash-named ones."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md; crates/doc/tests/hostile.rs"
+glob = "craftdoc-pcraft.hostile/**"
+metric = "info_old_ok_new_err+outline_old_ok_new_err+renditions_old_ok_new_err"
+
+[[expected]]
+id = "craftdoc-wrapped:info-old-ok-new-err-outline-old-ok-new-err-renditions-old-ok-new-err:tdf131575-xlsx"
+reason = "Backslash entry names inside the bundle (tdf131575.xlsx): ZipGuard rejects a backslash in a name; old craft-doc did not look at names it was not asked for."
+evidence = "#184 (ZipGuard rejects backslash names; NameMode::NormalizeBackslash is the opt-in); research/VERIFICATION.md C31; docs/verification/container-oracle.md"
+glob = "craftdoc-wrapped/office-libreoffice/sc/qa/unit/data/xlsx/tdf131575.xlsx"
+metric = "info_old_ok_new_err+outline_old_ok_new_err+renditions_old_ok_new_err"
+
+[[expected]]
+id = "craftdoc-wrapped:info-old-ok-new-err-outline-old-ok-new-err-renditions-old-ok-new-err:tdf76115-xlsx"
+reason = "Backslash entry names inside the bundle (tdf76115.xlsx): ZipGuard rejects a backslash in a name; old craft-doc did not look at names it was not asked for."
+evidence = "#184 (ZipGuard rejects backslash names; NameMode::NormalizeBackslash is the opt-in); research/VERIFICATION.md C31; docs/verification/container-oracle.md"
+glob = "craftdoc-wrapped/office-libreoffice/sc/qa/unit/data/xlsx/tdf76115.xlsx"
+metric = "info_old_ok_new_err+outline_old_ok_new_err+renditions_old_ok_new_err"
+
+[[expected]]
+id = "craftdoc-wrapped:info-old-ok-new-err-outline-old-ok-new-err-renditions-old-ok-new-err:49609-xlsx"
+reason = "Backslash entry names inside the bundle (49609.xlsx): ZipGuard rejects a backslash in a name; old craft-doc did not look at names it was not asked for."
+evidence = "#184 (ZipGuard rejects backslash names; NameMode::NormalizeBackslash is the opt-in); research/VERIFICATION.md C31; docs/verification/container-oracle.md"
+glob = "craftdoc-wrapped/office-poi/spreadsheet/49609.xlsx"
+metric = "info_old_ok_new_err+outline_old_ok_new_err+renditions_old_ok_new_err"
+
+[[expected]]
+id = "deckcraft-sniff.hostile:sniff"
+reason = "Mutated headers/FAT/directory: the two sides decide the sniff with different strictness (the old readers' lenient or fallback-scanned structure against craft-cfb's strict open followed by the same UTF-16 marker scan), so a damaged file can flip either way; see the new_rejects classes. No corpus file differs."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md"
+glob = "deckcraft-sniff.hostile/**"
+metric = "sniff"
+
+[[expected]]
+id = "effectcraft-read:new-adds-entries"
+reason = "effectcraft read_stored was stored-only and skipped deflated entries (and every entry of a data-descriptor archive); the swap reads deflated entries too (\"read_stored now also accepts Deflate entries (valid for dotLottie)\"). All entries the old reader returned are returned with identical bytes (class is exactly new_adds_entries)."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md"
+glob = "effectcraft-read/**"
+metric = "new_adds_entries"
+
+[[expected]]
+id = "effectcraft-read:new-rejects-archive:forcepoint107-xlsx"
+reason = "Damaged archives: entries with bad CRCs or not a zip at all (python zipfile also fails testzip/opens none). The old reader returned the stored bytes without checking the CRC; the swap returns nothing. forcepoint107.xlsx"
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md"
+glob = "effectcraft-read/office-libreoffice/sc/qa/unit/data/xlsx/forcepoint107.xlsx"
+metric = "new_rejects_archive"
+
+[[expected]]
+id = "effectcraft-read:new-rejects-archive:ofz35597-1-pptx"
+reason = "Damaged archives: entries with bad CRCs or not a zip at all (python zipfile also fails testzip/opens none). The old reader returned the stored bytes without checking the CRC; the swap returns nothing. ofz35597-1.pptx"
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md"
+glob = "effectcraft-read/office-libreoffice/sd/qa/unit/data/pptx/fail/ofz35597-1.pptx"
+metric = "new_rejects_archive"
+
+[[expected]]
+id = "effectcraft-read:new-rejects-archive:libreoffice-dbdazaec-docx"
+reason = "Damaged archives: entries with bad CRCs or not a zip at all (python zipfile also fails testzip/opens none). The old reader returned the stored bytes without checking the CRC; the swap returns nothing. LIBREOFFICE-DBDAZAEC.docx"
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md"
+glob = "effectcraft-read/office-libreoffice/sw/qa/core/data/ooxml/fail/LIBREOFFICE-DBDAZAEC.docx"
+metric = "new_rejects_archive"
+
+[[expected]]
+id = "effectcraft-read:new-rejects-archive:divino-revelado-pptx"
+reason = "Damaged archives: entries with bad CRCs or not a zip at all (python zipfile also fails testzip/opens none). The old reader returned the stored bytes without checking the CRC; the swap returns nothing. Divino_Revelado.pptx"
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md"
+glob = "effectcraft-read/office-poi/slideshow/Divino_Revelado.pptx"
+metric = "new_rejects_archive"
+
+[[expected]]
+id = "effectcraft-read:new-rejects-archive:rde-imf-ru-sites-default-files-rde-documents-vodootvedenie-2020-xlsb-xls"
+reason = "Damaged archives: entries with bad CRCs or not a zip at all (python zipfile also fails testzip/opens none). The old reader returned the stored bytes without checking the CRC; the swap returns nothing. rde.imf.ru_sites_default_files_rde_documents_vodootvedenie_2020.xlsb.xls"
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md"
+glob = "effectcraft-read/office-poi/spreadsheet/rde.imf.ru_sites_default_files_rde_documents_vodootvedenie_2020.xlsb.xls"
+metric = "new_rejects_archive"
+
+[[expected]]
+id = "effectcraft-read-legacy-store:new-rejects-archive:tdf131575-xlsx"
+reason = "Backslash entry names (3 files) and an archive with 1,714 entries against the lottie reader's 1,024-entry cap."
+evidence = "#184 (ZipGuard rejects backslash names; NameMode::NormalizeBackslash is the opt-in); research/VERIFICATION.md C31; docs/verification/container-oracle.md; crates/lottie/src/zip.rs MAX_ENTRIES"
+glob = "effectcraft-read-legacy-store/office-libreoffice/sc/qa/unit/data/xlsx/tdf131575.xlsx"
+metric = "new_rejects_archive"
+
+[[expected]]
+id = "effectcraft-read-legacy-store:new-rejects-archive:tdf76115-xlsx"
+reason = "Backslash entry names (3 files) and an archive with 1,714 entries against the lottie reader's 1,024-entry cap."
+evidence = "#184 (ZipGuard rejects backslash names; NameMode::NormalizeBackslash is the opt-in); research/VERIFICATION.md C31; docs/verification/container-oracle.md; crates/lottie/src/zip.rs MAX_ENTRIES"
+glob = "effectcraft-read-legacy-store/office-libreoffice/sc/qa/unit/data/xlsx/tdf76115.xlsx"
+metric = "new_rejects_archive"
+
+[[expected]]
+id = "effectcraft-read-legacy-store:new-rejects-archive:fdo76316-docx"
+reason = "Backslash entry names (3 files) and an archive with 1,714 entries against the lottie reader's 1,024-entry cap."
+evidence = "#184 (ZipGuard rejects backslash names; NameMode::NormalizeBackslash is the opt-in); research/VERIFICATION.md C31; docs/verification/container-oracle.md; crates/lottie/src/zip.rs MAX_ENTRIES"
+glob = "effectcraft-read-legacy-store/office-libreoffice/sw/qa/extras/ooxmlexport/data/fdo76316.docx"
+metric = "new_rejects_archive"
+
+[[expected]]
+id = "effectcraft-read-legacy-store:new-rejects-archive:49609-xlsx"
+reason = "Backslash entry names (3 files) and an archive with 1,714 entries against the lottie reader's 1,024-entry cap."
+evidence = "#184 (ZipGuard rejects backslash names; NameMode::NormalizeBackslash is the opt-in); research/VERIFICATION.md C31; docs/verification/container-oracle.md; crates/lottie/src/zip.rs MAX_ENTRIES"
+glob = "effectcraft-read-legacy-store/office-poi/spreadsheet/49609.xlsx"
+metric = "new_rejects_archive"
+
+[[expected]]
+id = "effectcraft-read-legacy-store.hostile:new-rejects-archive"
+reason = "The old reader walked local headers and trusted local sizes without checking CRCs, the central directory or names; the swap reads through the central directory, checks CRCs, sizes, names and limits, and returns nothing for an archive with a bad entry (read_stored returns an empty list on any error). Hostile inputs: truncated archives, corrupted header fields, bad CRCs, unsafe/duplicate names, entry limits."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md"
+glob = "effectcraft-read-legacy-store.hostile/**"
+metric = "new_rejects_archive"
+
+[[expected]]
+id = "effectcraft-read.hostile:bytes-new-adds-entries"
+reason = "Header corruption: the old reader trusted the local header (sizes, name) and the entry count it found by scanning, so a damaged local header changed bytes/names or lost entries; the central directory is authoritative in craft-archive (count-too-small and wrapped-count archives: old read every local entry, new honours the directory)."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md"
+glob = "effectcraft-read.hostile/**"
+metric = "bytes+new_adds_entries"
+
+[[expected]]
+id = "effectcraft-read.hostile:new-adds-entries"
+reason = "effectcraft read_stored was stored-only and skipped deflated entries (and every entry of a data-descriptor archive); the swap reads deflated entries too (\"read_stored now also accepts Deflate entries (valid for dotLottie)\"). All entries the old reader returned are returned with identical bytes (class is exactly new_adds_entries)."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md"
+glob = "effectcraft-read.hostile/**"
+metric = "new_adds_entries"
+
+[[expected]]
+id = "effectcraft-read.hostile:new-adds-entries-old-entries-lost"
+reason = "Header corruption: the old reader trusted the local header (sizes, name) and the entry count it found by scanning, so a damaged local header changed bytes/names or lost entries; the central directory is authoritative in craft-archive (count-too-small and wrapped-count archives: old read every local entry, new honours the directory)."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md"
+glob = "effectcraft-read.hostile/**"
+metric = "new_adds_entries+old_entries_lost"
+
+[[expected]]
+id = "effectcraft-read.hostile:new-rejects-archive"
+reason = "The old reader walked local headers and trusted local sizes without checking CRCs, the central directory or names; the swap reads through the central directory, checks CRCs, sizes, names and limits, and returns nothing for an archive with a bad entry (read_stored returns an empty list on any error). Hostile inputs: truncated archives, corrupted header fields, bad CRCs, unsafe/duplicate names, entry limits."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md"
+glob = "effectcraft-read.hostile/**"
+metric = "new_rejects_archive"
+
+[[expected]]
+id = "effectcraft-read.hostile:old-entries-lost"
+reason = "Header corruption: the old reader trusted the local header (sizes, name) and the entry count it found by scanning, so a damaged local header changed bytes/names or lost entries; the central directory is authoritative in craft-archive (count-too-small and wrapped-count archives: old read every local entry, new honours the directory)."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md"
+glob = "effectcraft-read.hostile/**"
+metric = "old_entries_lost"
+
+[[expected]]
+id = "effectcraft-write:new-rejects-store-returned-an-empty-archive:tdf131575-xlsx"
+reason = "Entry names with backslashes (xl\\styles.xml, _rels\\.rels): ZipWriter treats a backslash as an unsafe name. tdf131575.xlsx"
+evidence = "#184 (ZipGuard rejects backslash names; NameMode::NormalizeBackslash is the opt-in); research/VERIFICATION.md C31; docs/verification/container-oracle.md"
+glob = "effectcraft-write/office-libreoffice/sc/qa/unit/data/xlsx/tdf131575.xlsx"
+metric = "new_rejects:store returned an empty archive"
+
+[[expected]]
+id = "effectcraft-write:new-rejects-store-returned-an-empty-archive:tdf76115-xlsx"
+reason = "Entry names with backslashes (xl\\styles.xml, _rels\\.rels): ZipWriter treats a backslash as an unsafe name. tdf76115.xlsx"
+evidence = "#184 (ZipGuard rejects backslash names; NameMode::NormalizeBackslash is the opt-in); research/VERIFICATION.md C31; docs/verification/container-oracle.md"
+glob = "effectcraft-write/office-libreoffice/sc/qa/unit/data/xlsx/tdf76115.xlsx"
+metric = "new_rejects:store returned an empty archive"
+
+[[expected]]
+id = "effectcraft-write:new-rejects-store-returned-an-empty-archive:49609-xlsx"
+reason = "Entry names with backslashes (xl\\styles.xml, _rels\\.rels): ZipWriter treats a backslash as an unsafe name. 49609.xlsx"
+evidence = "#184 (ZipGuard rejects backslash names; NameMode::NormalizeBackslash is the opt-in); research/VERIFICATION.md C31; docs/verification/container-oracle.md"
+glob = "effectcraft-write/office-poi/spreadsheet/49609.xlsx"
+metric = "new_rejects:store returned an empty archive"
+
+[[expected]]
+id = "effectcraft-write:utf8-flag"
+reason = "The old writers set general-purpose bit 11 (UTF-8 names) on every entry; craft-archive sets it only for non-ASCII names (APPNOTE 4.4.4: the bit says how non-ASCII bytes are encoded). Every other class (names, order, bytes, CRC, sizes, method, DOS time, attributes, versions) is equal, since the metric names only this one."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md; APPNOTE 6.3.10 section 4.4.4"
+glob = "effectcraft-write/**"
+metric = "utf8_flag"
+
+[[expected]]
+id = "effectcraft-write.hostile:new-rejects-store-returned-an-empty-archive"
+reason = "craft-archive ZipWriter validates entry names (traversal, absolute, drive letters, backslashes, control characters, empty segments, duplicates, over-long names are refused); the old writers wrote any bytes. The hostile name cases (zip/name-*, duplicate-names, many-entries) are the inputs."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md; E184"
+glob = "effectcraft-write.hostile/**"
+metric = "new_rejects:store returned an empty archive"
+
+[[expected]]
+id = "effectcraft-write.hostile:utf8-flag"
+reason = "The old writers set general-purpose bit 11 (UTF-8 names) on every entry; craft-archive sets it only for non-ASCII names (APPNOTE 4.4.4: the bit says how non-ASCII bytes are encoded). Every other class (names, order, bytes, CRC, sizes, method, DOS time, attributes, versions) is equal, since the metric names only this one."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md; APPNOTE 6.3.10 section 4.4.4"
+glob = "effectcraft-write.hostile/**"
+metric = "utf8_flag"
+
+[[expected]]
+id = "filmcraft-tree:index-order"
+reason = "filmcraft's CompoundFile.entries is now in craft-cfb tree order (root first, siblings in tree order) instead of directory-slot order; paths, kinds, sizes, CLSIDs, times, state bits, start sectors, children (as names) and every stream's bytes are identical. Callers get ids from find/child (crates/cfb/README.md), never by slot."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; filmcraft crates/cfb/README.md"
+glob = "filmcraft-tree/**"
+metric = "index_order"
+
+[[expected]]
+id = "filmcraft-tree:new-accepts-sector-is-outside-the-file:ofz21531-1-ppt"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: ofz21531-1.ppt"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "filmcraft-tree/office-libreoffice/sd/qa/unit/data/ppt/pass/ofz21531-1.ppt"
+metric = "new_accepts:sector # is outside the file"
+
+[[expected]]
+id = "filmcraft-tree:new-accepts-sector-is-outside-the-file:hang-1-doc"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: hang-1.doc"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "filmcraft-tree/office-libreoffice/sw/qa/core/data/ww6/pass/hang-1.doc"
+metric = "new_accepts:sector # is outside the file"
+
+[[expected]]
+id = "filmcraft-tree:new-rejects-inconsistent-difat-chain-or-fat-count:hang-11-ppt"
+reason = "The declared FAT sector count differs from the FAT sectors actually listed (header + DIFAT chain), or the DIFAT chain does not end with ENDOFCHAIN; the old readers ignored the count. Synthetic header edits only plus LibreOffice fuzz files (hang-*.ppt/doc) in the corpus. Corpus: hang-11.ppt (LibreOffice fuzzer files; gridcraft's old reader and the cfb crate also reject hang-11.ppt and hang-15.ppt)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "filmcraft-tree/office-libreoffice/sd/qa/unit/data/ppt/pass/hang-11.ppt"
+metric = "new_rejects:inconsistent DIFAT chain or FAT count"
+
+[[expected]]
+id = "filmcraft-tree:new-rejects-inconsistent-difat-chain-or-fat-count:hang-15-ppt"
+reason = "The declared FAT sector count differs from the FAT sectors actually listed (header + DIFAT chain), or the DIFAT chain does not end with ENDOFCHAIN; the old readers ignored the count. Synthetic header edits only plus LibreOffice fuzz files (hang-*.ppt/doc) in the corpus. Corpus: hang-15.ppt (LibreOffice fuzzer files; gridcraft's old reader and the cfb crate also reject hang-11.ppt and hang-15.ppt)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "filmcraft-tree/office-libreoffice/sd/qa/unit/data/ppt/pass/hang-15.ppt"
+metric = "new_rejects:inconsistent DIFAT chain or FAT count"
+
+[[expected]]
+id = "filmcraft-tree:new-rejects-inconsistent-difat-chain-or-fat-count:hang-17-ppt"
+reason = "The declared FAT sector count differs from the FAT sectors actually listed (header + DIFAT chain), or the DIFAT chain does not end with ENDOFCHAIN; the old readers ignored the count. Synthetic header edits only plus LibreOffice fuzz files (hang-*.ppt/doc) in the corpus. Corpus: hang-17.ppt (LibreOffice fuzzer files; gridcraft's old reader and the cfb crate also reject hang-11.ppt and hang-15.ppt)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "filmcraft-tree/office-libreoffice/sd/qa/unit/data/ppt/pass/hang-17.ppt"
+metric = "new_rejects:inconsistent DIFAT chain or FAT count"
+
+[[expected]]
+id = "filmcraft-tree:new-rejects-inconsistent-difat-chain-or-fat-count:hang-19-ppt"
+reason = "The declared FAT sector count differs from the FAT sectors actually listed (header + DIFAT chain), or the DIFAT chain does not end with ENDOFCHAIN; the old readers ignored the count. Synthetic header edits only plus LibreOffice fuzz files (hang-*.ppt/doc) in the corpus. Corpus: hang-19.ppt (LibreOffice fuzzer files; gridcraft's old reader and the cfb crate also reject hang-11.ppt and hang-15.ppt)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "filmcraft-tree/office-libreoffice/sd/qa/unit/data/ppt/pass/hang-19.ppt"
+metric = "new_rejects:inconsistent DIFAT chain or FAT count"
+
+[[expected]]
+id = "filmcraft-tree:new-rejects-inconsistent-difat-chain-or-fat-count:hang-3-ppt"
+reason = "The declared FAT sector count differs from the FAT sectors actually listed (header + DIFAT chain), or the DIFAT chain does not end with ENDOFCHAIN; the old readers ignored the count. Synthetic header edits only plus LibreOffice fuzz files (hang-*.ppt/doc) in the corpus. Corpus: hang-3.ppt (LibreOffice fuzzer files; gridcraft's old reader and the cfb crate also reject hang-11.ppt and hang-15.ppt)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "filmcraft-tree/office-libreoffice/sd/qa/unit/data/ppt/pass/hang-3.ppt"
+metric = "new_rejects:inconsistent DIFAT chain or FAT count"
+
+[[expected]]
+id = "filmcraft-tree:new-rejects-inconsistent-difat-chain-or-fat-count:hang-4-ppt"
+reason = "The declared FAT sector count differs from the FAT sectors actually listed (header + DIFAT chain), or the DIFAT chain does not end with ENDOFCHAIN; the old readers ignored the count. Synthetic header edits only plus LibreOffice fuzz files (hang-*.ppt/doc) in the corpus. Corpus: hang-4.ppt (LibreOffice fuzzer files; gridcraft's old reader and the cfb crate also reject hang-11.ppt and hang-15.ppt)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "filmcraft-tree/office-libreoffice/sd/qa/unit/data/ppt/pass/hang-4.ppt"
+metric = "new_rejects:inconsistent DIFAT chain or FAT count"
+
+[[expected]]
+id = "filmcraft-tree:new-rejects-inconsistent-difat-chain-or-fat-count:hang-5-ppt"
+reason = "The declared FAT sector count differs from the FAT sectors actually listed (header + DIFAT chain), or the DIFAT chain does not end with ENDOFCHAIN; the old readers ignored the count. Synthetic header edits only plus LibreOffice fuzz files (hang-*.ppt/doc) in the corpus. Corpus: hang-5.ppt (LibreOffice fuzzer files; gridcraft's old reader and the cfb crate also reject hang-11.ppt and hang-15.ppt)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "filmcraft-tree/office-libreoffice/sd/qa/unit/data/ppt/pass/hang-5.ppt"
+metric = "new_rejects:inconsistent DIFAT chain or FAT count"
+
+[[expected]]
+id = "filmcraft-tree:new-rejects-inconsistent-difat-chain-or-fat-count:hang-6-ppt"
+reason = "The declared FAT sector count differs from the FAT sectors actually listed (header + DIFAT chain), or the DIFAT chain does not end with ENDOFCHAIN; the old readers ignored the count. Synthetic header edits only plus LibreOffice fuzz files (hang-*.ppt/doc) in the corpus. Corpus: hang-6.ppt (LibreOffice fuzzer files; gridcraft's old reader and the cfb crate also reject hang-11.ppt and hang-15.ppt)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "filmcraft-tree/office-libreoffice/sd/qa/unit/data/ppt/pass/hang-6.ppt"
+metric = "new_rejects:inconsistent DIFAT chain or FAT count"
+
+[[expected]]
+id = "filmcraft-tree:new-rejects-inconsistent-difat-chain-or-fat-count:hang-8-ppt"
+reason = "The declared FAT sector count differs from the FAT sectors actually listed (header + DIFAT chain), or the DIFAT chain does not end with ENDOFCHAIN; the old readers ignored the count. Synthetic header edits only plus LibreOffice fuzz files (hang-*.ppt/doc) in the corpus. Corpus: hang-8.ppt (LibreOffice fuzzer files; gridcraft's old reader and the cfb crate also reject hang-11.ppt and hang-15.ppt)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "filmcraft-tree/office-libreoffice/sd/qa/unit/data/ppt/pass/hang-8.ppt"
+metric = "new_rejects:inconsistent DIFAT chain or FAT count"
+
+[[expected]]
+id = "filmcraft-tree:new-rejects-inconsistent-difat-chain-or-fat-count:hang-9-ppt"
+reason = "The declared FAT sector count differs from the FAT sectors actually listed (header + DIFAT chain), or the DIFAT chain does not end with ENDOFCHAIN; the old readers ignored the count. Synthetic header edits only plus LibreOffice fuzz files (hang-*.ppt/doc) in the corpus. Corpus: hang-9.ppt (LibreOffice fuzzer files; gridcraft's old reader and the cfb crate also reject hang-11.ppt and hang-15.ppt)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "filmcraft-tree/office-libreoffice/sd/qa/unit/data/ppt/pass/hang-9.ppt"
+metric = "new_rejects:inconsistent DIFAT chain or FAT count"
+
+[[expected]]
+id = "filmcraft-tree:new-rejects-inconsistent-difat-chain-or-fat-count:hang-2-doc"
+reason = "The declared FAT sector count differs from the FAT sectors actually listed (header + DIFAT chain), or the DIFAT chain does not end with ENDOFCHAIN; the old readers ignored the count. Synthetic header edits only plus LibreOffice fuzz files (hang-*.ppt/doc) in the corpus. Corpus: hang-2.doc (LibreOffice fuzzer files; gridcraft's old reader and the cfb crate also reject hang-11.ppt and hang-15.ppt)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "filmcraft-tree/office-libreoffice/sw/qa/core/data/ww8/pass/hang-2.doc"
+metric = "new_rejects:inconsistent DIFAT chain or FAT count"
+
+[[expected]]
+id = "filmcraft-tree:old-err-new-ok-unreachable-entries-dropped:47245-test-xls"
+reason = "filmcraft's old reader failed to read a stream whose last sector is cut short (unpadded writers: 47245_test.xls etc.: \"sector 410 is outside the file\"); craft-cfb reads it (short-tail tolerance, #123 follow-up a96f03c). Unreachable-slot dropping as above."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs regular_stream_allows_truncated_final_padding"
+glob = "filmcraft-tree/office-poi/spreadsheet/47245_test.xls"
+metric = "old_err_new_ok+unreachable_entries_dropped"
+
+[[expected]]
+id = "filmcraft-tree:old-err-new-ok-unreachable-entries-dropped:47251-xls"
+reason = "filmcraft's old reader failed to read a stream whose last sector is cut short (unpadded writers: 47245_test.xls etc.: \"sector 410 is outside the file\"); craft-cfb reads it (short-tail tolerance, #123 follow-up a96f03c). Unreachable-slot dropping as above."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs regular_stream_allows_truncated_final_padding"
+glob = "filmcraft-tree/office-poi/spreadsheet/47251.xls"
+metric = "old_err_new_ok+unreachable_entries_dropped"
+
+[[expected]]
+id = "filmcraft-tree:old-err-new-ok-unreachable-entries-dropped:50426-xls"
+reason = "filmcraft's old reader failed to read a stream whose last sector is cut short (unpadded writers: 47245_test.xls etc.: \"sector 410 is outside the file\"); craft-cfb reads it (short-tail tolerance, #123 follow-up a96f03c). Unreachable-slot dropping as above."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs regular_stream_allows_truncated_final_padding"
+glob = "filmcraft-tree/office-poi/spreadsheet/50426.xls"
+metric = "old_err_new_ok+unreachable_entries_dropped"
+
+[[expected]]
+id = "filmcraft-tree:old-err-new-ok-unreachable-entries-dropped:53984-xls"
+reason = "filmcraft's old reader failed to read a stream whose last sector is cut short (unpadded writers: 47245_test.xls etc.: \"sector 410 is outside the file\"); craft-cfb reads it (short-tail tolerance, #123 follow-up a96f03c). Unreachable-slot dropping as above."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs regular_stream_allows_truncated_final_padding"
+glob = "filmcraft-tree/office-poi/spreadsheet/53984.xls"
+metric = "old_err_new_ok+unreachable_entries_dropped"
+
+[[expected]]
+id = "filmcraft-tree:old-err-new-ok-unreachable-entries-dropped:ex45698-22488-xls"
+reason = "filmcraft's old reader failed to read a stream whose last sector is cut short (unpadded writers: 47245_test.xls etc.: \"sector 410 is outside the file\"); craft-cfb reads it (short-tail tolerance, #123 follow-up a96f03c). Unreachable-slot dropping as above."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs regular_stream_allows_truncated_final_padding"
+glob = "filmcraft-tree/office-poi/spreadsheet/ex45698-22488.xls"
+metric = "old_err_new_ok+unreachable_entries_dropped"
+
+[[expected]]
+id = "filmcraft-tree:old-ok-new-err-unreachable-entries-dropped:hang-2-doc"
+reason = "hang-2.doc (LibreOffice fuzzer file): its WordDocument stream has a mini-FAT cycle that the old filmcraft reader followed to the declared size and craft-cfb refuses (\"mini FAT cycle or marker\"). Unreachable-slot dropping as above."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md"
+glob = "filmcraft-tree/office-libreoffice/sw/qa/core/data/ww8/fail/hang-2.doc"
+metric = "old_ok_new_err+unreachable_entries_dropped"
+
+[[expected]]
+id = "filmcraft-tree:unreachable-entries-dropped"
+reason = "entries[] no longer contains directory slots the tree does not reach (free slots and stale entries); every reachable entry and stream is identical."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md"
+glob = "filmcraft-tree/**"
+metric = "unreachable_entries_dropped"
+
+[[expected]]
+id = "filmcraft-tree.hostile:index-order"
+reason = "filmcraft's CompoundFile.entries is now in craft-cfb tree order (root first, siblings in tree order) instead of directory-slot order; paths, kinds, sizes, CLSIDs, times, state bits, start sectors, children (as names) and every stream's bytes are identical. Callers get ids from find/child (crates/cfb/README.md), never by slot."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; filmcraft crates/cfb/README.md"
+glob = "filmcraft-tree.hostile/**"
+metric = "index_order"
+
+[[expected]]
+id = "filmcraft-tree.hostile:new-accepts-bad-sector-xfffffffc-in-a-chain"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "filmcraft-tree.hostile/**"
+metric = "new_accepts:bad sector #xfffffffc in a chain"
+
+[[expected]]
+id = "filmcraft-tree.hostile:new-accepts-bad-sector-xfffffffd-in-a-chain"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "filmcraft-tree.hostile/**"
+metric = "new_accepts:bad sector #xfffffffd in a chain"
+
+[[expected]]
+id = "filmcraft-tree.hostile:new-accepts-bad-sector-xffffffff-in-a-chain"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "filmcraft-tree.hostile/**"
+metric = "new_accepts:bad sector #xffffffff in a chain"
+
+[[expected]]
+id = "filmcraft-tree.hostile:new-accepts-sector-is-outside-the-file"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "filmcraft-tree.hostile/**"
+metric = "new_accepts:sector # is outside the file"
+
+[[expected]]
+id = "filmcraft-tree.hostile:new-accepts-stream-is-truncated"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "filmcraft-tree.hostile/**"
+metric = "new_accepts:stream is truncated"
+
+[[expected]]
+id = "filmcraft-tree.hostile:new-rejects-difat-chain-loops-or-ends-early"
+reason = "DIFAT chain revisits a sector or runs into a marker before its declared length."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "filmcraft-tree.hostile/**"
+metric = "new_rejects:DIFAT chain loops or ends early"
+
+[[expected]]
+id = "filmcraft-tree.hostile:new-rejects-fat-difat-count-exceeds-file"
+reason = "Declared FAT or DIFAT sector count is larger than the number of sectors in the file; bounds every allocation."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "filmcraft-tree.hostile/**"
+metric = "new_rejects:FAT/DIFAT count exceeds file"
+
+[[expected]]
+id = "filmcraft-tree.hostile:new-rejects-directory-loop-or-invalid-entry"
+reason = "A directory link revisits an entry or reaches an unused/odd-typed one (red-black tree must be a tree)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "filmcraft-tree.hostile/**"
+metric = "new_rejects:directory loop or invalid entry"
+
+[[expected]]
+id = "filmcraft-tree.hostile:new-rejects-duplicate-fat-difat-sector"
+reason = "The same sector listed twice as FAT/DIFAT (the amplification attack wordcraft's guard was written for)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "filmcraft-tree.hostile/**"
+metric = "new_rejects:duplicate FAT/DIFAT sector"
+
+[[expected]]
+id = "filmcraft-tree.hostile:new-rejects-inconsistent-difat-chain-or-fat-count"
+reason = "The declared FAT sector count differs from the FAT sectors actually listed (header + DIFAT chain), or the DIFAT chain does not end with ENDOFCHAIN; the old readers ignored the count. Synthetic header edits only plus LibreOffice fuzz files (hang-*.ppt/doc) in the corpus."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "filmcraft-tree.hostile/**"
+metric = "new_rejects:inconsistent DIFAT chain or FAT count"
+
+[[expected]]
+id = "filmcraft-tree.hostile:new-rejects-invalid-fat-sector-marker"
+reason = "A FAT-list entry in the header/DIFAT is a reserved marker (>= 0xFFFFFFFA) rather than a sector number."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "filmcraft-tree.hostile/**"
+metric = "new_rejects:invalid FAT sector marker"
+
+[[expected]]
+id = "filmcraft-tree.hostile:new-rejects-invalid-directory-name-length"
+reason = "A reachable entry whose name length is 0, odd, over 64 bytes or not NUL-terminated; (the root and unreachable entries are not checked)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "filmcraft-tree.hostile/**"
+metric = "new_rejects:invalid directory name length"
+
+[[expected]]
+id = "filmcraft-tree.hostile:new-rejects-mini-fat-exceeds-file"
+reason = "Mini-FAT sector count larger than the file (or over 1 GiB)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "filmcraft-tree.hostile/**"
+metric = "new_rejects:mini FAT exceeds file"
+
+[[expected]]
+id = "filmcraft-tree.hostile:new-rejects-sector-chain-loops-or-uses-marker"
+reason = "A chain revisits a sector or contains a reserved marker."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "filmcraft-tree.hostile/**"
+metric = "new_rejects:sector chain loops or uses marker"
+
+[[expected]]
+id = "filmcraft-tree.hostile:new-rejects-sector-outside-file"
+reason = "A directory/FAT/mini-FAT sector lies outside the file: metadata sectors stay strict (only the final sector of a stream chain may be short; test truncated_metadata_sectors_remain_strict)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "filmcraft-tree.hostile/**"
+metric = "new_rejects:sector outside file"
+
+[[expected]]
+id = "filmcraft-tree.hostile:new-rejects-stream-has-children"
+reason = "A stream entry with a child link."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "filmcraft-tree.hostile/**"
+metric = "new_rejects:stream has children"
+
+[[expected]]
+id = "filmcraft-tree.hostile:new-rejects-unsupported-cfb-version-or-sector-size"
+reason = "Header major version / sector shift / mini shift outside {3 with 9, 4 with 12, mini 6}; header corruption."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "filmcraft-tree.hostile/**"
+metric = "new_rejects:unsupported CFB version or sector size"
+
+[[expected]]
+id = "filmcraft-tree.hostile:new-rejects-unsupported-mini-stream-cutoff"
+reason = "The mini-stream cutoff is not 4096 (the spec fixes it); the old readers took it from the header."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "filmcraft-tree.hostile/**"
+metric = "new_rejects:unsupported mini-stream cutoff"
+
+[[expected]]
+id = "filmcraft-tree.hostile:old-err-new-ok-unreachable-entries-dropped"
+reason = "filmcraft's old reader failed to read a stream whose last sector is cut short (unpadded writers: 47245_test.xls etc.: \"sector 410 is outside the file\"); craft-cfb reads it (short-tail tolerance, #123 follow-up a96f03c). Unreachable-slot dropping as above."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs regular_stream_allows_truncated_final_padding"
+glob = "filmcraft-tree.hostile/**"
+metric = "old_err_new_ok+unreachable_entries_dropped"
+
+[[expected]]
+id = "filmcraft-tree.hostile:old-ok-new-err"
+reason = "Stream-level differences on mutated FAT / root-entry fields only (no corpus file). old_err_new_ok: a FAT entry broken in a part that no requested stream touches; craft-cfb reads lazily, the crates.io cfb crate (and gridcraft mini-FAT parse) validate the whole FAT up front. old_ok_new_err: the root entry size above 1 GiB (dir0-size-hi / dir0-size-huge: craft-cfb refuses a mini-stream container over its 1 GiB cap, the old readers clamp to it) and a self-referencing FAT entry (fatNN-self) that filmcraft's old reader stepped over and craft-cfb rejects as a loop."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; docs/verification/container-oracle.md"
+glob = "filmcraft-tree.hostile/**"
+metric = "old_ok_new_err"
+
+[[expected]]
+id = "filmcraft-tree.hostile:old-ok-new-err-unreachable-entries-dropped"
+reason = "hang-2.doc (LibreOffice fuzzer file): its WordDocument stream has a mini-FAT cycle that the old filmcraft reader followed to the declared size and craft-cfb refuses (\"mini FAT cycle or marker\"). Unreachable-slot dropping as above."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md"
+glob = "filmcraft-tree.hostile/**"
+metric = "old_ok_new_err+unreachable_entries_dropped"
+
+[[expected]]
+id = "filmcraft-tree.hostile:unreachable-entries-dropped"
+reason = "entries[] no longer contains directory slots the tree does not reach (free slots and stale entries); every reachable entry and stream is identical."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md"
+glob = "filmcraft-tree.hostile/**"
+metric = "unreachable_entries_dropped"
+
+[[expected]]
+id = "gridcraft-is-xls.hostile:sniff"
+reason = "Mutated headers/FAT/directory: the two sides decide the sniff with different strictness (the old readers' lenient or fallback-scanned structure against craft-cfb's strict open followed by the same UTF-16 marker scan), so a damaged file can flip either way; see the new_rejects classes. No corpus file differs."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md"
+glob = "gridcraft-is-xls.hostile/**"
+metric = "sniff"
+
+[[expected]]
+id = "gridcraft-sniff.hostile:sniff"
+reason = "Mutated headers/FAT/directory: the two sides decide the sniff with different strictness (the old readers' lenient or fallback-scanned structure against craft-cfb's strict open followed by the same UTF-16 marker scan), so a damaged file can flip either way; see the new_rejects classes. No corpus file differs."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md"
+glob = "gridcraft-sniff.hostile/**"
+metric = "sniff"
+
+[[expected]]
+id = "gridcraft-streams:new-rejects-sector-outside-file:hang-13-ppt"
+reason = "A directory/FAT/mini-FAT sector lies outside the file: metadata sectors stay strict (only the final sector of a stream chain may be short; test truncated_metadata_sectors_remain_strict). Corpus: hang-13.ppt (truncated inside the directory sector; the crates.io cfb crate and filmcraft also fail on cf5f6fde99a8b3ea5a4946c258b7abad6f30b0c5.ppt and hang-13.ppt)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "gridcraft-streams/office-libreoffice/sd/qa/unit/data/ppt/pass/hang-13.ppt"
+metric = "new_rejects:sector outside file"
+
+[[expected]]
+id = "gridcraft-streams:new-rejects-sector-outside-file:ofz14989-1-ppt"
+reason = "A directory/FAT/mini-FAT sector lies outside the file: metadata sectors stay strict (only the final sector of a stream chain may be short; test truncated_metadata_sectors_remain_strict). Corpus: ofz14989-1.ppt (truncated inside the directory sector; the crates.io cfb crate and filmcraft also fail on cf5f6fde99a8b3ea5a4946c258b7abad6f30b0c5.ppt and hang-13.ppt)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "gridcraft-streams/office-libreoffice/sd/qa/unit/data/ppt/pass/ofz14989-1.ppt"
+metric = "new_rejects:sector outside file"
+
+[[expected]]
+id = "gridcraft-streams:new-rejects-sector-outside-file:ofz57592-1-doc"
+reason = "A directory/FAT/mini-FAT sector lies outside the file: metadata sectors stay strict (only the final sector of a stream chain may be short; test truncated_metadata_sectors_remain_strict). Corpus: ofz57592-1.doc (truncated inside the directory sector; the crates.io cfb crate and filmcraft also fail on cf5f6fde99a8b3ea5a4946c258b7abad6f30b0c5.ppt and hang-13.ppt)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "gridcraft-streams/office-libreoffice/sw/qa/core/data/ww8/pass/ofz57592-1.doc"
+metric = "new_rejects:sector outside file"
+
+[[expected]]
+id = "gridcraft-streams:new-rejects-sector-outside-file:cf5f6fde99a8b3ea5a4946c258b7abad6f30b0c5-ppt"
+reason = "A directory/FAT/mini-FAT sector lies outside the file: metadata sectors stay strict (only the final sector of a stream chain may be short; test truncated_metadata_sectors_remain_strict). Corpus: cf5f6fde99a8b3ea5a4946c258b7abad6f30b0c5.ppt (truncated inside the directory sector; the crates.io cfb crate and filmcraft also fail on cf5f6fde99a8b3ea5a4946c258b7abad6f30b0c5.ppt and hang-13.ppt)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "gridcraft-streams/office-poi/slideshow/cf5f6fde99a8b3ea5a4946c258b7abad6f30b0c5.ppt"
+metric = "new_rejects:sector outside file"
+
+[[expected]]
+id = "gridcraft-streams.hostile:new-rejects-difat-chain-loops-or-ends-early"
+reason = "DIFAT chain revisits a sector or runs into a marker before its declared length."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "gridcraft-streams.hostile/**"
+metric = "new_rejects:DIFAT chain loops or ends early"
+
+[[expected]]
+id = "gridcraft-streams.hostile:new-rejects-fat-difat-count-exceeds-file"
+reason = "Declared FAT or DIFAT sector count is larger than the number of sectors in the file; bounds every allocation."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "gridcraft-streams.hostile/**"
+metric = "new_rejects:FAT/DIFAT count exceeds file"
+
+[[expected]]
+id = "gridcraft-streams.hostile:new-rejects-directory-index-out-of-range"
+reason = "A directory link points past the directory."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "gridcraft-streams.hostile/**"
+metric = "new_rejects:directory index out of range"
+
+[[expected]]
+id = "gridcraft-streams.hostile:new-rejects-directory-loop-or-invalid-entry"
+reason = "A directory link revisits an entry or reaches an unused/odd-typed one (red-black tree must be a tree)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "gridcraft-streams.hostile/**"
+metric = "new_rejects:directory loop or invalid entry"
+
+[[expected]]
+id = "gridcraft-streams.hostile:new-rejects-duplicate-fat-difat-sector"
+reason = "The same sector listed twice as FAT/DIFAT (the amplification attack wordcraft's guard was written for)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "gridcraft-streams.hostile/**"
+metric = "new_rejects:duplicate FAT/DIFAT sector"
+
+[[expected]]
+id = "gridcraft-streams.hostile:new-rejects-inconsistent-difat-chain-or-fat-count"
+reason = "The declared FAT sector count differs from the FAT sectors actually listed (header + DIFAT chain), or the DIFAT chain does not end with ENDOFCHAIN; the old readers ignored the count. Synthetic header edits only plus LibreOffice fuzz files (hang-*.ppt/doc) in the corpus."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "gridcraft-streams.hostile/**"
+metric = "new_rejects:inconsistent DIFAT chain or FAT count"
+
+[[expected]]
+id = "gridcraft-streams.hostile:new-rejects-invalid-fat-sector-marker"
+reason = "A FAT-list entry in the header/DIFAT is a reserved marker (>= 0xFFFFFFFA) rather than a sector number."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "gridcraft-streams.hostile/**"
+metric = "new_rejects:invalid FAT sector marker"
+
+[[expected]]
+id = "gridcraft-streams.hostile:new-rejects-invalid-directory-name-length"
+reason = "A reachable entry whose name length is 0, odd, over 64 bytes or not NUL-terminated; (the root and unreachable entries are not checked)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "gridcraft-streams.hostile/**"
+metric = "new_rejects:invalid directory name length"
+
+[[expected]]
+id = "gridcraft-streams.hostile:new-rejects-mini-fat-exceeds-file"
+reason = "Mini-FAT sector count larger than the file (or over 1 GiB)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "gridcraft-streams.hostile/**"
+metric = "new_rejects:mini FAT exceeds file"
+
+[[expected]]
+id = "gridcraft-streams.hostile:new-rejects-sector-chain-loops-or-uses-marker"
+reason = "A chain revisits a sector or contains a reserved marker."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "gridcraft-streams.hostile/**"
+metric = "new_rejects:sector chain loops or uses marker"
+
+[[expected]]
+id = "gridcraft-streams.hostile:new-rejects-stream-has-children"
+reason = "A stream entry with a child link."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "gridcraft-streams.hostile/**"
+metric = "new_rejects:stream has children"
+
+[[expected]]
+id = "gridcraft-streams.hostile:new-rejects-unsupported-cfb-version-or-sector-size"
+reason = "Header major version / sector shift / mini shift outside {3 with 9, 4 with 12, mini 6}; header corruption."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "gridcraft-streams.hostile/**"
+metric = "new_rejects:unsupported CFB version or sector size"
+
+[[expected]]
+id = "gridcraft-streams.hostile:new-rejects-unsupported-byte-order"
+reason = "Header byte-order mark is not 0xFFFE."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "gridcraft-streams.hostile/**"
+metric = "new_rejects:unsupported byte order"
+
+[[expected]]
+id = "gridcraft-streams.hostile:new-rejects-unsupported-mini-stream-cutoff"
+reason = "The mini-stream cutoff is not 4096 (the spec fixes it); the old readers took it from the header."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "gridcraft-streams.hostile/**"
+metric = "new_rejects:unsupported mini-stream cutoff"
+
+[[expected]]
+id = "gridcraft-streams.hostile:old-err-new-ok"
+reason = "Stream-level differences on mutated FAT / root-entry fields only (no corpus file). old_err_new_ok: a FAT entry broken in a part that no requested stream touches; craft-cfb reads lazily, the crates.io cfb crate (and gridcraft mini-FAT parse) validate the whole FAT up front. old_ok_new_err: the root entry size above 1 GiB (dir0-size-hi / dir0-size-huge: craft-cfb refuses a mini-stream container over its 1 GiB cap, the old readers clamp to it) and a self-referencing FAT entry (fatNN-self) that filmcraft's old reader stepped over and craft-cfb rejects as a loop."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; docs/verification/container-oracle.md"
+glob = "gridcraft-streams.hostile/**"
+metric = "old_err_new_ok"
+
+[[expected]]
+id = "gridcraft-streams.hostile:old-ok-new-err"
+reason = "Stream-level differences on mutated FAT / root-entry fields only (no corpus file). old_err_new_ok: a FAT entry broken in a part that no requested stream touches; craft-cfb reads lazily, the crates.io cfb crate (and gridcraft mini-FAT parse) validate the whole FAT up front. old_ok_new_err: the root entry size above 1 GiB (dir0-size-hi / dir0-size-huge: craft-cfb refuses a mini-stream container over its 1 GiB cap, the old readers clamp to it) and a self-referencing FAT entry (fatNN-self) that filmcraft's old reader stepped over and craft-cfb rejects as a loop."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; docs/verification/container-oracle.md"
+glob = "gridcraft-streams.hostile/**"
+metric = "old_ok_new_err"
+
+[[expected]]
+id = "pdfcraft-write:new-rejects-invalid-zip-entry-name:tdf131575-xlsx"
+reason = "Entry names with backslashes (xl\\styles.xml, _rels\\.rels): ZipWriter treats a backslash as an unsafe name. tdf131575.xlsx"
+evidence = "#184 (ZipGuard rejects backslash names; NameMode::NormalizeBackslash is the opt-in); research/VERIFICATION.md C31; docs/verification/container-oracle.md"
+glob = "pdfcraft-write/office-libreoffice/sc/qa/unit/data/xlsx/tdf131575.xlsx"
+metric = "new_rejects:invalid ZIP entry name"
+
+[[expected]]
+id = "pdfcraft-write:new-rejects-invalid-zip-entry-name:tdf76115-xlsx"
+reason = "Entry names with backslashes (xl\\styles.xml, _rels\\.rels): ZipWriter treats a backslash as an unsafe name. tdf76115.xlsx"
+evidence = "#184 (ZipGuard rejects backslash names; NameMode::NormalizeBackslash is the opt-in); research/VERIFICATION.md C31; docs/verification/container-oracle.md"
+glob = "pdfcraft-write/office-libreoffice/sc/qa/unit/data/xlsx/tdf76115.xlsx"
+metric = "new_rejects:invalid ZIP entry name"
+
+[[expected]]
+id = "pdfcraft-write:new-rejects-invalid-zip-entry-name:49609-xlsx"
+reason = "Entry names with backslashes (xl\\styles.xml, _rels\\.rels): ZipWriter treats a backslash as an unsafe name. 49609.xlsx"
+evidence = "#184 (ZipGuard rejects backslash names; NameMode::NormalizeBackslash is the opt-in); research/VERIFICATION.md C31; docs/verification/container-oracle.md"
+glob = "pdfcraft-write/office-poi/spreadsheet/49609.xlsx"
+metric = "new_rejects:invalid ZIP entry name"
+
+[[expected]]
+id = "pdfcraft-write:utf8-flag"
+reason = "The old writers set general-purpose bit 11 (UTF-8 names) on every entry; craft-archive sets it only for non-ASCII names (APPNOTE 4.4.4: the bit says how non-ASCII bytes are encoded). Every other class (names, order, bytes, CRC, sizes, method, DOS time, attributes, versions) is equal, since the metric names only this one."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md; APPNOTE 6.3.10 section 4.4.4"
+glob = "pdfcraft-write/**"
+metric = "utf8_flag"
+
+[[expected]]
+id = "pdfcraft-write.hostile:new-rejects-invalid-zip-entry-name"
+reason = "craft-archive ZipWriter validates entry names (traversal, absolute, drive letters, backslashes, control characters, empty segments, duplicates, over-long names are refused); the old writers wrote any bytes. The hostile name cases (zip/name-*, duplicate-names, many-entries) are the inputs."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md; E184"
+glob = "pdfcraft-write.hostile/**"
+metric = "new_rejects:invalid ZIP entry name"
+
+[[expected]]
+id = "pdfcraft-write.hostile:utf8-flag"
+reason = "The old writers set general-purpose bit 11 (UTF-8 names) on every entry; craft-archive sets it only for non-ASCII names (APPNOTE 4.4.4: the bit says how non-ASCII bytes are encoded). Every other class (names, order, bytes, CRC, sizes, method, DOS time, attributes, versions) is equal, since the metric names only this one."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md; APPNOTE 6.3.10 section 4.4.4"
+glob = "pdfcraft-write.hostile/**"
+metric = "utf8_flag"
+
+[[expected]]
+id = "reference-vs-craft-cfb:new-accepts-malformed-fat-fat-has-entries-but-file-has-only-sectors:ofz21531-1-ppt"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: ofz21531-1.ppt"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "reference-vs-craft-cfb/office-libreoffice/sd/qa/unit/data/ppt/pass/ofz21531-1.ppt"
+metric = "new_accepts:Malformed FAT (FAT has # entries, but file has only # sectors)"
+
+[[expected]]
+id = "reference-vs-craft-cfb:new-accepts-malformed-fat-fat-has-entries-but-file-has-only-sectors:hang-1-doc"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: hang-1.doc"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "reference-vs-craft-cfb/office-libreoffice/sw/qa/core/data/ww6/pass/hang-1.doc"
+metric = "new_accepts:Malformed FAT (FAT has # entries, but file has only # sectors)"
+
+[[expected]]
+id = "reference-vs-craft-cfb:new-accepts-malformed-fat-fat-has-entries-but-file-has-only-sectors:hang-2-doc"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: hang-2.doc"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "reference-vs-craft-cfb/office-libreoffice/sw/qa/core/data/ww8/fail/hang-2.doc"
+metric = "new_accepts:Malformed FAT (FAT has # entries, but file has only # sectors)"
+
+[[expected]]
+id = "reference-vs-craft-cfb:new-accepts-malformed-fat-fat-has-entries-but-file-has-only-sectors:hang-4-doc"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: hang-4.doc"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "reference-vs-craft-cfb/office-libreoffice/sw/qa/core/data/ww8/pass/hang-4.doc"
+metric = "new_accepts:Malformed FAT (FAT has # entries, but file has only # sectors)"
+
+[[expected]]
+id = "reference-vs-craft-cfb:new-accepts-malformed-fat-fat-has-entries-but-file-has-only-sectors:forcepoint92-doc"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: forcepoint92.doc"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "reference-vs-craft-cfb/office-libreoffice/sw/qa/extras/layout/data/forcepoint92.doc"
+metric = "new_accepts:Malformed FAT (FAT has # entries, but file has only # sectors)"
+
+[[expected]]
+id = "reference-vs-craft-cfb:new-accepts-malformed-fat-fat-has-entries-but-file-has-only-sectors:47950-lower-doc"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: 47950_lower.doc"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "reference-vs-craft-cfb/office-poi/document/47950_lower.doc"
+metric = "new_accepts:Malformed FAT (FAT has # entries, but file has only # sectors)"
+
+[[expected]]
+id = "reference-vs-craft-cfb:new-accepts-malformed-fat-fat-has-entries-but-file-has-only-sectors:47950-normal-doc"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: 47950_normal.doc"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "reference-vs-craft-cfb/office-poi/document/47950_normal.doc"
+metric = "new_accepts:Malformed FAT (FAT has # entries, but file has only # sectors)"
+
+[[expected]]
+id = "reference-vs-craft-cfb:new-accepts-malformed-fat-fat-has-entries-but-file-has-only-sectors:47950-upper-doc"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: 47950_upper.doc"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "reference-vs-craft-cfb/office-poi/document/47950_upper.doc"
+metric = "new_accepts:Malformed FAT (FAT has # entries, but file has only # sectors)"
+
+[[expected]]
+id = "reference-vs-craft-cfb:new-accepts-malformed-fat-sector-pointed-to-twice:forcepoint50-grfanchor-1-doc"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: forcepoint50-grfanchor-1.doc"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "reference-vs-craft-cfb/office-libreoffice/sw/qa/core/data/ww8/pass/forcepoint50-grfanchor-1.doc"
+metric = "new_accepts:Malformed FAT (sector # pointed to twice)"
+
+[[expected]]
+id = "reference-vs-craft-cfb:new-accepts-malformed-minifat-minifat-has-entries-but-mini-sector-points-to:hang-12-ppt"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: hang-12.ppt"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "reference-vs-craft-cfb/office-libreoffice/sd/qa/unit/data/ppt/pass/hang-12.ppt"
+metric = "new_accepts:Malformed MiniFAT (MiniFAT has # entries, but mini sector # points to #)"
+
+[[expected]]
+id = "reference-vs-craft-cfb:new-accepts-malformed-minifat-minifat-has-entries-but-mini-sector-points-to:hang-14-ppt"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: hang-14.ppt"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "reference-vs-craft-cfb/office-libreoffice/sd/qa/unit/data/ppt/pass/hang-14.ppt"
+metric = "new_accepts:Malformed MiniFAT (MiniFAT has # entries, but mini sector # points to #)"
+
+[[expected]]
+id = "reference-vs-craft-cfb:new-accepts-malformed-minifat-minifat-has-entries-but-mini-sector-points-to:hang-2-ppt"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: hang-2.ppt"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "reference-vs-craft-cfb/office-libreoffice/sd/qa/unit/data/ppt/pass/hang-2.ppt"
+metric = "new_accepts:Malformed MiniFAT (MiniFAT has # entries, but mini sector # points to #)"
+
+[[expected]]
+id = "reference-vs-craft-cfb:new-accepts-malformed-minifat-minifat-has-entries-but-mini-sector-points-to:hang-3-doc"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: hang-3.doc"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "reference-vs-craft-cfb/office-libreoffice/sw/qa/core/data/ww8/pass/hang-3.doc"
+metric = "new_accepts:Malformed MiniFAT (MiniFAT has # entries, but mini sector # points to #)"
+
+[[expected]]
+id = "reference-vs-craft-cfb:new-accepts-malformed-minifat-mini-sector-pointed-to-twice:hang-1-doc"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: hang-1.doc"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "reference-vs-craft-cfb/office-libreoffice/sw/qa/core/data/ww8/pass/hang-1.doc"
+metric = "new_accepts:Malformed MiniFAT (mini sector # pointed to twice)"
+
+[[expected]]
+id = "reference-vs-craft-cfb:new-accepts-the-difat-lists-fat-sectors-in-a-file-of-sectors:tdf166030-ppt"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: tdf166030.ppt"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "reference-vs-craft-cfb/office-libreoffice/sd/qa/unit/data/ppt/tdf166030.ppt"
+metric = "new_accepts:the DIFAT lists # FAT sectors in a file of # sectors"
+
+[[expected]]
+id = "reference-vs-craft-cfb:new-accepts-the-difat-lists-fat-sectors-in-a-file-of-sectors:encrypted-mso2010-abc-docx"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: Encrypted_MSO2010_abc.docx"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "reference-vs-craft-cfb/office-libreoffice/sw/qa/extras/ooxmlexport/data/Encrypted_MSO2010_abc.docx"
+metric = "new_accepts:the DIFAT lists # FAT sectors in a file of # sectors"
+
+[[expected]]
+id = "reference-vs-craft-cfb:new-accepts-the-difat-lists-fat-sectors-in-a-file-of-sectors:encrypted-mso2013-abc-docx"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: Encrypted_MSO2013_abc.docx"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "reference-vs-craft-cfb/office-libreoffice/sw/qa/extras/ooxmlexport/data/Encrypted_MSO2013_abc.docx"
+metric = "new_accepts:the DIFAT lists # FAT sectors in a file of # sectors"
+
+[[expected]]
+id = "reference-vs-craft-cfb:new-accepts-the-difat-lists-fat-sectors-in-a-file-of-sectors:encrypted-pptx-pptx"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: encrypted_pptx.pptx"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "reference-vs-craft-cfb/office-openxml-sdk/test/DocumentFormat.OpenXml.Tests.Assets/assets/TestFiles/encrypted_pptx.pptx"
+metric = "new_accepts:the DIFAT lists # FAT sectors in a file of # sectors"
+
+[[expected]]
+id = "reference-vs-craft-cfb:new-accepts-the-difat-lists-fat-sectors-in-a-file-of-sectors:bug53475-password-is-pass-docx"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: bug53475-password-is-pass.docx"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "reference-vs-craft-cfb/office-poi/document/bug53475-password-is-pass.docx"
+metric = "new_accepts:the DIFAT lists # FAT sectors in a file of # sectors"
+
+[[expected]]
+id = "reference-vs-craft-cfb.hostile:new-accepts-found-reference-to-sector-but-fat-has-only-entries"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "reference-vs-craft-cfb.hostile/**"
+metric = "new_accepts:Found reference to sector #, but FAT has only # entries"
+
+[[expected]]
+id = "reference-vs-craft-cfb.hostile:new-accepts-malformed-fat-fat-has-entries-but-file-has-only-sectors"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "reference-vs-craft-cfb.hostile/**"
+metric = "new_accepts:Malformed FAT (FAT has # entries, but file has only # sectors)"
+
+[[expected]]
+id = "reference-vs-craft-cfb.hostile:new-accepts-malformed-fat-sector-pointed-to-twice"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "reference-vs-craft-cfb.hostile/**"
+metric = "new_accepts:Malformed FAT (sector # pointed to twice)"
+
+[[expected]]
+id = "reference-vs-craft-cfb.hostile:new-accepts-malformed-minifat-minifat-has-entries-but-mini-sector-points-to"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "reference-vs-craft-cfb.hostile/**"
+metric = "new_accepts:Malformed MiniFAT (MiniFAT has # entries, but mini sector # points to #)"
+
+[[expected]]
+id = "reference-vs-craft-cfb.hostile:new-accepts-malformed-directory-left-sibling-index-is-but-directory-entry-count-is"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "reference-vs-craft-cfb.hostile/**"
+metric = "new_accepts:Malformed directory (left sibling index is #, but directory entry count is #)"
+
+[[expected]]
+id = "reference-vs-craft-cfb.hostile:new-accepts-malformed-directory-name-ordering-root-entry-vs-root-entry"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "reference-vs-craft-cfb.hostile/**"
+metric = "new_accepts:Malformed directory (name ordering, \"Root Entry\" vs \"Root Entry\")"
+
+[[expected]]
+id = "reference-vs-craft-cfb.hostile:new-accepts-malformed-directory-right-sibling-index-is-but-directory-entry-count-is"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "reference-vs-craft-cfb.hostile/**"
+metric = "new_accepts:Malformed directory (right sibling index is #, but directory entry count is #)"
+
+[[expected]]
+id = "reference-vs-craft-cfb.hostile:new-accepts-malformed-directory-root-stream-len-is-but-should-be-multiple-of"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "reference-vs-craft-cfb.hostile/**"
+metric = "new_accepts:Malformed directory (root stream len is #, but should be multiple of #)"
+
+[[expected]]
+id = "reference-vs-craft-cfb.hostile:new-accepts-malformed-directory-entry-invalid-color"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "reference-vs-craft-cfb.hostile/**"
+metric = "new_accepts:Malformed directory entry (invalid color: #)"
+
+[[expected]]
+id = "reference-vs-craft-cfb.hostile:new-accepts-malformed-directory-entry-name-length-too-large"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "reference-vs-craft-cfb.hostile/**"
+metric = "new_accepts:Malformed directory entry (name length too large: #)"
+
+[[expected]]
+id = "reference-vs-craft-cfb.hostile:new-accepts-malformed-directory-entry-odd-name-length"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "reference-vs-craft-cfb.hostile/**"
+metric = "new_accepts:Malformed directory entry (odd name length: #)"
+
+[[expected]]
+id = "reference-vs-craft-cfb.hostile:new-rejects-difat-chain-loops-or-ends-early"
+reason = "DIFAT chain revisits a sector or runs into a marker before its declared length."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "reference-vs-craft-cfb.hostile/**"
+metric = "new_rejects:DIFAT chain loops or ends early"
+
+[[expected]]
+id = "reference-vs-craft-cfb.hostile:new-rejects-fat-difat-count-exceeds-file"
+reason = "Declared FAT or DIFAT sector count is larger than the number of sectors in the file; bounds every allocation."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "reference-vs-craft-cfb.hostile/**"
+metric = "new_rejects:FAT/DIFAT count exceeds file"
+
+[[expected]]
+id = "reference-vs-craft-cfb.hostile:new-rejects-inconsistent-difat-chain-or-fat-count"
+reason = "The declared FAT sector count differs from the FAT sectors actually listed (header + DIFAT chain), or the DIFAT chain does not end with ENDOFCHAIN; the old readers ignored the count. Synthetic header edits only plus LibreOffice fuzz files (hang-*.ppt/doc) in the corpus."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "reference-vs-craft-cfb.hostile/**"
+metric = "new_rejects:inconsistent DIFAT chain or FAT count"
+
+[[expected]]
+id = "reference-vs-craft-cfb.hostile:new-rejects-invalid-fat-sector-marker"
+reason = "A FAT-list entry in the header/DIFAT is a reserved marker (>= 0xFFFFFFFA) rather than a sector number."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "reference-vs-craft-cfb.hostile/**"
+metric = "new_rejects:invalid FAT sector marker"
+
+[[expected]]
+id = "reference-vs-craft-cfb.hostile:new-rejects-invalid-directory-name-length"
+reason = "A reachable entry whose name length is 0, odd, over 64 bytes or not NUL-terminated; (the root and unreachable entries are not checked)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "reference-vs-craft-cfb.hostile/**"
+metric = "new_rejects:invalid directory name length"
+
+[[expected]]
+id = "reference-vs-craft-cfb.hostile:new-rejects-mini-fat-exceeds-file"
+reason = "Mini-FAT sector count larger than the file (or over 1 GiB)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "reference-vs-craft-cfb.hostile/**"
+metric = "new_rejects:mini FAT exceeds file"
+
+[[expected]]
+id = "reference-vs-craft-cfb.hostile:new-rejects-sector-missing-from-fat"
+reason = "A chain points past the end of the FAT."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "reference-vs-craft-cfb.hostile/**"
+metric = "new_rejects:sector missing from FAT"
+
+[[expected]]
+id = "reference-vs-craft-cfb.hostile:ref-err-craft-cfb-ok"
+reason = "Stream-level differences on mutated FAT / root-entry fields only (no corpus file). old_err_new_ok: a FAT entry broken in a part that no requested stream touches; craft-cfb reads lazily, the crates.io cfb crate (and gridcraft mini-FAT parse) validate the whole FAT up front. old_ok_new_err: the root entry size above 1 GiB (dir0-size-hi / dir0-size-huge: craft-cfb refuses a mini-stream container over its 1 GiB cap, the old readers clamp to it) and a self-referencing FAT entry (fatNN-self) that filmcraft's old reader stepped over and craft-cfb rejects as a loop."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; docs/verification/container-oracle.md"
+glob = "reference-vs-craft-cfb.hostile/**"
+metric = "ref_err_craft_cfb_ok"
+
+[[expected]]
+id = "reference-vs-craft-cfb.hostile:ref-ok-craft-cfb-err"
+reason = "Stream-level differences on mutated FAT / root-entry fields only (no corpus file). old_err_new_ok: a FAT entry broken in a part that no requested stream touches; craft-cfb reads lazily, the crates.io cfb crate (and gridcraft mini-FAT parse) validate the whole FAT up front. old_ok_new_err: the root entry size above 1 GiB (dir0-size-hi / dir0-size-huge: craft-cfb refuses a mini-stream container over its 1 GiB cap, the old readers clamp to it) and a self-referencing FAT entry (fatNN-self) that filmcraft's old reader stepped over and craft-cfb rejects as a loop."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; docs/verification/container-oracle.md"
+glob = "reference-vs-craft-cfb.hostile/**"
+metric = "ref_ok_craft_cfb_err"
+
+[[expected]]
+id = "vectorcraft-read:bytes:unicode-path-docx"
+reason = "unicode-path.docx carries Info-ZIP Unicode Path extra fields (0x7075) that swap the names of word/document.xml and zip-test-additional-file; the zip crate honours the field (APPNOTE 4.6.9) so the two entries answer to each other's names. The old reader used the header names. This is a POI test file built to exercise exactly that."
+evidence = "APPNOTE 6.3.10 section 4.6.9 (Info-ZIP Unicode Path Extra Field); docs/verification/container-oracle.md"
+glob = "vectorcraft-read/office-poi/document/unicode-path.docx"
+metric = "bytes"
+
+[[expected]]
+id = "vectorcraft-read:contains-old-err-new-ok:ofz4825-1-docx"
+reason = "ofz4825-1.docx (a fuzzer file) has a name with invalid UTF-8; the new reader decodes it as CP437 (APPNOTE: names without the UTF-8 flag are CP437) so it does not equal the old reader's lossy-UTF-8 name; the entry is damaged either way."
+evidence = "APPNOTE section 4.4.17.1; docs/verification/container-oracle.md"
+glob = "vectorcraft-read/office-libreoffice/sw/qa/core/data/ooxml/fail/ofz4825-1.docx"
+metric = "contains+old_err_new_ok"
+
+[[expected]]
+id = "vectorcraft-read:new-rejects-damaged:tdf131575-xlsx"
+reason = "Backslash entry names (tdf131575.xlsx): ZipGuard rejects a backslash in a name; the old reader listed them."
+evidence = "#184 (ZipGuard rejects backslash names; NameMode::NormalizeBackslash is the opt-in); research/VERIFICATION.md C31; docs/verification/container-oracle.md"
+glob = "vectorcraft-read/office-libreoffice/sc/qa/unit/data/xlsx/tdf131575.xlsx"
+metric = "new_rejects:Damaged"
+
+[[expected]]
+id = "vectorcraft-read:new-rejects-damaged:tdf76115-xlsx"
+reason = "Backslash entry names (tdf76115.xlsx): ZipGuard rejects a backslash in a name; the old reader listed them."
+evidence = "#184 (ZipGuard rejects backslash names; NameMode::NormalizeBackslash is the opt-in); research/VERIFICATION.md C31; docs/verification/container-oracle.md"
+glob = "vectorcraft-read/office-libreoffice/sc/qa/unit/data/xlsx/tdf76115.xlsx"
+metric = "new_rejects:Damaged"
+
+[[expected]]
+id = "vectorcraft-read:new-rejects-damaged:ofz9934-1-docx"
+reason = "Duplicate entry names (ofz9934-1.docx): ZipGuard rejects an archive whose names collide; the old reader returned the first."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md (\"Reading now rejects unsafe/duplicate names\")"
+glob = "vectorcraft-read/office-libreoffice/sw/qa/core/data/ooxml/fail/ofz9934-1.docx"
+metric = "new_rejects:Damaged"
+
+[[expected]]
+id = "vectorcraft-read:new-rejects-damaged:49609-xlsx"
+reason = "Backslash entry names (49609.xlsx): ZipGuard rejects a backslash in a name; the old reader listed them."
+evidence = "#184 (ZipGuard rejects backslash names; NameMode::NormalizeBackslash is the opt-in); research/VERIFICATION.md C31; docs/verification/container-oracle.md"
+glob = "vectorcraft-read/office-poi/spreadsheet/49609.xlsx"
+metric = "new_rejects:Damaged"
+
+[[expected]]
+id = "vectorcraft-read:new-rejects-damaged:duplicate-filename-xlsx"
+reason = "Duplicate entry names (duplicate-filename.xlsx): ZipGuard rejects an archive whose names collide; the old reader returned the first."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md (\"Reading now rejects unsafe/duplicate names\")"
+glob = "vectorcraft-read/office-poi/spreadsheet/duplicate-filename.xlsx"
+metric = "new_rejects:Damaged"
+
+[[expected]]
+id = "vectorcraft-read:old-err-new-ok:tdf82984-zip64xlsximport-xlsx"
+reason = "tdf82984_zip64XLSXImport.xlsx is a ZIP64 archive: the old reader refuses ZIP64 (saturated sizes and offsets), craft-archive reads it; every entry decodes with a valid CRC."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md (\"ZIP64 now available\")"
+glob = "vectorcraft-read/office-libreoffice/sc/qa/unit/data/xlsx/tdf82984_zip64XLSXImport.xlsx"
+metric = "old_err_new_ok"
+
+[[expected]]
+id = "vectorcraft-read-legacy-deflate:new-rejects-damaged:tdf131575-xlsx"
+reason = "Backslash entry names (tdf131575.xlsx): ZipGuard rejects a backslash in a name; the old reader listed them."
+evidence = "#184 (ZipGuard rejects backslash names; NameMode::NormalizeBackslash is the opt-in); research/VERIFICATION.md C31; docs/verification/container-oracle.md"
+glob = "vectorcraft-read-legacy-deflate/office-libreoffice/sc/qa/unit/data/xlsx/tdf131575.xlsx"
+metric = "new_rejects:Damaged"
+
+[[expected]]
+id = "vectorcraft-read-legacy-deflate:new-rejects-damaged:tdf76115-xlsx"
+reason = "Backslash entry names (tdf76115.xlsx): ZipGuard rejects a backslash in a name; the old reader listed them."
+evidence = "#184 (ZipGuard rejects backslash names; NameMode::NormalizeBackslash is the opt-in); research/VERIFICATION.md C31; docs/verification/container-oracle.md"
+glob = "vectorcraft-read-legacy-deflate/office-libreoffice/sc/qa/unit/data/xlsx/tdf76115.xlsx"
+metric = "new_rejects:Damaged"
+
+[[expected]]
+id = "vectorcraft-read-legacy-deflate:new-rejects-damaged:49609-xlsx"
+reason = "Backslash entry names (49609.xlsx): ZipGuard rejects a backslash in a name; the old reader listed them."
+evidence = "#184 (ZipGuard rejects backslash names; NameMode::NormalizeBackslash is the opt-in); research/VERIFICATION.md C31; docs/verification/container-oracle.md"
+glob = "vectorcraft-read-legacy-deflate/office-poi/spreadsheet/49609.xlsx"
+metric = "new_rejects:Damaged"
+
+[[expected]]
+id = "vectorcraft-read-legacy-deflate.hostile:new-rejects-damaged"
+reason = "ZipGuard validates every entry (names, duplicates, symlinks, declared sizes) when the archive is opened, and craft-archive checks structure the old reader never looked at; the old reader found an entry by name and failed only on the entry it read. Hostile inputs: unsafe/duplicate names (zip/name-*, duplicate-names) and header fields set to 0 / 0xFFFFFFFF / 0x7FFFFFF0 or flipped."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md; #184 (ZipGuard rejects backslash names; NameMode::NormalizeBackslash is the opt-in); research/VERIFICATION.md C31; docs/verification/container-oracle.md"
+glob = "vectorcraft-read-legacy-deflate.hostile/**"
+metric = "new_rejects:Damaged"
+
+[[expected]]
+id = "vectorcraft-read-legacy-store:new-rejects-damaged:tdf131575-xlsx"
+reason = "Backslash entry names (tdf131575.xlsx): ZipGuard rejects a backslash in a name; the old reader listed them."
+evidence = "#184 (ZipGuard rejects backslash names; NameMode::NormalizeBackslash is the opt-in); research/VERIFICATION.md C31; docs/verification/container-oracle.md"
+glob = "vectorcraft-read-legacy-store/office-libreoffice/sc/qa/unit/data/xlsx/tdf131575.xlsx"
+metric = "new_rejects:Damaged"
+
+[[expected]]
+id = "vectorcraft-read-legacy-store:new-rejects-damaged:tdf76115-xlsx"
+reason = "Backslash entry names (tdf76115.xlsx): ZipGuard rejects a backslash in a name; the old reader listed them."
+evidence = "#184 (ZipGuard rejects backslash names; NameMode::NormalizeBackslash is the opt-in); research/VERIFICATION.md C31; docs/verification/container-oracle.md"
+glob = "vectorcraft-read-legacy-store/office-libreoffice/sc/qa/unit/data/xlsx/tdf76115.xlsx"
+metric = "new_rejects:Damaged"
+
+[[expected]]
+id = "vectorcraft-read-legacy-store:new-rejects-damaged:49609-xlsx"
+reason = "Backslash entry names (49609.xlsx): ZipGuard rejects a backslash in a name; the old reader listed them."
+evidence = "#184 (ZipGuard rejects backslash names; NameMode::NormalizeBackslash is the opt-in); research/VERIFICATION.md C31; docs/verification/container-oracle.md"
+glob = "vectorcraft-read-legacy-store/office-poi/spreadsheet/49609.xlsx"
+metric = "new_rejects:Damaged"
+
+[[expected]]
+id = "vectorcraft-read-legacy-store.hostile:new-rejects-damaged"
+reason = "ZipGuard validates every entry (names, duplicates, symlinks, declared sizes) when the archive is opened, and craft-archive checks structure the old reader never looked at; the old reader found an entry by name and failed only on the entry it read. Hostile inputs: unsafe/duplicate names (zip/name-*, duplicate-names) and header fields set to 0 / 0xFFFFFFFF / 0x7FFFFFF0 or flipped."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md; #184 (ZipGuard rejects backslash names; NameMode::NormalizeBackslash is the opt-in); research/VERIFICATION.md C31; docs/verification/container-oracle.md"
+glob = "vectorcraft-read-legacy-store.hostile/**"
+metric = "new_rejects:Damaged"
+
+[[expected]]
+id = "vectorcraft-read.hostile:bytes-contains"
+reason = "A header byte corrupted by the sweep makes the readers disagree on a name (the zip crate decodes names per the UTF-8 flag / Unicode Path field / CP437; the old reader used lossy UTF-8) or on which bytes belong to it (central-directory offsets are authoritative in the new reader). Includes zip/eocd-comment-with-signature: an archive comment that contains an end-record signature is parsed by the zip crate from the LAST signature, so the real directory is not found. This one is a genuine parser differential, left open (see the doc, Open items)."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md; docs/verification/container-oracle.md"
+glob = "vectorcraft-read.hostile/**"
+metric = "bytes+contains"
+
+[[expected]]
+id = "vectorcraft-read.hostile:contains-old-err-new-ok"
+reason = "The new reader returns CRC-verified bytes where the old reader failed on a header detail it cross-checked (local-header sizes/name length, version/flag fields, extra-field lengths): craft-archive takes sizes and offsets from the central directory only."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md"
+glob = "vectorcraft-read.hostile/**"
+metric = "contains+old_err_new_ok"
+
+[[expected]]
+id = "vectorcraft-read.hostile:err-variant"
+reason = "Both readers reject but report a different class: the swap maps every zip-crate failure other than a few known ones to Damaged, where the old reader reported Method(name, id) for unsupported compression methods (zip/method-*) and TooLarge/Zip64 for some corrupted size fields. Diagnostics only."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md"
+glob = "vectorcraft-read.hostile/**"
+metric = "err_variant"
+
+[[expected]]
+id = "vectorcraft-read.hostile:new-accepts-damaged"
+reason = "The zip crate recovers where the old reader gave up: bytes before the first local header (zip/prefix-junk, self-extractor stubs), a zeroed central-directory offset (dir-offset-zero: the crate searches for the directory), saturated fields it does not need."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md"
+glob = "vectorcraft-read.hostile/**"
+metric = "new_accepts:Damaged"
+
+[[expected]]
+id = "vectorcraft-read.hostile:new-accepts-zip"
+reason = "The zip crate recovers where the old reader gave up: bytes before the first local header (zip/prefix-junk, self-extractor stubs), a zeroed central-directory offset (dir-offset-zero: the crate searches for the directory), saturated fields it does not need."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md"
+glob = "vectorcraft-read.hostile/**"
+metric = "new_accepts:Zip#"
+
+[[expected]]
+id = "vectorcraft-read.hostile:new-rejects-damaged"
+reason = "ZipGuard validates every entry (names, duplicates, symlinks, declared sizes) when the archive is opened, and craft-archive checks structure the old reader never looked at; the old reader found an entry by name and failed only on the entry it read. Hostile inputs: unsafe/duplicate names (zip/name-*, duplicate-names) and header fields set to 0 / 0xFFFFFFFF / 0x7FFFFFF0 or flipped."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md; #184 (ZipGuard rejects backslash names; NameMode::NormalizeBackslash is the opt-in); research/VERIFICATION.md C31; docs/verification/container-oracle.md"
+glob = "vectorcraft-read.hostile/**"
+metric = "new_rejects:Damaged"
+
+[[expected]]
+id = "vectorcraft-read.hostile:new-rejects-toolarge"
+reason = "ZipGuard checks the declared size of every entry against the limits at open time; header sweeps that set a size field to 0xFFFFFFFF / 0x7FFFFFF0 (and zip/zip64-sentinel-sizes) exceed the limit for an entry the old reader never read."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md"
+glob = "vectorcraft-read.hostile/**"
+metric = "new_rejects:TooLarge"
+
+[[expected]]
+id = "vectorcraft-read.hostile:old-err-new-ok"
+reason = "The new reader returns CRC-verified bytes where the old reader failed on a header detail it cross-checked (local-header sizes/name length, version/flag fields, extra-field lengths): craft-archive takes sizes and offsets from the central directory only."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md"
+glob = "vectorcraft-read.hostile/**"
+metric = "old_err_new_ok"
+
+[[expected]]
+id = "vectorcraft-write-deflate:new-rejects-invalid-zip-entry-name:tdf131575-xlsx"
+reason = "Entry names with backslashes (xl\\styles.xml, _rels\\.rels): ZipWriter treats a backslash as an unsafe name. tdf131575.xlsx"
+evidence = "#184 (ZipGuard rejects backslash names; NameMode::NormalizeBackslash is the opt-in); research/VERIFICATION.md C31; docs/verification/container-oracle.md"
+glob = "vectorcraft-write-deflate/office-libreoffice/sc/qa/unit/data/xlsx/tdf131575.xlsx"
+metric = "new_rejects:invalid ZIP entry name"
+
+[[expected]]
+id = "vectorcraft-write-deflate:new-rejects-invalid-zip-entry-name:tdf76115-xlsx"
+reason = "Entry names with backslashes (xl\\styles.xml, _rels\\.rels): ZipWriter treats a backslash as an unsafe name. tdf76115.xlsx"
+evidence = "#184 (ZipGuard rejects backslash names; NameMode::NormalizeBackslash is the opt-in); research/VERIFICATION.md C31; docs/verification/container-oracle.md"
+glob = "vectorcraft-write-deflate/office-libreoffice/sc/qa/unit/data/xlsx/tdf76115.xlsx"
+metric = "new_rejects:invalid ZIP entry name"
+
+[[expected]]
+id = "vectorcraft-write-deflate:new-rejects-invalid-zip-entry-name:49609-xlsx"
+reason = "Entry names with backslashes (xl\\styles.xml, _rels\\.rels): ZipWriter treats a backslash as an unsafe name. 49609.xlsx"
+evidence = "#184 (ZipGuard rejects backslash names; NameMode::NormalizeBackslash is the opt-in); research/VERIFICATION.md C31; docs/verification/container-oracle.md"
+glob = "vectorcraft-write-deflate/office-poi/spreadsheet/49609.xlsx"
+metric = "new_rejects:invalid ZIP entry name"
+
+[[expected]]
+id = "vectorcraft-write-deflate:utf8-flag"
+reason = "The old writers set general-purpose bit 11 (UTF-8 names) on every entry; craft-archive sets it only for non-ASCII names (APPNOTE 4.4.4: the bit says how non-ASCII bytes are encoded). Every other class (names, order, bytes, CRC, sizes, method, DOS time, attributes, versions) is equal, since the metric names only this one."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md; APPNOTE 6.3.10 section 4.4.4"
+glob = "vectorcraft-write-deflate/**"
+metric = "utf8_flag"
+
+[[expected]]
+id = "vectorcraft-write-deflate.hostile:new-rejects-invalid-zip-entry-name"
+reason = "craft-archive ZipWriter validates entry names (traversal, absolute, drive letters, backslashes, control characters, empty segments, duplicates, over-long names are refused); the old writers wrote any bytes. The hostile name cases (zip/name-*, duplicate-names, many-entries) are the inputs."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md; E184"
+glob = "vectorcraft-write-deflate.hostile/**"
+metric = "new_rejects:invalid ZIP entry name"
+
+[[expected]]
+id = "vectorcraft-write-deflate.hostile:utf8-flag"
+reason = "The old writers set general-purpose bit 11 (UTF-8 names) on every entry; craft-archive sets it only for non-ASCII names (APPNOTE 4.4.4: the bit says how non-ASCII bytes are encoded). Every other class (names, order, bytes, CRC, sizes, method, DOS time, attributes, versions) is equal, since the metric names only this one."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md; APPNOTE 6.3.10 section 4.4.4"
+glob = "vectorcraft-write-deflate.hostile/**"
+metric = "utf8_flag"
+
+[[expected]]
+id = "vectorcraft-write-store:new-rejects-invalid-zip-entry-name:tdf131575-xlsx"
+reason = "Entry names with backslashes (xl\\styles.xml, _rels\\.rels): ZipWriter treats a backslash as an unsafe name. tdf131575.xlsx"
+evidence = "#184 (ZipGuard rejects backslash names; NameMode::NormalizeBackslash is the opt-in); research/VERIFICATION.md C31; docs/verification/container-oracle.md"
+glob = "vectorcraft-write-store/office-libreoffice/sc/qa/unit/data/xlsx/tdf131575.xlsx"
+metric = "new_rejects:invalid ZIP entry name"
+
+[[expected]]
+id = "vectorcraft-write-store:new-rejects-invalid-zip-entry-name:tdf76115-xlsx"
+reason = "Entry names with backslashes (xl\\styles.xml, _rels\\.rels): ZipWriter treats a backslash as an unsafe name. tdf76115.xlsx"
+evidence = "#184 (ZipGuard rejects backslash names; NameMode::NormalizeBackslash is the opt-in); research/VERIFICATION.md C31; docs/verification/container-oracle.md"
+glob = "vectorcraft-write-store/office-libreoffice/sc/qa/unit/data/xlsx/tdf76115.xlsx"
+metric = "new_rejects:invalid ZIP entry name"
+
+[[expected]]
+id = "vectorcraft-write-store:new-rejects-invalid-zip-entry-name:49609-xlsx"
+reason = "Entry names with backslashes (xl\\styles.xml, _rels\\.rels): ZipWriter treats a backslash as an unsafe name. 49609.xlsx"
+evidence = "#184 (ZipGuard rejects backslash names; NameMode::NormalizeBackslash is the opt-in); research/VERIFICATION.md C31; docs/verification/container-oracle.md"
+glob = "vectorcraft-write-store/office-poi/spreadsheet/49609.xlsx"
+metric = "new_rejects:invalid ZIP entry name"
+
+[[expected]]
+id = "vectorcraft-write-store:utf8-flag"
+reason = "The old writers set general-purpose bit 11 (UTF-8 names) on every entry; craft-archive sets it only for non-ASCII names (APPNOTE 4.4.4: the bit says how non-ASCII bytes are encoded). Every other class (names, order, bytes, CRC, sizes, method, DOS time, attributes, versions) is equal, since the metric names only this one."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md; APPNOTE 6.3.10 section 4.4.4"
+glob = "vectorcraft-write-store/**"
+metric = "utf8_flag"
+
+[[expected]]
+id = "vectorcraft-write-store.hostile:new-rejects-invalid-zip-entry-name"
+reason = "craft-archive ZipWriter validates entry names (traversal, absolute, drive letters, backslashes, control characters, empty segments, duplicates, over-long names are refused); the old writers wrote any bytes. The hostile name cases (zip/name-*, duplicate-names, many-entries) are the inputs."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md; E184"
+glob = "vectorcraft-write-store.hostile/**"
+metric = "new_rejects:invalid ZIP entry name"
+
+[[expected]]
+id = "vectorcraft-write-store.hostile:utf8-flag"
+reason = "The old writers set general-purpose bit 11 (UTF-8 names) on every entry; craft-archive sets it only for non-ASCII names (APPNOTE 4.4.4: the bit says how non-ASCII bytes are encoded). Every other class (names, order, bytes, CRC, sizes, method, DOS time, attributes, versions) is equal, since the metric names only this one."
+evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md; APPNOTE 6.3.10 section 4.4.4"
+glob = "vectorcraft-write-store.hostile/**"
+metric = "utf8_flag"
+
+[[expected]]
+id = "wordcraft-sniff:sniff:encrypted-mso2010-abc-docx"
+reason = "Encrypted OOXML packages (Encrypted_MSO2010_abc.docx) list more FAT sectors than the old wordcraft size guard allowed (\"the DIFAT lists 3 FAT sectors in a file of 57 sectors\"), so the old is_encrypted answered false for real encrypted files; craft-cfb (the FAT-list bound was relaxed in this change, red test a_fat_list_longer_than_the_file_strictly_needs_is_accepted) answers true."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; docs/verification/container-oracle.md"
+glob = "wordcraft-sniff/office-libreoffice/sw/qa/extras/ooxmlexport/data/Encrypted_MSO2010_abc.docx"
+metric = "sniff"
+
+[[expected]]
+id = "wordcraft-sniff:sniff:encrypted-mso2013-abc-docx"
+reason = "Encrypted OOXML packages (Encrypted_MSO2013_abc.docx) list more FAT sectors than the old wordcraft size guard allowed (\"the DIFAT lists 3 FAT sectors in a file of 57 sectors\"), so the old is_encrypted answered false for real encrypted files; craft-cfb (the FAT-list bound was relaxed in this change, red test a_fat_list_longer_than_the_file_strictly_needs_is_accepted) answers true."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; docs/verification/container-oracle.md"
+glob = "wordcraft-sniff/office-libreoffice/sw/qa/extras/ooxmlexport/data/Encrypted_MSO2013_abc.docx"
+metric = "sniff"
+
+[[expected]]
+id = "wordcraft-sniff:sniff:encrypted-pptx-pptx"
+reason = "Encrypted OOXML packages (encrypted_pptx.pptx) list more FAT sectors than the old wordcraft size guard allowed (\"the DIFAT lists 3 FAT sectors in a file of 57 sectors\"), so the old is_encrypted answered false for real encrypted files; craft-cfb (the FAT-list bound was relaxed in this change, red test a_fat_list_longer_than_the_file_strictly_needs_is_accepted) answers true."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; docs/verification/container-oracle.md"
+glob = "wordcraft-sniff/office-openxml-sdk/test/DocumentFormat.OpenXml.Tests.Assets/assets/TestFiles/encrypted_pptx.pptx"
+metric = "sniff"
+
+[[expected]]
+id = "wordcraft-sniff:sniff:bug53475-password-is-pass-docx"
+reason = "Encrypted OOXML packages (bug53475-password-is-pass.docx) list more FAT sectors than the old wordcraft size guard allowed (\"the DIFAT lists 3 FAT sectors in a file of 57 sectors\"), so the old is_encrypted answered false for real encrypted files; craft-cfb (the FAT-list bound was relaxed in this change, red test a_fat_list_longer_than_the_file_strictly_needs_is_accepted) answers true."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; docs/verification/container-oracle.md"
+glob = "wordcraft-sniff/office-poi/document/bug53475-password-is-pass.docx"
+metric = "sniff"
+
+[[expected]]
+id = "wordcraft-sniff.hostile:sniff"
+reason = "Mutated headers/FAT/directory: the two sides decide the sniff with different strictness (the old readers' lenient or fallback-scanned structure against craft-cfb's strict open followed by the same UTF-16 marker scan), so a damaged file can flip either way; see the new_rejects classes. No corpus file differs."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md"
+glob = "wordcraft-sniff.hostile/**"
+metric = "sniff"
+
+[[expected]]
+id = "wordcraft-streams:new-accepts-malformed-fat-fat-has-entries-but-file-has-only-sectors:ofz21531-1-ppt"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: ofz21531-1.ppt"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "wordcraft-streams/office-libreoffice/sd/qa/unit/data/ppt/pass/ofz21531-1.ppt"
+metric = "new_accepts:Malformed FAT (FAT has # entries, but file has only # sectors)"
+
+[[expected]]
+id = "wordcraft-streams:new-accepts-malformed-fat-fat-has-entries-but-file-has-only-sectors:hang-1-doc"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: hang-1.doc"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "wordcraft-streams/office-libreoffice/sw/qa/core/data/ww6/pass/hang-1.doc"
+metric = "new_accepts:Malformed FAT (FAT has # entries, but file has only # sectors)"
+
+[[expected]]
+id = "wordcraft-streams:new-accepts-malformed-fat-fat-has-entries-but-file-has-only-sectors:hang-2-doc"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: hang-2.doc"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "wordcraft-streams/office-libreoffice/sw/qa/core/data/ww8/fail/hang-2.doc"
+metric = "new_accepts:Malformed FAT (FAT has # entries, but file has only # sectors)"
+
+[[expected]]
+id = "wordcraft-streams:new-accepts-malformed-fat-fat-has-entries-but-file-has-only-sectors:hang-4-doc"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: hang-4.doc"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "wordcraft-streams/office-libreoffice/sw/qa/core/data/ww8/pass/hang-4.doc"
+metric = "new_accepts:Malformed FAT (FAT has # entries, but file has only # sectors)"
+
+[[expected]]
+id = "wordcraft-streams:new-accepts-malformed-fat-fat-has-entries-but-file-has-only-sectors:forcepoint92-doc"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: forcepoint92.doc"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "wordcraft-streams/office-libreoffice/sw/qa/extras/layout/data/forcepoint92.doc"
+metric = "new_accepts:Malformed FAT (FAT has # entries, but file has only # sectors)"
+
+[[expected]]
+id = "wordcraft-streams:new-accepts-malformed-fat-fat-has-entries-but-file-has-only-sectors:47950-lower-doc"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: 47950_lower.doc"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "wordcraft-streams/office-poi/document/47950_lower.doc"
+metric = "new_accepts:Malformed FAT (FAT has # entries, but file has only # sectors)"
+
+[[expected]]
+id = "wordcraft-streams:new-accepts-malformed-fat-fat-has-entries-but-file-has-only-sectors:47950-normal-doc"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: 47950_normal.doc"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "wordcraft-streams/office-poi/document/47950_normal.doc"
+metric = "new_accepts:Malformed FAT (FAT has # entries, but file has only # sectors)"
+
+[[expected]]
+id = "wordcraft-streams:new-accepts-malformed-fat-fat-has-entries-but-file-has-only-sectors:47950-upper-doc"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: 47950_upper.doc"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "wordcraft-streams/office-poi/document/47950_upper.doc"
+metric = "new_accepts:Malformed FAT (FAT has # entries, but file has only # sectors)"
+
+[[expected]]
+id = "wordcraft-streams:new-accepts-malformed-fat-sector-pointed-to-twice:forcepoint50-grfanchor-1-doc"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: forcepoint50-grfanchor-1.doc"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "wordcraft-streams/office-libreoffice/sw/qa/core/data/ww8/pass/forcepoint50-grfanchor-1.doc"
+metric = "new_accepts:Malformed FAT (sector # pointed to twice)"
+
+[[expected]]
+id = "wordcraft-streams:new-accepts-malformed-minifat-minifat-has-entries-but-mini-sector-points-to:hang-12-ppt"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: hang-12.ppt"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "wordcraft-streams/office-libreoffice/sd/qa/unit/data/ppt/pass/hang-12.ppt"
+metric = "new_accepts:Malformed MiniFAT (MiniFAT has # entries, but mini sector # points to #)"
+
+[[expected]]
+id = "wordcraft-streams:new-accepts-malformed-minifat-minifat-has-entries-but-mini-sector-points-to:hang-14-ppt"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: hang-14.ppt"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "wordcraft-streams/office-libreoffice/sd/qa/unit/data/ppt/pass/hang-14.ppt"
+metric = "new_accepts:Malformed MiniFAT (MiniFAT has # entries, but mini sector # points to #)"
+
+[[expected]]
+id = "wordcraft-streams:new-accepts-malformed-minifat-minifat-has-entries-but-mini-sector-points-to:hang-2-ppt"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: hang-2.ppt"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "wordcraft-streams/office-libreoffice/sd/qa/unit/data/ppt/pass/hang-2.ppt"
+metric = "new_accepts:Malformed MiniFAT (MiniFAT has # entries, but mini sector # points to #)"
+
+[[expected]]
+id = "wordcraft-streams:new-accepts-malformed-minifat-minifat-has-entries-but-mini-sector-points-to:hang-3-doc"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: hang-3.doc"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "wordcraft-streams/office-libreoffice/sw/qa/core/data/ww8/pass/hang-3.doc"
+metric = "new_accepts:Malformed MiniFAT (MiniFAT has # entries, but mini sector # points to #)"
+
+[[expected]]
+id = "wordcraft-streams:new-accepts-malformed-minifat-mini-sector-pointed-to-twice:hang-1-doc"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: hang-1.doc"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "wordcraft-streams/office-libreoffice/sw/qa/core/data/ww8/pass/hang-1.doc"
+metric = "new_accepts:Malformed MiniFAT (mini sector # pointed to twice)"
+
+[[expected]]
+id = "wordcraft-streams:new-accepts-the-difat-lists-fat-sectors-in-a-file-of-sectors:tdf166030-ppt"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: tdf166030.ppt"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "wordcraft-streams/office-libreoffice/sd/qa/unit/data/ppt/tdf166030.ppt"
+metric = "new_accepts:the DIFAT lists # FAT sectors in a file of # sectors"
+
+[[expected]]
+id = "wordcraft-streams:new-accepts-the-difat-lists-fat-sectors-in-a-file-of-sectors:encrypted-mso2010-abc-docx"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: Encrypted_MSO2010_abc.docx"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "wordcraft-streams/office-libreoffice/sw/qa/extras/ooxmlexport/data/Encrypted_MSO2010_abc.docx"
+metric = "new_accepts:the DIFAT lists # FAT sectors in a file of # sectors"
+
+[[expected]]
+id = "wordcraft-streams:new-accepts-the-difat-lists-fat-sectors-in-a-file-of-sectors:encrypted-mso2013-abc-docx"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: Encrypted_MSO2013_abc.docx"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "wordcraft-streams/office-libreoffice/sw/qa/extras/ooxmlexport/data/Encrypted_MSO2013_abc.docx"
+metric = "new_accepts:the DIFAT lists # FAT sectors in a file of # sectors"
+
+[[expected]]
+id = "wordcraft-streams:new-accepts-the-difat-lists-fat-sectors-in-a-file-of-sectors:encrypted-pptx-pptx"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: encrypted_pptx.pptx"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "wordcraft-streams/office-openxml-sdk/test/DocumentFormat.OpenXml.Tests.Assets/assets/TestFiles/encrypted_pptx.pptx"
+metric = "new_accepts:the DIFAT lists # FAT sectors in a file of # sectors"
+
+[[expected]]
+id = "wordcraft-streams:new-accepts-the-difat-lists-fat-sectors-in-a-file-of-sectors:bug53475-password-is-pass-docx"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too). Corpus: bug53475-password-is-pass.docx"
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "wordcraft-streams/office-poi/document/bug53475-password-is-pass.docx"
+metric = "new_accepts:the DIFAT lists # FAT sectors in a file of # sectors"
+
+[[expected]]
+id = "wordcraft-streams.hostile:new-accepts-found-reference-to-sector-but-fat-has-only-entries"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "wordcraft-streams.hostile/**"
+metric = "new_accepts:Found reference to sector #, but FAT has only # entries"
+
+[[expected]]
+id = "wordcraft-streams.hostile:new-accepts-malformed-fat-fat-has-entries-but-file-has-only-sectors"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "wordcraft-streams.hostile/**"
+metric = "new_accepts:Malformed FAT (FAT has # entries, but file has only # sectors)"
+
+[[expected]]
+id = "wordcraft-streams.hostile:new-accepts-malformed-fat-sector-pointed-to-twice"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "wordcraft-streams.hostile/**"
+metric = "new_accepts:Malformed FAT (sector # pointed to twice)"
+
+[[expected]]
+id = "wordcraft-streams.hostile:new-accepts-malformed-minifat-minifat-has-entries-but-mini-sector-points-to"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "wordcraft-streams.hostile/**"
+metric = "new_accepts:Malformed MiniFAT (MiniFAT has # entries, but mini sector # points to #)"
+
+[[expected]]
+id = "wordcraft-streams.hostile:new-accepts-malformed-directory-left-sibling-index-is-but-directory-entry-count-is"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "wordcraft-streams.hostile/**"
+metric = "new_accepts:Malformed directory (left sibling index is #, but directory entry count is #)"
+
+[[expected]]
+id = "wordcraft-streams.hostile:new-accepts-malformed-directory-name-ordering-root-entry-vs-root-entry"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "wordcraft-streams.hostile/**"
+metric = "new_accepts:Malformed directory (name ordering, \"Root Entry\" vs \"Root Entry\")"
+
+[[expected]]
+id = "wordcraft-streams.hostile:new-accepts-malformed-directory-right-sibling-index-is-but-directory-entry-count-is"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "wordcraft-streams.hostile/**"
+metric = "new_accepts:Malformed directory (right sibling index is #, but directory entry count is #)"
+
+[[expected]]
+id = "wordcraft-streams.hostile:new-accepts-malformed-directory-root-stream-len-is-but-should-be-multiple-of"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "wordcraft-streams.hostile/**"
+metric = "new_accepts:Malformed directory (root stream len is #, but should be multiple of #)"
+
+[[expected]]
+id = "wordcraft-streams.hostile:new-accepts-malformed-directory-entry-invalid-color"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "wordcraft-streams.hostile/**"
+metric = "new_accepts:Malformed directory entry (invalid color: #)"
+
+[[expected]]
+id = "wordcraft-streams.hostile:new-accepts-malformed-directory-entry-name-length-too-large"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "wordcraft-streams.hostile/**"
+metric = "new_accepts:Malformed directory entry (name length too large: #)"
+
+[[expected]]
+id = "wordcraft-streams.hostile:new-accepts-malformed-directory-entry-odd-name-length"
+reason = "craft-cfb reads lazily and tolerates damage that no requested stream touches (a damaged mini-FAT chain until a mini stream is read; FAT entries beyond the used part; a short final sector of a stream) and does not apply the crates.io `cfb` crate's or wordcraft's up-front FAT/DIFAT guards, which refuse files gridcraft and filmcraft read; for the corpus files below gridcraft-streams and filmcraft-tree agree with craft-cfb (their old readers accept them too)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; crates/cfb/tests/containers.rs (short-tail tests); docs/verification/container-oracle.md"
+glob = "wordcraft-streams.hostile/**"
+metric = "new_accepts:Malformed directory entry (odd name length: #)"
+
+[[expected]]
+id = "wordcraft-streams.hostile:new-rejects-difat-chain-loops-or-ends-early"
+reason = "DIFAT chain revisits a sector or runs into a marker before its declared length."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "wordcraft-streams.hostile/**"
+metric = "new_rejects:DIFAT chain loops or ends early"
+
+[[expected]]
+id = "wordcraft-streams.hostile:new-rejects-fat-difat-count-exceeds-file"
+reason = "Declared FAT or DIFAT sector count is larger than the number of sectors in the file; bounds every allocation."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "wordcraft-streams.hostile/**"
+metric = "new_rejects:FAT/DIFAT count exceeds file"
+
+[[expected]]
+id = "wordcraft-streams.hostile:new-rejects-inconsistent-difat-chain-or-fat-count"
+reason = "The declared FAT sector count differs from the FAT sectors actually listed (header + DIFAT chain), or the DIFAT chain does not end with ENDOFCHAIN; the old readers ignored the count. Synthetic header edits only plus LibreOffice fuzz files (hang-*.ppt/doc) in the corpus."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "wordcraft-streams.hostile/**"
+metric = "new_rejects:inconsistent DIFAT chain or FAT count"
+
+[[expected]]
+id = "wordcraft-streams.hostile:new-rejects-invalid-fat-sector-marker"
+reason = "A FAT-list entry in the header/DIFAT is a reserved marker (>= 0xFFFFFFFA) rather than a sector number."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "wordcraft-streams.hostile/**"
+metric = "new_rejects:invalid FAT sector marker"
+
+[[expected]]
+id = "wordcraft-streams.hostile:new-rejects-invalid-directory-name-length"
+reason = "A reachable entry whose name length is 0, odd, over 64 bytes or not NUL-terminated; (the root and unreachable entries are not checked)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "wordcraft-streams.hostile/**"
+metric = "new_rejects:invalid directory name length"
+
+[[expected]]
+id = "wordcraft-streams.hostile:new-rejects-mini-fat-exceeds-file"
+reason = "Mini-FAT sector count larger than the file (or over 1 GiB)."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "wordcraft-streams.hostile/**"
+metric = "new_rejects:mini FAT exceeds file"
+
+[[expected]]
+id = "wordcraft-streams.hostile:new-rejects-sector-missing-from-fat"
+reason = "A chain points past the end of the FAT."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; [MS-CFB] (Microsoft Open Specification) section 2.2 / 2.3 / 2.6; crates/cfb/tests/containers.rs hostile_sector_and_directory_inputs_are_rejected"
+glob = "wordcraft-streams.hostile/**"
+metric = "new_rejects:sector missing from FAT"
+
+[[expected]]
+id = "wordcraft-streams.hostile:old-err-new-ok"
+reason = "Stream-level differences on mutated FAT / root-entry fields only (no corpus file). old_err_new_ok: a FAT entry broken in a part that no requested stream touches; craft-cfb reads lazily, the crates.io cfb crate (and gridcraft mini-FAT parse) validate the whole FAT up front. old_ok_new_err: the root entry size above 1 GiB (dir0-size-hi / dir0-size-huge: craft-cfb refuses a mini-stream container over its 1 GiB cap, the old readers clamp to it) and a self-referencing FAT entry (fatNN-self) that filmcraft's old reader stepped over and craft-cfb rejects as a loop."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; docs/verification/container-oracle.md"
+glob = "wordcraft-streams.hostile/**"
+metric = "old_err_new_ok"
+
+[[expected]]
+id = "wordcraft-streams.hostile:old-ok-new-err"
+reason = "Stream-level differences on mutated FAT / root-entry fields only (no corpus file). old_err_new_ok: a FAT entry broken in a part that no requested stream touches; craft-cfb reads lazily, the crates.io cfb crate (and gridcraft mini-FAT parse) validate the whole FAT up front. old_ok_new_err: the root entry size above 1 GiB (dir0-size-hi / dir0-size-huge: craft-cfb refuses a mini-stream container over its 1 GiB cap, the old readers clamp to it) and a self-referencing FAT entry (fatNN-self) that filmcraft's old reader stepped over and craft-cfb rejects as a loop."
+evidence = "#123 consumer comments (gridcraft/deckcraft/filmcraft/wordcraft swaps), crates/cfb/tests/containers.rs; docs/verification/container-oracle.md; docs/verification/container-oracle.md"
+glob = "wordcraft-streams.hostile/**"
+metric = "old_ok_new_err"

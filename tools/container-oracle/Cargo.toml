@@ -1,0 +1,36 @@
+[package]
+name = "container-oracle"
+version = "0.0.0"
+edition = "2024"
+publish = false
+description = "Old-vs-new differential for the craft-archive zip swap (#120) and the craft-cfb swap (#123) over the Office corpus and hostile synthetic inputs; see docs/verification/container-oracle.md"
+
+# Its own workspace: the pre-swap crates it links (filmcraft-cfb at two revisions, the crates.io
+# `cfb`, two `zip` majors) must not leak into the main craft-libs lockfile.
+[workspace]
+
+[dependencies]
+craft-archive = { path = "../../crates/archive" }
+craft-cfb = { path = "../../crates/cfb" }
+craft-oracle = { path = "../../crates/oracle" }
+craft-compare = { path = "../../crates/compare" }
+craft-corpus = { path = "../../crates/corpus" }
+# craft-doc (#120): the old side is the crate one commit before its zip swap, the new side is the
+# workspace crate; both are only reachable through the public `info`/`outline`/`renditions` API.
+craft-doc = { path = "../../crates/doc" }
+craft_doc_old = { package = "craft-doc", git = "https://github.com/cloudbring/craft-libs", rev = "77d3e6039224e2ae017701cb7051ab7abb1ee9a2" }
+# `zip` 9 is what craft-archive uses (and what the vectorcraft swap branch names in its error
+# mapping); `zip_ref` (3.x) is the independent reference reader that never shares code with it.
+zip = { version = "9", default-features = false, features = ["deflate"] }
+zip_ref = { package = "zip", version = "3", default-features = false, features = ["deflate"] }
+flate2 = "1"
+# The reference reader for compound files and wordcraft's pre-swap reader (`cfb = "0.15"`).
+cfb_ref = { package = "cfb", version = "0.15" }
+# filmcraft's public `cfb` crate before the swap and on the swap branch. The swap branch takes
+# `craft-cfb` from cloudbring/craft-libs; the [patch] below points that at this checkout.
+filmcraft_cfb_old = { package = "filmcraft-cfb", git = "https://github.com/storytold/filmcraft", rev = "eb59ec09daaea519c9c8fffa404a594ae50d00e0" }
+filmcraft_cfb_new = { package = "filmcraft-cfb", git = "https://github.com/cloudbring/filmcraft", rev = "40274e630ac76764daf690945e57b62731c3e00a" }
+serde_json = "1"
+
+[patch."https://github.com/cloudbring/craft-libs"]
+craft-cfb = { path = "../../crates/cfb" }
