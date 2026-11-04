@@ -1,0 +1,32 @@
+import CraftSRGB
+
+#print axioms CraftSRGB.decode_monotoneOn
+#print axioms CraftSRGB.decode_mapsTo
+#print axioms CraftSRGB.decode_image
+#print axioms CraftSRGB.decode_not_surjective
+#print axioms CraftSRGB.decode_zero
+#print axioms CraftSRGB.decode_one
+#print axioms CraftSRGB.encode_zero
+#print axioms CraftSRGB.encode_one
+#print axioms CraftSRGB.encode_monotoneOn_toe
+#print axioms CraftSRGB.encode_strictMonoOn_power
+#print axioms CraftSRGB.encode_almost_monotone
+#print axioms CraftSRGB.encode_not_monotone
+#print axioms CraftSRGB.encode_mapsTo
+#print axioms CraftSRGB.encode_image
+#print axioms CraftSRGB.encode_decode_toe
+#print axioms CraftSRGB.encode_decode_power
+#print axioms CraftSRGB.encode_decode_gap
+#print axioms CraftSRGB.decode_encode_toe
+#print axioms CraftSRGB.decode_encode_power
+#print axioms CraftSRGB.decode_encode_gap
+#print axioms CraftSRGB.eight_bit_roundtrip
+#print axioms CraftSRGB.Lval_lt_Rval
+#print axioms CraftSRGB.er_kneeB_lt_kval
+#print axioms CraftSRGB.decode_jump_bounds
+#print axioms CraftSRGB.encode_dip_bounds
+#print axioms CraftSRGB.edBound_bounds
+#print axioms CraftSRGB.deBound_bounds
+#print axioms CraftSRGB.roundtrip_error_at_knee
+#print axioms CraftSRGB.decodeOK_sound
+#print axioms CraftSRGB.rootOK_sound
