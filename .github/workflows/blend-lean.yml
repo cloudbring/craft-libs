@@ -1,0 +1,38 @@
+name: Blend Lean
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['crates/blend/**', '.github/workflows/blend-lean.yml']
+  pull_request:
+    paths: ['crates/blend/**', '.github/workflows/blend-lean.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  lean:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: crates/blend/lean
+    steps:
+      - uses: actions/checkout@v7
+      - name: Read pinned toolchain
+        id: toolchain
+        run: echo "name=$(tr -d '[:space:]' < lean-toolchain)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.elan
+            crates/blend/lean/.lake
+          key: lean-${{ runner.os }}-${{ hashFiles('crates/blend/lean/lean-toolchain', 'crates/blend/lean/lake-manifest.json') }}
+      - name: Install elan with the pinned toolchain
+        run: |
+          curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf \
+            | sh -s -- -y --default-toolchain "${{ steps.toolchain.outputs.name }}"
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - name: Build, audit axioms, and compare vectors
+        run: ./check.sh

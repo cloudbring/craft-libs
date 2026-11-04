@@ -118,6 +118,9 @@ the pinned Mathlib proof terms and dependency artifacts. No project axioms,
 proof build checks the development; cached Mathlib dependencies are trusted as
 the pinned toolchain's published artifacts, not independently rebuilt proofs.
 
-Cargo-only per-crate CI does **not** run Lean yet. A passing CI run alone cannot
-establish that a modified CSV was actually generated from the Lean sources.
-Run the regeneration/check procedure before accepting any proof or vector change.
+The `Blend Lean` workflow (`.github/workflows/blend-lean.yml`) runs
+`crates/blend/lean/check.sh` in CI: it builds the proofs, fails on `sorryAx` or any
+axiom beyond `propext`, `Classical.choice` and `Quot.sound`, regenerates the vectors
+with `Generate.lean`, and `cmp`s them byte-for-byte against `tests/vectors/lean.csv`.
+A CSV edited by hand therefore fails CI. The Cargo `Blend` workflow still only reads
+the committed CSV. Cached Mathlib artifacts remain trusted, as described above.
