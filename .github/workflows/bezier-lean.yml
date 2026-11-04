@@ -1,0 +1,38 @@
+name: Bezier Lean
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['lean/bezier/**', 'lean/bezier/tests/vectors/**', '.github/workflows/bezier-lean.yml']
+  pull_request:
+    paths: ['lean/bezier/**', 'lean/bezier/tests/vectors/**', '.github/workflows/bezier-lean.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  lean:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: lean/bezier
+    steps:
+      - uses: actions/checkout@v7
+      - name: Read pinned toolchain
+        id: toolchain
+        run: echo "name=$(tr -d '[:space:]' < lean-toolchain)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.elan
+            lean/bezier/.lake
+          key: lean-${{ runner.os }}-${{ hashFiles('lean/bezier/lean-toolchain', 'lean/bezier/lake-manifest.json') }}
+      - name: Install elan with the pinned toolchain
+        run: |
+          curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf \
+            | sh -s -- -y --default-toolchain "${{ steps.toolchain.outputs.name }}"
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - name: Build, audit axioms, and compare vectors
+        run: ./check.sh
