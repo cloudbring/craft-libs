@@ -284,8 +284,16 @@ impl Layout {
     /// Whether a press runs `binding` on `platform`: one of its [`candidates`](Self::candidates)
     /// is the binding.
     pub fn matches(&self, binding: &Chord, input: &KeyInput, platform: Platform) -> bool {
+        self.match_rank(binding, input, platform).is_some()
+    }
+
+    /// Where `binding` stands among the press's [`candidates`](Self::candidates): `Some(0)` for
+    /// the chord the press means, larger for a looser stand-in, `None` when it does not match.
+    /// A caller that tests several bindings against one press keeps only the lowest rank (see
+    /// `egui::best_matches`), so a stand-in never shadows a more specific binding.
+    pub fn match_rank(&self, binding: &Chord, input: &KeyInput, platform: Platform) -> Option<usize> {
         let want = binding.effective(platform);
-        self.candidates(input).iter().any(|c| c.effective(platform) == want)
+        self.candidates(input).iter().position(|c| c.effective(platform) == want)
     }
 
     /// Rule 6: the layout's character for the punctuation key `key`, when pressing that position

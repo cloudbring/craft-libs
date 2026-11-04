@@ -129,6 +129,31 @@ pub fn matches(binding: &Chord, key: EguiKey, mods: &Modifiers, platform: Platfo
     Layout::new().matches(binding, &KeyInput::new(Mods::from_egui(mods, platform)).with_typed(pressed), platform)
 }
 
+/// How loosely a key press matches `binding`: `Some(0)` for the chord the press means, larger for
+/// a stand-in (`Shift+=` for the `+` egui reports, then `=`), `None` for no match. Compare ranks
+/// across the bindings a press could run; [`best_matches`] does it.
+pub fn match_rank(binding: &Chord, key: EguiKey, mods: &Modifiers, platform: Platform) -> Option<usize> {
+    let pressed = Key::from_egui(key)?;
+    Layout::new().match_rank(binding, &KeyInput::new(Mods::from_egui(mods, platform)).with_typed(pressed), platform)
+}
+
+/// The items whose chord matches the press as tightly as any item's does. [`matches`] alone is
+/// tolerant, so a binding on `=` also matches the `Shift+=` press that a binding on `Shift+=`
+/// names exactly; filtering with `matches` lets the `=` binding shadow it when its scope is
+/// narrower. Choose the command from these items instead: a stand-in binding takes part only when
+/// no more exact binding matches. Order is kept.
+pub fn best_matches<T>(
+    items: impl IntoIterator<Item = T>,
+    chord_of: impl Fn(&T) -> &Chord,
+    key: EguiKey,
+    mods: &Modifiers,
+    platform: Platform,
+) -> Vec<T> {
+    let ranked: Vec<(usize, T)> = items.into_iter().filter_map(|item| Some((match_rank(chord_of(&item), key, mods, platform)?, item))).collect();
+    let Some(best) = ranked.iter().map(|(rank, _)| *rank).min() else { return Vec::new() };
+    ranked.into_iter().filter(|(rank, _)| *rank == best).map(|(_, item)| item).collect()
+}
+
 pub use crate::editor::DOUBLE_PRESS;
 
 fn claims(keymap: &Keymap, chord: &Chord, active: &Active) -> bool {
@@ -623,6 +648,50 @@ pub(crate) fn clipboard_chord(event: &Event, held: Mods) -> (Key, Mods, Clip) {
 mod tests {
     use super::*;
     use crate::{Bindable, Binding, Scope, Scopes};
+
+    fn chord(s: &str) -> Chord {
+        Chord::parse(s).unwrap()
+    }
+
+    const SHIFT: Modifiers = Modifiers { shift: true, ..Modifiers::NONE };
+
+    #[test]
+    fn shift_equals_press_ranks_exact_shift_binding_above_symbol_stand_ins() {
+        // egui reports Shift+= as Shift+Plus.
+        let rank = |b: &str| match_rank(&chord(b), EguiKey::Plus, &SHIFT, Platform::Windows);
+        assert_eq!(rank("+"), Some(0));
+        assert_eq!(rank("Shift+="), Some(1));
+        assert_eq!(rank("="), Some(2));
+        assert_eq!(rank("Shift+-"), None);
+        // Still tolerant: all three match.
+        for b in ["+", "Shift+=", "="] {
+            assert!(matches(&chord(b), EguiKey::Plus, &SHIFT, Platform::Windows), "{b}");
+        }
+    }
+
+    #[test]
+    fn best_matches_keeps_exact_shift_binding_over_equals_binding() {
+        let items = [(chord("="), "zoomIn"), (chord("Shift+="), "blendMode"), (chord("Shift+-"), "other")];
+        let got = best_matches(items, |i| &i.0, EguiKey::Plus, &SHIFT, Platform::Windows);
+        assert_eq!(got.iter().map(|i| i.1).collect::<Vec<_>>(), ["blendMode"]);
+    }
+
+    #[test]
+    fn best_matches_falls_back_to_the_stand_in_when_no_exact_binding_exists() {
+        let items = [(chord("="), "zoomIn"), (chord("Shift+-"), "other")];
+        let got = best_matches(items, |i| &i.0, EguiKey::Plus, &SHIFT, Platform::Windows);
+        assert_eq!(got.iter().map(|i| i.1).collect::<Vec<_>>(), ["zoomIn"]);
+        // Bare `+` still reaches the `=` binding.
+        let got = best_matches(items, |i| &i.0, EguiKey::Plus, &Modifiers::NONE, Platform::Windows);
+        assert_eq!(got.iter().map(|i| i.1).collect::<Vec<_>>(), ["zoomIn"]);
+    }
+
+    #[test]
+    fn best_matches_keeps_ties_in_order() {
+        let items = [(chord("Shift+="), "a"), (chord("Shift+="), "b")];
+        let got = best_matches(items, |i| &i.0, EguiKey::Plus, &SHIFT, Platform::Windows);
+        assert_eq!(got.iter().map(|i| i.1).collect::<Vec<_>>(), ["a", "b"]);
+    }
 
     #[test]
     fn web_keypad_text_before_key_consumes_both_only_when_accepted() {
