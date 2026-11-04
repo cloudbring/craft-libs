@@ -14,6 +14,15 @@ workspace = true
 default = []
 # `write_diff_png`: render an amplified per-pixel difference as a PNG.
 png = ["dep:png"]
+# `package::Package::from_zip`: read ZIP/OPC packages through craft-archive.
+zip = ["dep:craft-archive"]
+# `package::Package::from_cfb`: read CFB/OLE2 packages through craft-cfb.
+cfb = ["dep:craft-cfb"]
 
 [dependencies]
+craft-archive = { workspace = true, optional = true }
+craft-cfb = { workspace = true, optional = true }
 png = { version = "0.18", optional = true }
+
+[dev-dependencies]
+craft-archive = { workspace = true }

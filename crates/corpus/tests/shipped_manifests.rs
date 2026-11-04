@@ -91,3 +91,18 @@ fn office_manifests_cover_the_feature_tags() {
         assert!(all.iter().any(|e| e.tags.iter().any(|t| t == ext)), "no {ext} file");
     }
 }
+
+#[test]
+fn non_url_safe_paths_are_included_and_encoded() {
+    let poi = load("office-poi").entries();
+    let e = poi.iter().find(|e| e.path == "spreadsheet/54084 - Greek - beyond BMP.xlsx").expect("space path is included");
+    assert!(e.url.ends_with("/test-data/spreadsheet/54084%20-%20Greek%20-%20beyond%20BMP.xlsx"), "{}", e.url);
+    let e = poi.iter().find(|e| e.path.contains("Form%20Inscripcion")).expect("percent path is included");
+    assert!(e.url.contains("Form%2520Inscripcion"), "{}", e.url);
+    let amp = poi.iter().find(|e| e.path.contains("viewbiosketch")).expect("& and = path is included");
+    assert!(amp.url.contains("%26") && amp.url.contains("%3D") && !amp.url.contains('&'), "{}", amp.url);
+    let sdk = load("office-openxml-sdk").entries();
+    for e in poi.iter().chain(sdk.iter()) {
+        assert!(e.url.is_ascii() && !e.url.contains(' '), "{}", e.url);
+    }
+}

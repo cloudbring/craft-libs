@@ -16,20 +16,20 @@ craft-corpus verify corpus/office-poi --manifest manifests/office-poi.toml
 | Manifest | Source @ commit | Licence | Files | Excluded |
 | --- | --- | --- | --- | --- |
 | `pngsuite.toml` | pnggroup/libpng @ ac0c3532 | PngSuite | 62 | 0 |
-| `office-poi.toml` | apache/poi @ 7f4d3685 (`test-data/{document,spreadsheet,slideshow}`) | Apache-2.0 | 1223 | 100 |
+| `office-poi.toml` | apache/poi @ 7f4d3685 (`test-data/{document,spreadsheet,slideshow}`) | Apache-2.0 | 1230 | 93 |
 | `office-libreoffice.toml` | LibreOffice/core @ 69501748 (`*/qa/**` of sw, sc, sd, oox, chart2, svx, xmloff, filter, starmath, sfx2, vcl) | MPL-2.0 | 4160 | 90 |
-| `office-openxml-sdk.toml` | dotnet/Open-XML-SDK @ 431ab05c | MIT | 448 | 266 |
+| `office-openxml-sdk.toml` | dotnet/Open-XML-SDK @ 431ab05c | MIT | 713 | 1 |
 | `cad-ezdxf.toml` | mozman/ezdxf @ c498560b | MIT | 103 | 0 |
 
-Office total: 5831 files (docx/xlsx/pptx/doc/xls/ppt plus macro-enabled docm/xlsm/pptm). DXF: 103.
+Office total: 6103 files (docx/xlsx/pptx/doc/xls/ppt plus macro-enabled docm/xlsm/pptm). DXF: 103.
 
 ## Extensions
 
 | Manifest | Counts |
 | --- | --- |
-| office-poi | xls 399, xlsx 333, doc 146, ppt 126, docx 116, pptx 82, xlsm 14, docm 4, pptm 3 |
+| office-poi | xls 401, xlsx 334, doc 147, ppt 127, docx 116, pptx 84, xlsm 14, docm 4, pptm 3 |
 | office-libreoffice | docx 2282, pptx 588, xlsx 552, xls 326, doc 314, ppt 68, docm 16, xlsm 13, pptm 1 |
-| office-openxml-sdk | docx 237, pptx 109, xlsx 99, xlsm 2, docm 1 |
+| office-openxml-sdk | docx 419, pptx 181, xlsx 107, docm 3, xlsm 2, pptm 1 |
 | cad-ezdxf | dxf 103 |
 
 ## Exclusions
@@ -37,7 +37,7 @@ Office total: 5831 files (docx/xlsx/pptx/doc/xls/ppt plus macro-enabled docm/xls
 - Names containing `crash`, `fuzz`, `clusterfuzz`, `cve` or the word `poc` (malicious or fuzz-crash inputs): POI 93, LibreOffice 88, Open XML SDK 1.
 - Files over 20 MB: none.
 - Empty files (raw.githubusercontent.com answers 501): LibreOffice 2.
-- Paths with characters that are not URL-safe (spaces, `%`, `&`, `=`, `~`, non-ASCII), because the fetcher does not percent-encode: POI 7, Open XML SDK 265.
+- Paths with spaces, `%`, `&`, `=`, `~` or non-ASCII are included: the fetcher percent-encodes each path segment (RFC 3986), so the 272 files once excluded for this (POI 7, Open XML SDK 265) are back at the same pinned commits.
 - LibreOffice is limited to `qa` directories of the modules listed above; the repo tree is too large for one recursive API call, so each module subtree is listed separately.
 
 ## Tags
@@ -53,23 +53,23 @@ Tag counts:
 
 | Tag | POI | LibreOffice | Open XML SDK |
 | --- | --- | --- | --- |
-| tables | 95 | 681 | 65 |
-| charts | 51 | 384 | 76 |
-| comments | 42 | 85 | 92 |
-| tracked-changes | 7 | 126 | 11 |
+| tables | 97 | 681 | 94 |
+| charts | 52 | 384 | 113 |
+| comments | 42 | 85 | 100 |
+| tracked-changes | 7 | 126 | 16 |
 | pivots | 7 | 84 | 27 |
-| fields | 15 | 292 | 29 |
-| rtl | 8 | 188 | 13 |
-| math | 1 | 94 | 5 |
-| macros | 79 | 89 | 3 |
-| embedded-objects | 41 | 197 | 52 |
-| footnotes | 36 | 721 | 52 |
-| images | 110 | 531 | 93 |
-| smartart | 6 | 96 | 12 |
+| fields | 15 | 292 | 54 |
+| rtl | 8 | 188 | 15 |
+| math | 1 | 94 | 7 |
+| macros | 79 | 89 | 6 |
+| embedded-objects | 42 | 197 | 72 |
+| footnotes | 36 | 721 | 112 |
+| images | 112 | 531 | 125 |
+| smartart | 6 | 96 | 20 |
 | formulas | 130 | 113 | 19 |
-| animations | 26 | 106 | 26 |
-| large | 32 | 9 | 1 |
-| encrypted | 26 | 7 | 2 |
+| animations | 28 | 106 | 75 |
+| large | 33 | 9 | 1 |
+| encrypted | 26 | 7 | 6 |
 
 DXF (103 files): ascii 99, binary 4, blocks 92, layouts 88, AC1027 46, AC1032 22, lwpolyline 35, mtext 31, text 29, insert 23, viewport 9, hatch 8, 3dsolid 7, dimension 4, spline 3, mesh 1, large 2, malformed 2.
 

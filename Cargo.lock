@@ -886,6 +886,8 @@ dependencies = [
 name = "craft-compare"
 version = "0.1.0"
 dependencies = [
+ "craft-archive",
+ "craft-cfb",
  "png 0.18.1",
 ]
 
