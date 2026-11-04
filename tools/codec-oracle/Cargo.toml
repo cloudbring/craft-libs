@@ -1,0 +1,57 @@
+[package]
+name = "codec-oracle"
+version = "0.0.0"
+edition = "2024"
+publish = false
+description = "Old-vs-new differential for the #48 codec de-fork (h264, hevc, av1, vp8, vp9, opus) over an ffmpeg fixture matrix, conformance vectors and hostile mutants; see docs/verification/codec-oracle.md"
+
+# Its own workspace: the pre-swap codec forks it links (three apps, three revisions, their own
+# bitstream crates and craft-media pins) must not leak into the main craft-libs lockfile.
+[workspace]
+
+[profile.release]
+# The apps' codec forks were hardened against integer overflow found with debug assertions on.
+# Keep the checks in the optimised build so the old sides panic where the apps' tests did.
+overflow-checks = true
+
+[dependencies]
+craft-oracle = { path = "../../crates/oracle" }
+craft-compare = { path = "../../crates/compare" }
+craft-media-testkit = { path = "../../crates/media-testkit" }
+craft-h264 = { path = "../../crates/h264" }
+craft-hevc = { path = "../../crates/hevc" }
+craft-av1 = { path = "../../crates/av1" }
+craft-vp8 = { path = "../../crates/vp8" }
+craft-vp9 = { path = "../../crates/vp9" }
+craft-opus = { path = "../../crates/opus" }
+sha2 = "0.10"
+craft-bitstream = { path = "../../crates/bitstream" }
+ureq = { version = "3", default-features = false, features = ["rustls", "gzip"] }
+flate2 = "1"
+tar = "0.4"
+
+# OLD sides: the apps' forked codec crates at each app's pre-swap commit (the merge-base of the
+# `algo/48-use-craft-*` branches with `origin/main`).
+fc_h264 = { package = "filmcraft-h264", git = "https://github.com/storytold/filmcraft", rev = "eb59ec09daaea519c9c8fffa404a594ae50d00e0" }
+fc_hevc = { package = "filmcraft-hevc", git = "https://github.com/storytold/filmcraft", rev = "eb59ec09daaea519c9c8fffa404a594ae50d00e0" }
+fc_av1 = { package = "filmcraft-av1", git = "https://github.com/storytold/filmcraft", rev = "eb59ec09daaea519c9c8fffa404a594ae50d00e0" }
+fc_vp8 = { package = "filmcraft-vp8", git = "https://github.com/storytold/filmcraft", rev = "eb59ec09daaea519c9c8fffa404a594ae50d00e0" }
+fc_vp9 = { package = "filmcraft-vp9", git = "https://github.com/storytold/filmcraft", rev = "eb59ec09daaea519c9c8fffa404a594ae50d00e0" }
+fc_opus = { package = "filmcraft-opus", git = "https://github.com/storytold/filmcraft", rev = "eb59ec09daaea519c9c8fffa404a594ae50d00e0" }
+dc_h264 = { package = "deckcraft-h264", git = "https://github.com/storytold/deckcraft", rev = "3e178d8f5a59c787a6a53a7ed0f052b3e4a1489f" }
+dc_hevc = { package = "deckcraft-hevc", git = "https://github.com/storytold/deckcraft", rev = "3e178d8f5a59c787a6a53a7ed0f052b3e4a1489f" }
+dc_av1 = { package = "deckcraft-av1", git = "https://github.com/storytold/deckcraft", rev = "3e178d8f5a59c787a6a53a7ed0f052b3e4a1489f" }
+dc_vp9 = { package = "deckcraft-vp9", git = "https://github.com/storytold/deckcraft", rev = "3e178d8f5a59c787a6a53a7ed0f052b3e4a1489f" }
+dc_opus = { package = "deckcraft-opus", git = "https://github.com/storytold/deckcraft", rev = "3e178d8f5a59c787a6a53a7ed0f052b3e4a1489f" }
+sc_video = { package = "soundcraft-video", git = "https://github.com/storytold/soundcraft", rev = "b35dd0f9eb0c08a198c1306021bd138f3a22d87c" }
+
+# PRE-FIX sides: the shared crates at the commit that moved each fork in verbatim, before the
+# upstreamed hardening commits (h264 e0f337e, hevc 0d907d5, av1 2f6b4f1, vp9 56caa7d). They split
+# every old-vs-new difference into "fork differs from the verbatim shared crate" and "a hardening
+# commit changed the shared crate".
+craft_h264_pre = { package = "craft-h264", git = "https://github.com/cloudbring/craft-libs", rev = "935b3523ef56b00f97ff6bba4b989108e3a51a33" }
+craft_hevc_pre = { package = "craft-hevc", git = "https://github.com/cloudbring/craft-libs", rev = "00fbb685e7b10e37717adee3c7285705b2b3de9f" }
+craft_av1_pre = { package = "craft-av1", git = "https://github.com/cloudbring/craft-libs", rev = "58f8a71e1f29d1ff6238e8eed5215873249550c9" }
+craft_vp8_pre = { package = "craft-vp8", git = "https://github.com/cloudbring/craft-libs", rev = "9aafc3f89c4ce45dc12d5392b194c759a18cf3b0" }
+craft_vp9_pre = { package = "craft-vp9", git = "https://github.com/cloudbring/craft-libs", rev = "9aafc3f89c4ce45dc12d5392b194c759a18cf3b0" }
+craft_opus_pre = { package = "craft-opus", git = "https://github.com/cloudbring/craft-libs", rev = "26886531c1962f8aec8c5593fd8fec30e2103f0b" }

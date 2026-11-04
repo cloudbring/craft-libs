@@ -1,0 +1,22 @@
+[package]
+name = "h264-bisect"
+version = "0.0.0"
+edition = "2024"
+publish = false
+description = "File-level attribution of old-vs-new h264 differences: the shared crate with one hardening-commit file reverted to its pre-fix version (run scripts/make-h264-variants.sh first)"
+
+[workspace]
+
+[profile.release]
+overflow-checks = true
+
+[dependencies]
+old = { package = "filmcraft-h264", git = "https://github.com/storytold/filmcraft", rev = "eb59ec09daaea519c9c8fffa404a594ae50d00e0" }
+pre = { package = "craft-h264", git = "https://github.com/cloudbring/craft-libs", rev = "935b3523ef56b00f97ff6bba4b989108e3a51a33" }
+v_decoder = { package = "v-decoder", path = "variants/h264-decoder" }
+v_dpb = { package = "v-dpb", path = "variants/h264-dpb" }
+v_picture = { package = "v-picture", path = "variants/h264-picture" }
+v_slice = { package = "v-slice", path = "variants/h264-slice" }
+v_slicedec = { package = "v-slicedec", path = "variants/h264-slicedec" }
+v_transform = { package = "v-transform", path = "variants/h264-transform" }
+v_none = { package = "v-none", path = "variants/h264-none" }
