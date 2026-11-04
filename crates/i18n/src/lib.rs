@@ -49,6 +49,7 @@ use icu_locale_core::Locale as IcuLocale;
 use icu_plurals::{PluralCategory, PluralOperands, PluralRules};
 use unicode_bidi::{BidiClass, bidi_class};
 
+pub use catalog::CatalogDialect;
 #[cfg(feature = "collate")]
 pub use collate::Collator;
 pub use fold::{Folded, Folder};
@@ -81,6 +82,8 @@ struct Locale {
     app: &'static str,
     /// Plural forms `@plural` rows must list, for [`catalog::parse`].
     forms: usize,
+    /// Dialect for [`catalog::parse`].
+    dialect: CatalogDialect,
     parsed: OnceLock<Parsed>,
     /// [`I18n::name`], read from the text on first use.
     name: OnceLock<Option<String>>,
@@ -107,9 +110,12 @@ impl Locale {
             let mut problems = Vec::new();
             let mut rows: HashMap<String, HashMap<String, String>> = HashMap::new();
             for (name, text) in [("common", self.shared), ("app", self.app)] {
-                let (entries, errors) = catalog::parse(text, self.forms);
+                let (entries, errors) = catalog::parse(text, self.forms, self.dialect);
                 problems.extend(errors.into_iter().map(|e| format!("{}/{name}: {e}", self.code)));
                 for e in entries {
+                    if e.context == "@msgplural" {
+                        rows.entry("@plural".to_owned()).or_default().entry(e.source.clone()).or_insert_with(|| e.translation.clone());
+                    }
                     rows.entry(e.context).or_default().insert(e.source, e.translation);
                 }
             }
@@ -127,7 +133,7 @@ impl Locale {
                     let text = text.strip_prefix('\u{feff}').unwrap_or(text);
                     text.split('\n')
                         .filter(|line| line.starts_with("@id\tlanguage.name\t"))
-                        .find_map(|line| catalog::parse_row(line.strip_suffix('\r').unwrap_or(line), self.forms).ok())
+                        .find_map(|line| catalog::parse_row(line.strip_suffix('\r').unwrap_or(line), self.forms, self.dialect).ok())
                         .map(|row| row.translation)
                 })
             })
@@ -157,10 +163,17 @@ impl I18n {
     /// to log. A locale's bad rows are logged (`log::warn!`) when it is first looked up in, and
     /// [`I18n::check_all`] lists them all.
     pub fn new(embedded: &'static Embedded, offered: &[&str]) -> (I18n, Vec<String>) {
+        Self::with_dialect(embedded, offered, CatalogDialect::Standard)
+    }
+
+    /// Like [`I18n::new`], selecting a [`CatalogDialect`] for how catalog rows are parsed
+    /// (for example, [`CatalogDialect::TwoColumn`] for `source\ttranslation` catalogs without a
+    /// context column, or [`CatalogDialect::Strict`] to reject non-`one|other` plural keys).
+    pub fn with_dialect(embedded: &'static Embedded, offered: &[&str], dialect: CatalogDialect) -> (I18n, Vec<String>) {
         let mut problems = Vec::new();
         let mut locales = vec![bare("en"), bare("pseudo")];
         for (code, shared, app) in embedded {
-            let code = code.to_ascii_lowercase();
+            let code = code.to_ascii_lowercase().replace('_', "-");
             if locales.iter().any(|l| l.code == code) {
                 problems.push(format!("{code}: reserved or embedded twice; skipped"));
                 continue;
@@ -170,8 +183,19 @@ impl I18n {
                 problems.push(format!("{code}: no plural rules; plurals show in English"));
             }
             let forms = plural.as_ref().map_or(1, |(_, c)| c.len());
-            let offered = offered.iter().any(|o| o.eq_ignore_ascii_case(&code));
-            locales.push(Locale { code, shared, app, forms, parsed: OnceLock::new(), name: OnceLock::new(), chain: Vec::new(), plural, offered });
+            let offered = offered.iter().any(|o| o.replace('_', "-").eq_ignore_ascii_case(&code));
+            locales.push(Locale {
+                code,
+                shared,
+                app,
+                forms,
+                dialect,
+                parsed: OnceLock::new(),
+                name: OnceLock::new(),
+                chain: Vec::new(),
+                plural,
+                offered,
+            });
         }
         for i in 2..locales.len() {
             let mut chain = vec![i];
@@ -203,7 +227,8 @@ impl I18n {
     /// The language with this code (any case): `en`, an offered locale, or in debug builds
     /// `pseudo`.
     pub fn from_code(&self, code: &str) -> Option<Lang> {
-        let i = self.locales.iter().position(|l| l.code.eq_ignore_ascii_case(code))?;
+        let code = code.replace('_', "-");
+        let i = self.locales.iter().position(|l| l.code.eq_ignore_ascii_case(&code))?;
         let usable = match Lang(i) {
             Lang::EN => true,
             Lang::PSEUDO => cfg!(debug_assertions),
@@ -253,6 +278,26 @@ impl I18n {
         self.find(lang, &[("@id", id), ("", label)]).unwrap_or(label)
     }
 
+    /// Alias for [`I18n::t`], matching the `tr` function name used across the Craft apps.
+    pub fn tr<'a>(&'a self, lang: Lang, source: &'a str) -> &'a str {
+        self.t(lang, source)
+    }
+
+    /// Alias for [`I18n::tc`], matching the `tr_ctx` function name used across the Craft apps.
+    pub fn tr_ctx<'a>(&'a self, lang: Lang, context: &str, source: &'a str) -> &'a str {
+        self.tc(lang, context, source)
+    }
+
+    /// Alias for [`I18n::tid`], matching the `tr_id` function name used across the Craft apps.
+    pub fn tr_id<'a>(&'a self, lang: Lang, id: &str, label: &'a str) -> &'a str {
+        self.tid(lang, id, label)
+    }
+
+    /// Whether `source` has a plain-row translation in `lang` (always `true` for [`Lang::EN`]).
+    pub fn has(&self, lang: Lang, source: &str) -> bool {
+        lang == Lang::EN || self.get(lang, "", source).is_some()
+    }
+
     /// A count's wording in `lang`, `{n}` filled in as [`I18n::format`] writes numbers: grouped and
     /// in the region's digits, as a left-to-right isolate ([`ltr`]) when the wording has a
     /// right-to-left letter. `one` and `other` are the English forms; they are also the key of the
@@ -281,6 +326,36 @@ impl I18n {
         self.plural(lang, Some(PluralOperands::from(&d)), english_one, &format.write(&d), one, other)
     }
 
+    /// A count's wording from CLDR-style plural keys: `@id` rows named `key.zero`, `key.one`,
+    /// `key.two`, `key.few`, `key.many` and `key.other`. The category is the one `n` takes in
+    /// `lang`'s plural rules (English rules for English and locales without any). The row is the
+    /// first of `key.<category>` along `lang`'s fallback chain (`pt-br`, then `pt`); if no locale
+    /// has it, the first `key.other` along the chain; if none has that either, `fallback_one`
+    /// for 1 and `fallback_other` otherwise, as the English source. `{n}` is filled in as
+    /// [`I18n::trn`] does.
+    pub fn trn_key(&self, lang: Lang, n: u64, key: &str, fallback_one: &str, fallback_other: &str) -> String {
+        let category = self.category(lang, n);
+        let text = self
+            .find(lang, &[("@id", &format!("{key}.{}", category_name(category)))])
+            .or_else(|| self.find(lang, &[("@id", &format!("{key}.other"))]))
+            .unwrap_or(if n == 1 { fallback_one } else { fallback_other });
+        let text = fmt(text, &[("n", &ltr(&self.format().integer(n)))]);
+        if lang == Lang::PSEUDO {
+            return marked(&text);
+        }
+        text
+    }
+
+    /// The plural category `n` takes in `lang`: from the first locale of its chain with CLDR rules,
+    /// else English (`one` for 1, `other`).
+    pub fn category(&self, lang: Lang, n: u64) -> PluralCategory {
+        let chain = self.locale(lang).map_or(&[][..], |l| l.chain.as_slice());
+        chain
+            .iter()
+            .find_map(|&i| self.locales.get(i)?.plural.as_ref())
+            .map_or(if n == 1 { PluralCategory::One } else { PluralCategory::Other }, |(rules, _)| rules.category_for(PluralOperands::from(n)))
+    }
+
     /// `operands` `None` is the `other` category.
     fn plural(&self, lang: Lang, operands: Option<PluralOperands>, english_one: bool, n: &str, one: &str, other: &str) -> String {
         let key = format!("{one}|{other}");
@@ -289,18 +364,26 @@ impl I18n {
             .iter()
             .find_map(|&i| {
                 let locale = self.locales.get(i)?;
-                let forms = locale.parsed().rows.get("@plural")?.get(&key)?;
+                let plurals = locale.parsed().rows.get("@plural")?;
+                let forms = plurals.get(&key).or_else(|| plurals.get(one)).or_else(|| plurals.get(other))?;
                 let (rules, categories) = locale.plural.as_ref()?;
                 let category = operands.map_or(PluralCategory::Other, |o| rules.category_for(o));
-                // A category whole numbers up to 1000 never reach has no form of its own. Russian
-                // and Ukrainian decimals (`other`) take the `few` form (`1,5 файла`); any other
-                // (French `many` for a million) takes the last.
-                let index = categories
-                    .iter()
-                    .position(|c| *c == category)
-                    .or_else(|| categories.iter().position(|c| *c == PluralCategory::Few))
-                    .unwrap_or(categories.len().saturating_sub(1));
-                forms.split('|').nth(index)
+                let parts: Vec<&str> = forms.split('|').collect();
+                match parts.as_slice() {
+                    [only] => Some(*only),
+                    [one_form, other_form] if categories.len() != 2 => Some(if category == PluralCategory::One { *one_form } else { *other_form }),
+                    _ => {
+                        // A category whole numbers up to 1000 never reach has no form of its own. Russian
+                        // and Ukrainian decimals (`other`) take the `few` form (`1,5 файла`); any other
+                        // (French `many` for a million) takes the last.
+                        let index = categories
+                            .iter()
+                            .position(|c| *c == category)
+                            .or_else(|| categories.iter().position(|c| *c == PluralCategory::Few))
+                            .unwrap_or(categories.len().saturating_sub(1));
+                        parts.get(index).copied()
+                    }
+                }
             })
             .unwrap_or(if english_one { one } else { other });
         let text = fmt(text, &[("n", &ltr(n))]);
@@ -418,14 +501,19 @@ impl I18n {
 /// Other text gets no marks, and a value's own isolate is taken off. Unknown placeholders stay as written,
 /// and inserted values are never read as templates, so a file name containing `{n}` stays intact.
 pub fn fmt(template: &str, args: &[(&str, &str)]) -> String {
-    fill(template, args, true)
+    fill_with_isolates(template, args, true)
 }
 
 /// [`fmt`] without isolates, for text that goes where the marks would get in the way: file
 /// names, logs, terminals, text compared or parsed later. Every isolate mark is taken off, in
 /// the template and in the values.
 pub fn fmt_plain(template: &str, args: &[(&str, &str)]) -> String {
-    strip_isolates(&fill(template, args, false))
+    strip_isolates(&fill_with_isolates(template, args, false))
+}
+
+/// Fill `{name}` placeholders from `args` in one pass (alias for [`fmt`]).
+pub fn fill(template: &str, args: &[(&str, &str)]) -> String {
+    fmt(template, args)
 }
 
 const LRI: char = '\u{2066}';
@@ -538,7 +626,7 @@ fn is_one_isolate(value: &str) -> bool {
     false
 }
 
-fn fill(template: &str, args: &[(&str, &str)], isolated: bool) -> String {
+fn fill_with_isolates(template: &str, args: &[(&str, &str)], isolated: bool) -> String {
     let mut pieces: Vec<(&str, bool)> = Vec::new();
     let mut rest = template;
     while let Some((before, after_open)) = rest.split_once('{') {
@@ -664,6 +752,7 @@ fn bare(code: &str) -> Locale {
         shared: "",
         app: "",
         forms: 1,
+        dialect: CatalogDialect::Standard,
         parsed: OnceLock::new(),
         name: OnceLock::new(),
         chain: Vec::new(),
@@ -695,6 +784,18 @@ fn plural_rules(code: &str) -> Option<(PluralRules, Vec<PluralCategory>)> {
     }
     categories.sort_by_key(rank);
     Some((rules, categories))
+}
+
+/// The CLDR name of a category, as it ends a plural key.
+fn category_name(c: PluralCategory) -> &'static str {
+    match c {
+        PluralCategory::Zero => "zero",
+        PluralCategory::One => "one",
+        PluralCategory::Two => "two",
+        PluralCategory::Few => "few",
+        PluralCategory::Many => "many",
+        PluralCategory::Other => "other",
+    }
 }
 
 fn rank(c: &PluralCategory) -> u8 {
@@ -1119,6 +1220,65 @@ mod tests {
         assert_eq!(i.tc(br, "menu", "Open"), "Abrir");
         assert_eq!(i.tid(br, "file.open", "Open"), "Abrir");
         assert_eq!(i.tc(lang(&i, "pt"), "menu", "Open"), "Abrir menu");
+    }
+
+    static KEYS: &Embedded = &[
+        ("pl", "@id\tfiles.one\t{n} plik\n@id\tfiles.few\t{n} pliki\n@id\tfiles.many\t{n} plików\n@id\tfiles.other\t{n} pliku\n", ""),
+        ("ru", "@id\tfiles.one\t{n} файл\n@id\tfiles.few\t{n} файла\n@id\tfiles.many\t{n} файлов\n", ""),
+        ("ja", "@id\tfiles.other\t{n}個のファイル\n", ""),
+        ("pt", "@id\tfiles.one\t{n} ficheiro\n@id\tfiles.other\t{n} ficheiros\n", ""),
+        ("pt-br", "@id\tfiles.other\t{n} arquivos\n", ""),
+        ("fr", "@id\tfiles.other\t{n} fichiers\n", ""),
+    ];
+
+    fn keyed(i: &I18n, code: &str, n: u64) -> String {
+        i.trn_key(lang(i, code), n, "files", "{n} file", "{n} files")
+    }
+
+    #[test]
+    fn plural_keys_english() {
+        let i = all(KEYS).0;
+        assert_eq!(i.trn_key(Lang::EN, 1, "files", "{n} file", "{n} files"), "1 file");
+        assert_eq!(i.trn_key(Lang::EN, 2, "files", "{n} file", "{n} files"), "2 files");
+        assert_eq!(i.category(Lang::EN, 1), PluralCategory::One);
+        assert_eq!(i.category(Lang::EN, 0), PluralCategory::Other);
+    }
+
+    #[test]
+    fn plural_keys_few_many() {
+        let i = all(KEYS).0;
+        let ru: Vec<String> = [1, 2, 5, 21, 11].iter().map(|&n| keyed(&i, "ru", n)).collect();
+        assert_eq!(ru, ["1 файл", "2 файла", "5 файлов", "21 файл", "11 файлов"]);
+        let pl: Vec<String> = [1, 3, 5, 22].iter().map(|&n| keyed(&i, "pl", n)).collect();
+        assert_eq!(pl, ["1 plik", "3 pliki", "5 plików", "22 pliki"]);
+    }
+
+    #[test]
+    fn plural_keys_no_distinction() {
+        let i = all(KEYS).0;
+        assert_eq!(keyed(&i, "ja", 1), "1個のファイル");
+        assert_eq!(keyed(&i, "ja", 5), "5個のファイル");
+        assert_eq!(i.category(lang(&i, "ja"), 1), PluralCategory::Other);
+    }
+
+    #[test]
+    fn plural_keys_fall_back_to_other() {
+        let i = all(KEYS).0;
+        // fr: one is missing, so other; 0 is `one` in French.
+        assert_eq!(keyed(&i, "fr", 1), "1 fichiers");
+        // ru has no `other` row, but a decimal-free count never needs it; missing falls to English.
+        assert_eq!(i.trn_key(lang(&i, "ru"), 1_000_000, "files", "{n} file", "{n} files"), "1,000,000 файлов");
+        assert_eq!(i.trn_key(lang(&i, "ru"), 2, "nope", "{n} file", "{n} files"), "2 files");
+        assert_eq!(i.trn_key(lang(&i, "ru"), 1, "nope", "{n} file", "{n} files"), "1 file");
+    }
+
+    #[test]
+    fn plural_keys_fall_back_to_base_locale() {
+        let i = all(KEYS).0;
+        // pt-br has only `other`; `one` comes from pt before pt-br's own `other`.
+        assert_eq!(keyed(&i, "pt-br", 1), "1 ficheiro");
+        assert_eq!(keyed(&i, "pt-br", 3), "3 arquivos");
+        assert_eq!(keyed(&i, "pt", 3), "3 ficheiros");
     }
 
     static PT: &Embedded = &[
