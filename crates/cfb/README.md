@@ -15,3 +15,10 @@ not carried into this strict API. WordCraft `crates/doc/src/cfb_guard.rs` suppli
 the duplicate and overlarge FAT-list preflight. Neither application's production
 XLS/PPT export uses a CFB writer: GridCraft writes XLSX as ZIP and DeckCraft
 reads CFB only. A writer is therefore out of scope.
+
+Tolerated writer quirks (each seen in real files; `tools/container-oracle` finds them against the
+pre-swap readers): a root entry whose name is empty, mis-sized or a path (names are only read for
+entries the tree reaches); FREESECT instead of ENDOFCHAIN as the first-DIFAT field when the header's 109
+entries suffice; more FAT sectors listed than the file strictly needs (they must still be distinct
+sectors of the file); a mini-FAT count with no start sector. Header magic, version, byte order,
+mini-stream cutoff, FAT/DIFAT counts and directory structure stay strict.
