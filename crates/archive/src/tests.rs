@@ -294,3 +294,36 @@ fn an_entry_that_decodes_to_other_than_its_declared_size_is_rejected() {
         assert!(reader.read("a").is_err(), "declared {declared}, decoded 1000 (ZipReader)");
     }
 }
+
+/// An archive whose end-record comment is `comment` (the length field patched to match).
+fn with_comment(mut bytes: Vec<u8>, comment: &[u8]) -> Vec<u8> {
+    let at = bytes.len() - 2;
+    bytes[at..].copy_from_slice(&(comment.len() as u16).to_le_bytes());
+    bytes.extend_from_slice(comment);
+    bytes
+}
+
+#[test]
+fn an_end_record_signature_inside_the_comment_does_not_hide_the_real_directory() {
+    let base = zip_bytes(&[("a.txt", b"alpha"), ("b/c.txt", b"gamma")]);
+    let mut comment = b"fake: ".to_vec();
+    comment.extend(0x0605_4b50u32.to_le_bytes());
+    comment.extend([0u8; 30]);
+    // Signature with a plausible-looking but wrong record (all zero: an "empty archive"), then a
+    // signature whose directory fields point at real data, then trailing bytes after the record.
+    let mut pointing = b"x".to_vec();
+    pointing.extend(0x0605_4b50u32.to_le_bytes());
+    pointing.extend([0u8; 18]);
+    for comment in [comment, pointing] {
+        let bytes = with_comment(base.clone(), &comment);
+        let mut reader = ZipReader::open(&bytes, zip_limits()).expect("real directory found");
+        assert_eq!(reader.names(), ["a.txt", "b/c.txt"]);
+        assert_eq!(reader.read("b/c.txt").unwrap().as_deref(), Some(&b"gamma"[..]));
+    }
+}
+
+#[test]
+fn a_genuinely_empty_archive_with_a_commented_signature_still_opens_empty() {
+    let bytes = with_comment(zip_bytes(&[]), &0x0605_4b50u32.to_le_bytes());
+    assert_eq!(ZipReader::open(&bytes, zip_limits()).expect("opens").names().len(), 0);
+}

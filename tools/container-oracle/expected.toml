@@ -1130,7 +1130,7 @@ metric = "new_rejects:Damaged"
 
 [[expected]]
 id = "vectorcraft-read.hostile:bytes-contains"
-reason = "A header byte corrupted by the sweep makes the readers disagree on a name (the zip crate decodes names per the UTF-8 flag / Unicode Path field / CP437; the old reader used lossy UTF-8) or on which bytes belong to it (central-directory offsets are authoritative in the new reader). Includes zip/eocd-comment-with-signature: an archive comment that contains an end-record signature is parsed by the zip crate from the LAST signature, so the real directory is not found. This one is a genuine parser differential, left open (see the doc, Open items)."
+reason = "A header byte corrupted by the sweep makes the readers disagree on a name (the zip crate decodes names per the UTF-8 flag / Unicode Path field / CP437; the old reader used lossy UTF-8) or on which bytes belong to it (central-directory offsets are authoritative in the new reader)."
 evidence = "#120 consumer comments (pdfcraft/effectcraft/vectorcraft/craft-doc swaps); docs/verification/container-oracle.md; docs/verification/container-oracle.md"
 glob = "vectorcraft-read.hostile/**"
 metric = "bytes+contains"

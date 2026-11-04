@@ -123,8 +123,8 @@ Outcome columns are craft-oracle's: *identical*; *within* (equal decoded content
 | effectcraft-write.hostile | 986 | 1 | 0 | 778 | 0 | 207 | 0 | 0 | 0 | 0 |
 | vectorcraft-write-store.hostile | 986 | 1 | 1 | 777 | 0 | 207 | 0 | 0 | 0 | 0 |
 | vectorcraft-write-deflate.hostile | 986 | 1 | 1 | 777 | 0 | 207 | 0 | 0 | 0 | 0 |
-| vectorcraft-read.hostile | 986 | 680 | 134 | 172 | 0 | 0 | 0 | 0 | 0 | 0 |
-| effectcraft-read.hostile | 986 | 52 | 0 | 934 | 0 | 0 | 0 | 0 | 0 | 0 |
+| vectorcraft-read.hostile | 986 | 681 | 134 | 171 | 0 | 0 | 0 | 0 | 0 | 0 |
+| effectcraft-read.hostile | 986 | 53 | 0 | 933 | 0 | 0 | 0 | 0 | 0 | 0 |
 | vectorcraft-read-legacy-store.hostile | 986 | 735 | 0 | 43 | 0 | 208 | 0 | 0 | 0 | 0 |
 | vectorcraft-read-legacy-deflate.hostile | 986 | 735 | 0 | 43 | 0 | 208 | 0 | 0 | 0 | 0 |
 | effectcraft-read-legacy-store.hostile | 986 | 734 | 0 | 45 | 0 | 207 | 0 | 0 | 0 | 0 |
@@ -233,10 +233,10 @@ Counts are in the appendix. Corpus entries are per file except the classes that 
 
 ## Open items (not fixed here)
 
-1. **Parser differential on an end record inside the archive comment** (zip, hostile `zip/eocd-comment-with-signature`; registered). The zip crate
-   takes the last end-record signature in the file, so a comment that contains one hides the real directory (`a.txt` found by the old reader, absent
-   in the new). craft-doc's old parser and vectorcraft's old reader chose the record whose comment ends the file. No corpus file triggers it; fixing it
-   needs `ZipReader::open` to pre-validate the candidate and hand the zip crate a view that excludes the comment. Left for a follow-up ticket.
+1. **Parser differential on an end record inside the archive comment** (zip, hostile `zip/eocd-comment-with-signature`): fixed in #208. The zip crate
+   takes the last end-record signature that parses, so a comment holding one hid the real directory. `ZipReader::open` now scans end-record
+   candidates backwards and gives the zip crate the one whose directory is consistent (red-then-green test
+   `an_end_record_signature_inside_the_comment_does_not_hide_the_real_directory`); the case is now Identical and its registry text is removed.
 2. **vectorcraft `Archive::read` reopens the archive on every call** (the swap's adapter builds a `ZipReader`, which validates every entry, per read).
    Measured by `cargo run --release --example readcost` (open + 3 reads, median of 5): 10 entries 2 us vs 11 us; 100 entries 4 vs 48 us; 1,000 entries
    19 vs 436 us; 10,000 entries 179 us vs 4.6 ms; 65,534 entries 1.2 ms vs 31.6 ms (5x to 27x). No effect on behaviour; it matters only if an app reads
@@ -283,7 +283,7 @@ first version did and wrote 37 GB).
 | effectcraft-read.hostile:bytes-new-adds-entries | 0 | 7 |
 | effectcraft-read.hostile:new-adds-entries | 0 | 368 |
 | effectcraft-read.hostile:new-adds-entries-old-entries-lost | 0 | 17 |
-| effectcraft-read.hostile:new-rejects-archive | 0 | 540 |
+| effectcraft-read.hostile:new-rejects-archive | 0 | 539 |
 | effectcraft-read.hostile:old-entries-lost | 0 | 2 |
 | effectcraft-read:new-adds-entries | 4423 | 0 |
 | effectcraft-read:new-rejects-archive | 5 | 0 |
@@ -372,7 +372,7 @@ first version did and wrote 37 GB).
 | vectorcraft-read-legacy-deflate:new-rejects-damaged | 3 | 0 |
 | vectorcraft-read-legacy-store.hostile:new-rejects-damaged | 0 | 43 |
 | vectorcraft-read-legacy-store:new-rejects-damaged | 3 | 0 |
-| vectorcraft-read.hostile:bytes-contains | 0 | 47 |
+| vectorcraft-read.hostile:bytes-contains | 0 | 46 |
 | vectorcraft-read.hostile:contains-old-err-new-ok | 0 | 5 |
 | vectorcraft-read.hostile:err-variant | 0 | 25 |
 | vectorcraft-read.hostile:new-accepts-damaged | 0 | 5 |
