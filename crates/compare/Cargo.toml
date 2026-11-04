@@ -1,0 +1,19 @@
+[package]
+name = "craft-compare"
+description = "Shared comparison metrics for every output kind: bytes, images (PSNR/SSIM/CIEDE2000), audio, canonical XML, text, numbers, and uniform verdicts"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+default = []
+# `write_diff_png`: render an amplified per-pixel difference as a PNG.
+png = ["dep:png"]
+
+[dependencies]
+png = { version = "0.18", optional = true }

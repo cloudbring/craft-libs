@@ -1,0 +1,36 @@
+name: Shared Compare
+
+on:
+  push:
+    branches: [main]
+    paths: ["crates/compare/**", "Cargo.toml", "Cargo.lock", ".github/workflows/compare.yml"]
+  pull_request:
+    paths: ["crates/compare/**", "Cargo.toml", "Cargo.lock", ".github/workflows/compare.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec
+        with:
+          components: rustfmt, clippy
+      - run: cargo fmt -p craft-compare --check
+      - run: cargo clippy -p craft-compare --all-targets --all-features --locked -- -D warnings
+      - run: cargo test -p craft-compare --all-features --locked
+  wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec
+        with:
+          targets: wasm32-unknown-unknown
+      - run: cargo check -p craft-compare --locked --target wasm32-unknown-unknown

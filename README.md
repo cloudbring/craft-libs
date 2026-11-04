@@ -50,6 +50,7 @@ Its process/filesystem tooling is native-only and is not part of the per-crate w
 - [`craft-cms`](crates/cms/README.md): pure-Rust ICC v2/v4 colour management: profile parsing
   and writing, transforms, rendering intents, black point compensation, soft proofing, gamut
   checks, 3D LUTs and built-in profiles (sRGB, Display P3, synthetic coated CMYK and others).
+- [`craft-compare`](crates/compare/README.md): comparison metrics for bytes, images (PSNR/SSIM/CIEDE2000), audio, canonical XML, text and numbers, with uniform verdicts.
 - [`craft-crw`](crates/crw/README.md): clean-room Canon CRW (CIFF) raw decoder, from LightCraft:
   the heap container, the entropy coding derived by black-box analysis (frozen code tables), sensor
   black and white levels and as-shot white balance. The complete derivation record (plan, sources
