@@ -1,0 +1,17 @@
+[package]
+name = "office-render-oracle"
+description = "LibreOffice headless render oracle for DOCX/XLSX/PPTX: compares our PDF export with LibreOffice's through craft-compare"
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+publish = false
+
+# Standalone workspace: not a member of the craft-libs workspace, so it never affects its build or CI.
+[workspace]
+
+[dependencies]
+craft-compare = { path = "../../crates/compare" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+png = "0.18"
