@@ -892,6 +892,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "craft-conformance"
+version = "0.1.0"
+dependencies = [
+ "craft-av1",
+ "craft-corpus",
+ "craft-h264",
+ "craft-hevc",
+ "craft-media",
+ "craft-vp8",
+ "craft-vp9",
+]
+
+[[package]]
 name = "craft-corpus"
 version = "0.1.0"
 dependencies = [

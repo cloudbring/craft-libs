@@ -1,0 +1,63 @@
+name: Codec conformance
+
+# Official codec conformance streams (H.264, HEVC, VP8, VP9, AV1) through the Craft decoders.
+# The corpora are pinned craft-corpus manifests (crates/corpus/manifests/conformance-*.toml), fetched over
+# HTTPS with a sha256 per file and cached on the manifest's cache key. CRAFT_CORPUS_REQUIRE=1 turns an absent
+# corpus into a failure, so a skipped suite cannot pass. Pass counts: docs/verification/codec-conformance.md.
+
+on:
+  push:
+    branches: [main]
+    paths: ["crates/conformance/**", "crates/corpus/manifests/conformance-*.toml", "crates/corpus/src/**", "crates/h264/**", "crates/hevc/**", "crates/vp8/**", "crates/vp9/**", "crates/av1/**", "crates/bitstream/**", "crates/media/**", "Cargo.toml", "Cargo.lock", ".github/workflows/conformance.yml"]
+  pull_request:
+    paths: ["crates/conformance/**", "crates/corpus/manifests/conformance-*.toml", "crates/corpus/src/**", "crates/h264/**", "crates/hevc/**", "crates/vp8/**", "crates/vp9/**", "crates/av1/**", "crates/bitstream/**", "crates/media/**", "Cargo.toml", "Cargo.lock", ".github/workflows/conformance.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codec-conformance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  conformance:
+    timeout-minutes: 60
+    name: ${{ matrix.codec }} conformance
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        codec: [h264, hevc, vp8, vp9, av1]
+    env:
+      CRAFT_CORPUS_REQUIRE: "1"
+      CRAFT_CORPUS_DIR: ${{ github.workspace }}/corpus
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          key: craft-conformance
+      - id: k
+        run: echo "key=$(cargo run -q --locked --release -p craft-corpus -- cache-key crates/corpus/manifests/conformance-${{ matrix.codec }}.toml)" >> "$GITHUB_OUTPUT"
+      - id: cache
+        uses: actions/cache@v4
+        with:
+          path: corpus/conformance-${{ matrix.codec }}
+          key: corpus-conformance-${{ matrix.codec }}-${{ steps.k.outputs.key }}
+      - name: Fetch the pinned corpus
+        if: steps.cache.outputs.cache-hit != 'true'
+        # The fetcher reuses files already verified, so a retry only downloads what a dropped connection lost
+        # (fate-suite.ffmpeg.org sometimes resets connections).
+        run: |
+          for attempt in 1 2 3 4 5; do
+            cargo run -q --locked --release -p craft-corpus -- fetch crates/corpus/manifests/conformance-${{ matrix.codec }}.toml corpus/conformance-${{ matrix.codec }} && exit 0
+            sleep 10
+          done
+          exit 1
+      - name: Verify the corpus against its manifest
+        run: cargo run -q --locked --release -p craft-corpus -- verify corpus/conformance-${{ matrix.codec }} --manifest crates/corpus/manifests/conformance-${{ matrix.codec }}.toml
+      - name: Conformance
+        run: cargo test --locked --release -p craft-conformance --test ${{ matrix.codec }} -- --nocapture

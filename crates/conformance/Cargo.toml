@@ -1,0 +1,24 @@
+[package]
+name = "craft-conformance"
+description = "Official codec conformance streams (H.264, HEVC, VP8, VP9, AV1) run against the Craft decoders over pinned craft-corpus manifests. Test-only."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[lib]
+name = "craft_conformance"
+
+[dependencies]
+craft-av1 = { workspace = true }
+craft-corpus = { workspace = true }
+craft-h264 = { workspace = true }
+craft-hevc = { workspace = true }
+craft-media = { workspace = true, features = ["matroska"] }
+craft-vp8 = { workspace = true }
+craft-vp9 = { workspace = true }

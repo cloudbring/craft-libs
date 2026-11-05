@@ -436,7 +436,11 @@ impl Decoder {
             }
         };
         let mut outs = Vec::new();
-        if changed && self.active_sps.is_some() {
+        let irap_no_rasl = hdr.is_irap() && (hdr.is_idr() || hdr.is_bla() || self.first_picture || self.after_eos);
+        // A new SPS is only activated at an IRAP picture, whose C.5.2.2 handling below decides whether the
+        // pictures still waiting for output are emitted or discarded (NoOutputOfPriorPicsFlag); flushing
+        // them here first would output pictures the specification discards.
+        if changed && self.active_sps.is_some() && !(irap_no_rasl && !self.first_picture) {
             self.dpb.flush(&mut outs);
         }
         if changed {
@@ -446,7 +450,6 @@ impl Decoder {
         self.dpb.max_dec_pic_buffering = sps.max_dec_pic_buffering as usize;
         self.dpb.max_num_reorder = sps.max_num_reorder as usize;
         self.dpb.max_latency = if sps.max_latency_increase_plus1 != 0 { sps.max_num_reorder + sps.max_latency_increase_plus1 - 1 } else { 0 };
-        let irap_no_rasl = hdr.is_irap() && (hdr.is_idr() || hdr.is_bla() || self.first_picture || self.after_eos);
         if hdr.is_irap() {
             self.skip_rasl = irap_no_rasl;
             self.stat(|s| {
@@ -476,7 +479,10 @@ impl Decoder {
             self.stat(|s| s.missing_refs += missing);
         }
         if irap_no_rasl && !self.first_picture {
-            if sh.no_output_of_prior_pics && hdr.is_idr() {
+            // C.5.2.2: NoOutputOfPriorPicsFlag is no_output_of_prior_pics_flag for IDR and BLA pictures
+            // and is inferred to be 1 for a CRA picture with NoRaslOutputFlag = 1 (one after an end of
+            // sequence NAL unit): the pictures still waiting for output are discarded.
+            if sh.no_output_of_prior_pics || hdr.is_cra() {
                 self.dpb.clear();
             } else {
                 self.dpb.flush(&mut outs);
