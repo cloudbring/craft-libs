@@ -1,0 +1,35 @@
+{
+  "deckcraft": {
+    "min_layout_agree_pct": 51.0,
+    "min_median_ssim": 0.92,
+    "min_median_word_f1": 0.95,
+    "min_ok_rate_pct": 95.0,
+    "min_page_match_pct": 95.0,
+    "min_text_agree_pct": 72.0,
+    "min_visual_agree_pct": 90.0,
+    "n_ok": 100,
+    "n_sampled": 100
+  },
+  "gridcraft": {
+    "min_layout_agree_pct": 47.0,
+    "min_median_ssim": 0.91,
+    "min_median_word_f1": 0.88,
+    "min_ok_rate_pct": 95.0,
+    "min_page_match_pct": 63.0,
+    "min_text_agree_pct": 51.0,
+    "min_visual_agree_pct": 84.0,
+    "n_ok": 100,
+    "n_sampled": 100
+  },
+  "wordcraft": {
+    "min_layout_agree_pct": 49.0,
+    "min_median_ssim": 0.91,
+    "min_median_word_f1": 0.95,
+    "min_ok_rate_pct": 95.0,
+    "min_page_match_pct": 91.0,
+    "min_text_agree_pct": 68.0,
+    "min_visual_agree_pct": 84.0,
+    "n_ok": 150,
+    "n_sampled": 150
+  }
+}
