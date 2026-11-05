@@ -121,11 +121,18 @@ impl<S: Sample> Polyphase<S> {
     /// is allowed, so a filter centred on the output (taps reaching `lead` input samples ahead)
     /// is `start = lead * L + first * M`: the same theorem as a start offset of the direct form.
     pub fn process_from(&self, x: &[S], start: u128, count: usize) -> Vec<S> {
+        let mut out = vec![S::default(); count];
+        self.process_from_into(x, start, &mut out);
+        out
+    }
+
+    /// [`Polyphase::process_from`] writing `out.len()` samples into `out`: no allocation, for
+    /// real-time callers (for example a per-sample window of the last few inputs).
+    pub fn process_from_into(&self, x: &[S], start: u128, out: &mut [S]) {
         let (mut i, mut p) = ((start / self.up as u128) as i64, (start % self.up as u128) as usize);
         let (step_i, step_p) = ((self.down / self.up) as i64, self.down % self.up);
         let len = x.len() as i64;
-        let mut out = Vec::with_capacity(count);
-        for _ in 0..count {
+        for slot in out.iter_mut() {
             let mut acc = S::default();
             if let Some(w) = self.phase(p) {
                 // taps q with 0 <= i - q < len
@@ -137,7 +144,7 @@ impl<S: Sample> Polyphase<S> {
                     }
                 }
             }
-            out.push(acc);
+            *slot = acc;
             i += step_i;
             p += step_p;
             if p >= self.up {
@@ -145,7 +152,6 @@ impl<S: Sample> Polyphase<S> {
                 i += 1;
             }
         }
-        out
     }
 
     /// The whole resampled signal, `out_len(x.len())` samples.

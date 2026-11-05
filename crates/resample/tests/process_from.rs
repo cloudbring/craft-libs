@@ -30,6 +30,10 @@ fn start_offsets_match_the_direct_form() -> Result<(), Box<dyn std::error::Error
                 assert_eq!(got, reference(&x, &h, up, down, start, 30), "L={up} M={down} lead={lead} first={first}");
             }
         }
+        // The non-allocating form writes the same samples.
+        let mut buf = vec![0.0; 30];
+        pp.process_from_into(&x, (2 * up) as u128, &mut buf);
+        assert_eq!(buf, pp.process_from(&x, (2 * up) as u128, 30));
         // `process` is `process_from` at `first * M`.
         assert_eq!(pp.process(&x, 4, 20), pp.process_from(&x, (4 * down) as u128, 20));
     }

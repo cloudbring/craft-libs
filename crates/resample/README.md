@@ -9,6 +9,7 @@ Dependency-free rational-ratio polyphase FIR resampler (`L/M`), generic over `f3
   position accumulator (no floating-point phase, no drift); `process_all` gives the full output.
 * `process_from(x, start, count)` places output `n` at upsampled index `start + n*M`; a filter centred on
   the output (taps reaching `lead` input samples ahead) is `start = lead * L`. Same theorem, a start offset.
+* `process_from_into` is `process_from` into a caller buffer (no allocation).
 * `direct_form` is the literal upsample -> FIR -> downsample reference.
 
 The polyphase form equals the direct form for every input: proved in Lean 4 (`lean/`, see
