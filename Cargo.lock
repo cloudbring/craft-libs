@@ -1321,6 +1321,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "craft-resample"
+version = "0.1.0"
+
+[[package]]
 name = "craft-scopes"
 version = "0.1.0"
 
