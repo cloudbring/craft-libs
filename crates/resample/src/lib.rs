@@ -113,7 +113,14 @@ impl<S: Sample> Polyphase<S> {
     /// Output samples `first .. first + count` of the resampled stream. The position accumulator
     /// starts at `(first * M) divmod L` and is then advanced by integer steps.
     pub fn process(&self, x: &[S], first: usize, count: usize) -> Vec<S> {
-        let start = first as u128 * self.down as u128;
+        self.process_from(x, first as u128 * self.down as u128, count)
+    }
+
+    /// `count` outputs where output `n` sits at upsampled index `start + n*M`, i.e.
+    /// `y[n] = (h * u)[start + n*M]`. [`Polyphase::process`] is `start = first * M`. Any `start`
+    /// is allowed, so a filter centred on the output (taps reaching `lead` input samples ahead)
+    /// is `start = lead * L + first * M`: the same theorem as a start offset of the direct form.
+    pub fn process_from(&self, x: &[S], start: u128, count: usize) -> Vec<S> {
         let (mut i, mut p) = ((start / self.up as u128) as i64, (start % self.up as u128) as usize);
         let (step_i, step_p) = ((self.down / self.up) as i64, self.down % self.up);
         let len = x.len() as i64;
